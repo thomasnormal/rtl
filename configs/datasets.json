@@ -160,7 +160,7 @@
       ],
       "license": "Apache-2.0",
       "access": "public",
-      "notes": "First curated pack is checked into the repo as manual task bundles for uart, i2c, spi_host, dma, and sysrst_ctrl from the local OpenTitan checkout. GPIO was not present in this checkout, so sysrst_ctrl is the fifth medium-tier task for now.",
+      "notes": "First curated pack is checked into the repo as manually ingested OpenTitan docs for uart, i2c, spi_host, dma, and sysrst_ctrl from the local checkout. The public task metadata is curated, but the spec content is copied from upstream docs rather than rewritten. GPIO was not present in this checkout, so sysrst_ctrl is the fifth medium-tier task for now.",
       "default_tier": "medium"
     },
     {

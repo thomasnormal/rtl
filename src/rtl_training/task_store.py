@@ -429,6 +429,8 @@ def _write_task_bundle(
     into ``public/spec/``.
     """
     task_root = output_root / dataset_name / task_id
+    if task_root.exists():
+        shutil.rmtree(task_root)
     public_dir = task_root / "public"
     spec_dir = public_dir / "spec"
     spec_dir.mkdir(parents=True, exist_ok=True)

@@ -46,7 +46,7 @@ The first OpenTitan medium-tier pack is now checked in as curated task bundles f
 - `dma`
 - `sysrst_ctrl`
 
-These are manual summaries backed by the local `~/opentitan` checkout, not an automated ingest pipeline. That is intentional: the public spec given to the agent is curated, stable, and reviewable.
+These are manually ingested spec bundles copied from the local `~/opentitan` checkout, not rewritten summaries and not an automated ingest pipeline. The public task metadata is curated, but the spec content itself is the upstream OpenTitan documentation with its original directory structure preserved.
 
 ### 5. RTL-Repo
 
@@ -88,7 +88,7 @@ Properties:
 
 Important:
 
-- do not wait for “perfect native PDFs”; authoritative HTML docs are fine, and for the first OpenTitan pack we use reviewed markdown task bundles derived from those docs
+- do not wait for “perfect native PDFs”; authoritative HTML/markdown docs are fine, and for the first OpenTitan pack we manually copied the upstream documentation bundle directly into the task library
 
 ### Large
 

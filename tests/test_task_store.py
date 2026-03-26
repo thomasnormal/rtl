@@ -334,6 +334,38 @@ def test_store_generic_task_preserves_source_metadata(tmp_path: Path) -> None:
     assert metadata["source"] == {"origin": "manual", "source_docs": ["spec.md"]}
 
 
+def test_store_generic_task_overwrite_removes_stale_spec_files(tmp_path: Path) -> None:
+    first_spec_dir = tmp_path / "spec_a"
+    first_spec_dir.mkdir()
+    (first_spec_dir / "spec.md").write_text("old summary")
+
+    second_spec_dir = tmp_path / "spec_b"
+    (second_spec_dir / "doc").mkdir(parents=True)
+    (second_spec_dir / "README.md").write_text("upstream readme")
+    (second_spec_dir / "doc" / "theory_of_operation.md").write_text("upstream theory")
+
+    output_root = tmp_path / "task_store"
+    store_generic_task(
+        output_root=output_root,
+        dataset_name="custom",
+        task_id="overwrite_me",
+        spec_source=first_spec_dir,
+        candidate_top_module="overwrite_me",
+    )
+    task_root = store_generic_task(
+        output_root=output_root,
+        dataset_name="custom",
+        task_id="overwrite_me",
+        spec_source=second_spec_dir,
+        candidate_top_module="overwrite_me",
+    )
+
+    spec_dir = task_root / "public" / "spec"
+    assert (spec_dir / "README.md").read_text() == "upstream readme"
+    assert (spec_dir / "doc" / "theory_of_operation.md").read_text() == "upstream theory"
+    assert not (spec_dir / "spec.md").exists()
+
+
 def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path) -> None:
     written = store_opentitan_ip_docs_tasks(
         tmp_path / "task_store",
@@ -350,7 +382,10 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
 
     uart_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "uart")
     assert uart_task.tier == "medium"
-    assert (uart_task.spec_dir / "spec.md").read_text().startswith("# OpenTitan UART")
+    assert (uart_task.spec_dir / "README.md").read_text().startswith("# UART HWIP Technical Specification")
+    assert (uart_task.spec_dir / "doc" / "theory_of_operation.md").exists()
+    assert (uart_task.spec_dir / "dv" / "README.md").exists()
+    assert not (uart_task.spec_dir / "spec.md").exists()
 
     public_metadata = json.loads(uart_task.public_task_path.read_text())
     assert public_metadata["candidate_top_module"] == "uart"

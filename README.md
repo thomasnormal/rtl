@@ -18,7 +18,7 @@ That keeps deterministic validation available to the training framework without 
 - `configs/opentitan_ip_docs_tasks.json`: curated manual OpenTitan medium-tier task manifest.
 - `configs/verifier_smoke.json`: a first-pass verifier-training config.
 - `src/rtl_training/`: task-store, OpenCode runtime, hidden-oracle validation, and RL helpers.
-- `task_library/opentitan_ip_docs/`: hand-written OpenTitan task bundles for `uart`, `i2c`, `spi_host`, `dma`, and `sysrst_ctrl`.
+- `task_library/opentitan_ip_docs/`: manually ingested OpenTitan spec bundles for `uart`, `i2c`, `spi_host`, `dma`, and `sysrst_ctrl`, copied from the local checkout with their original doc layout.
 - `opencode.json` and `.opencode/`: checked-in OpenCode prompts and hardware-tool skills.
 - `tests/`: regression tests for public/oracle separation, OpenCode workspaces, and reward/config logic.
 - `docs/`: project plan, dataset notes, and an engineering log.
