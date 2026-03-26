@@ -6,6 +6,7 @@ import pytest
 from rtl_training.opencode_runtime import (
     OpenCodeRunRequest,
     OpenCodeUnavailable,
+    build_run_environment,
     build_run_command,
     ensure_opencode_available,
     run_opencode,
@@ -30,6 +31,8 @@ def test_build_run_command_uses_agent_format_and_prompt() -> None:
         "generator",
         "--format",
         "json",
+        "--dir",
+        "/tmp/workspace",
         "--model",
         "anthropic/claude-sonnet-4",
         "--quiet",
@@ -48,9 +51,10 @@ def test_run_opencode_uses_workspace_as_cwd(monkeypatch: pytest.MonkeyPatch, tmp
     monkeypatch.setattr("rtl_training.opencode_runtime.shutil.which", lambda _: "/usr/bin/opencode")
     captured = {}
 
-    def fake_run(command, *, cwd, capture_output, text, timeout, check):
+    def fake_run(command, *, cwd, env, capture_output, text, timeout, check):
         captured["command"] = command
         captured["cwd"] = cwd
+        captured["env"] = env
         captured["capture_output"] = capture_output
         captured["text"] = text
         captured["timeout"] = timeout
@@ -67,6 +71,23 @@ def test_run_opencode_uses_workspace_as_cwd(monkeypatch: pytest.MonkeyPatch, tmp
     result = run_opencode(request, timeout_s=45)
 
     assert captured["cwd"] == tmp_path
+    assert captured["env"]["GIT_CEILING_DIRECTORIES"] == str(tmp_path.parent)
     assert captured["timeout"] == 45
     assert result.returncode == 0
     assert result.stdout == '{"ok":true}\n'
+
+
+def test_build_run_environment_caps_git_discovery_at_workspace_parent(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("GIT_CEILING_DIRECTORIES", "/existing/ceiling")
+    request = OpenCodeRunRequest(
+        workspace_root=tmp_path / "episode",
+        agent="verifier",
+        prompt="Read TASK.md.",
+    )
+
+    env = build_run_environment(request)
+
+    assert env["GIT_CEILING_DIRECTORIES"] == f"{request.workspace_root.parent}:/existing/ceiling"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -36,12 +37,33 @@ def ensure_opencode_available() -> None:
 
 
 def build_run_command(request: OpenCodeRunRequest) -> tuple[str, ...]:
-    command = ["opencode", "run", "--agent", request.agent, "--format", request.output_format]
+    command = [
+        "opencode",
+        "run",
+        "--agent",
+        request.agent,
+        "--format",
+        request.output_format,
+        "--dir",
+        str(request.workspace_root),
+    ]
     if request.model is not None:
         command.extend(["--model", request.model])
     command.extend(request.extra_args)
     command.append(request.prompt)
     return tuple(command)
+
+
+def build_run_environment(request: OpenCodeRunRequest) -> dict[str, str]:
+    workspace_root = request.workspace_root.resolve()
+    env = os.environ.copy()
+    ceiling = str(workspace_root.parent)
+    existing_ceiling = env.get("GIT_CEILING_DIRECTORIES")
+    if existing_ceiling:
+        env["GIT_CEILING_DIRECTORIES"] = os.pathsep.join([ceiling, existing_ceiling])
+    else:
+        env["GIT_CEILING_DIRECTORIES"] = ceiling
+    return env
 
 
 def run_opencode(
@@ -51,9 +73,11 @@ def run_opencode(
 ) -> OpenCodeRunResult:
     ensure_opencode_available()
     command = build_run_command(request)
+    env = build_run_environment(request)
     completed = subprocess.run(
         command,
         cwd=request.workspace_root,
+        env=env,
         capture_output=True,
         text=True,
         timeout=timeout_s,
