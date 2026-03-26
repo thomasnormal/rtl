@@ -81,6 +81,7 @@ class StoredTask:
     spec_dir: Path
     public_dir: Path
     public_task_path: Path
+    private_dir: Path | None
     metadata: dict[str, Any]
     oracle: SimulationOracle | None
     tier: Tier | None = None
@@ -420,6 +421,7 @@ def _write_task_bundle(
     public_metadata: dict[str, Any],
     oracle: SimulationOracle | None,
     source_metadata: dict[str, Any],
+    private_sources: Sequence[str | Path] = (),
     tier: Tier | None = None,
 ) -> Path:
     """Write a task bundle to *output_root/dataset_name/task_id/*.
@@ -463,6 +465,24 @@ def _write_task_bundle(
     if tier is not None:
         task_metadata["tier"] = tier
 
+    private_assets: list[str] = []
+    if private_sources:
+        private_dir = task_root / "private"
+        private_dir.mkdir(parents=True, exist_ok=True)
+        for private_source in private_sources:
+            source_path = Path(private_source)
+            destination = private_dir / source_path.name
+            if source_path.is_dir():
+                shutil.copytree(source_path, destination, dirs_exist_ok=True)
+            else:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source_path, destination)
+            private_assets.append(str(destination.relative_to(task_root)))
+        task_metadata["private"] = {
+            "directory": "private",
+            "assets": private_assets,
+        }
+
     if oracle is not None:
         oracle_dir = task_root / "oracle"
         sim_dir = oracle_dir / "sim"
@@ -500,6 +520,7 @@ def load_stored_task(task_root: str | Path) -> StoredTask:
     task_root_path = Path(task_root).resolve()
     metadata = json.loads((task_root_path / "task.json").read_text())
     public = dict(metadata["public"])
+    private = metadata.get("private")
     oracle_raw = metadata.get("oracle")
     oracle = None
     if oracle_raw is not None:
@@ -521,6 +542,11 @@ def load_stored_task(task_root: str | Path) -> StoredTask:
         spec_dir=spec_dir,
         public_dir=task_root_path / str(public["directory"]),
         public_task_path=task_root_path / str(public["task"]),
+        private_dir=(
+            task_root_path / str(dict(private)["directory"])
+            if isinstance(private, dict) and "directory" in private
+            else None
+        ),
         metadata=metadata,
         oracle=oracle,
         tier=tier,
@@ -686,6 +712,7 @@ def store_generic_task(
     requires_reference_rtl: bool = False,
     pass_criteria: PassCriteria | None = None,
     source_metadata: dict[str, Any] | None = None,
+    private_sources: Sequence[str | Path] = (),
 ) -> Path:
     """Ingest a hand-assembled task into the task store.
 
@@ -730,6 +757,7 @@ def store_generic_task(
         public_metadata=public_metadata,
         oracle=oracle,
         source_metadata=effective_source_metadata,
+        private_sources=private_sources,
         tier=tier,
     )
 
@@ -779,6 +807,21 @@ def store_curated_task_pack(
                     f"curated task pack source_docs for {dataset_name}/{task_id} must be a list"
                 )
             source_metadata["source_docs"] = [str(item) for item in source_docs]
+        private_sources: tuple[Path, ...] = ()
+        raw_private_source_dirs = task.get("private_source_dirs")
+        if raw_private_source_dirs is not None:
+            if source_root_path is None:
+                raise ValueError(
+                    f"curated task pack {dataset_name}/{task_id} requires source_root "
+                    "to materialize private_source_dirs"
+                )
+            if not isinstance(raw_private_source_dirs, list):
+                raise ValueError(
+                    f"curated task pack private_source_dirs for {dataset_name}/{task_id} "
+                    "must be a list"
+                )
+            private_sources = tuple(source_root_path / str(item) for item in raw_private_source_dirs)
+            source_metadata["private_source_dirs"] = [str(item) for item in raw_private_source_dirs]
         if source_root_path is not None:
             source_metadata["source_root"] = str(source_root_path)
         written.append(
@@ -791,6 +834,7 @@ def store_curated_task_pack(
                 candidate_top_module=candidate_top_module,
                 interface=dict(interface) if interface is not None else None,
                 source_metadata=source_metadata,
+                private_sources=private_sources,
             )
         )
     return tuple(written)

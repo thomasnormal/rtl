@@ -320,6 +320,31 @@ def test_store_generic_task_with_oracle(tmp_path: Path) -> None:
     assert task.oracle.candidate_top_module == "adder"
 
 
+def test_store_generic_task_with_private_sources_keeps_assets_hidden(tmp_path: Path) -> None:
+    private_dir = tmp_path / "upstream"
+    (private_dir / "rtl").mkdir(parents=True)
+    (private_dir / "rtl" / "top.sv").write_text("module top; endmodule\n")
+    (private_dir / "dv").mkdir()
+    (private_dir / "dv" / "README.md").write_text("dv collateral\n")
+
+    task_root = store_generic_task(
+        output_root=tmp_path / "task_store",
+        dataset_name="custom",
+        task_id="private_assets",
+        spec_source="public spec",
+        candidate_top_module="top",
+        private_sources=(private_dir / "rtl", private_dir / "dv"),
+    )
+    task = load_stored_task(task_root)
+
+    assert task.private_dir == task_root / "private"
+    assert (task.private_dir / "rtl" / "top.sv").exists()
+    assert (task.private_dir / "dv" / "README.md").exists()
+    assert not (task.public_dir / "rtl").exists()
+    metadata = json.loads((task_root / "task.json").read_text())
+    assert metadata["private"]["assets"] == ["private/rtl", "private/dv"]
+
+
 def test_store_generic_task_preserves_source_metadata(tmp_path: Path) -> None:
     task_root = store_generic_task(
         output_root=tmp_path / "task_store",
@@ -401,6 +426,13 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
     assert task_metadata["source"]["spec_subdir"] == "uart"
     assert "hw/ip/uart/README.md" in task_metadata["source"]["source_docs"]
     assert task_metadata["source"]["source_root"] == str(Path("~/opentitan").expanduser().resolve())
+    assert task_metadata["source"]["private_source_dirs"] == [
+        "hw/ip/uart/rtl",
+        "hw/ip/uart/dv",
+    ]
+    assert uart_task.private_dir == uart_task.root / "private"
+    assert (uart_task.private_dir / "rtl" / "uart.sv").exists()
+    assert (uart_task.private_dir / "dv" / "README.md").exists()
 
 
 def test_load_stored_task_backward_compat_old_spec_format(tmp_path: Path) -> None:
