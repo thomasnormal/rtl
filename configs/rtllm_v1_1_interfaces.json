@@ -1,0 +1,440 @@
+{
+  "JC_counter": {
+    "top_module": "JC_counter",
+    "notes": [
+      "Active-low reset."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst_n", "direction": "input"},
+      {"name": "Q", "direction": "output", "width": "[63:0]"}
+    ]
+  },
+  "RAM": {
+    "top_module": "RAM",
+    "notes": [
+      "The oracle uses 8-bit read/write addresses and 6-bit data.",
+      "The published prose about DEPTH is inconsistent with the hidden oracle; follow this interface."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst_n", "direction": "input"},
+      {"name": "write_en", "direction": "input"},
+      {"name": "write_addr", "direction": "input", "width": "[7:0]"},
+      {"name": "write_data", "direction": "input", "width": "[5:0]"},
+      {"name": "read_en", "direction": "input"},
+      {"name": "read_addr", "direction": "input", "width": "[7:0]"},
+      {"name": "read_data", "direction": "output", "width": "[5:0]"}
+    ]
+  },
+  "accu": {
+    "top_module": "accu",
+    "notes": [
+      "Active-low reset."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst_n", "direction": "input"},
+      {"name": "data_in", "direction": "input", "width": "[7:0]"},
+      {"name": "valid_in", "direction": "input"},
+      {"name": "valid_out", "direction": "output"},
+      {"name": "data_out", "direction": "output", "width": "[9:0]"}
+    ]
+  },
+  "adder_16bit": {
+    "top_module": "adder_16bit",
+    "parameters": [],
+    "ports": [
+      {"name": "a", "direction": "input", "width": "[15:0]"},
+      {"name": "b", "direction": "input", "width": "[15:0]"},
+      {"name": "Cin", "direction": "input"},
+      {"name": "y", "direction": "output", "width": "[15:0]"},
+      {"name": "Co", "direction": "output"}
+    ]
+  },
+  "adder_32bit": {
+    "top_module": "adder_32bit",
+    "notes": [
+      "The oracle uses 1-based 32-bit vectors `[32:1]`."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "A", "direction": "input", "width": "[32:1]"},
+      {"name": "B", "direction": "input", "width": "[32:1]"},
+      {"name": "S", "direction": "output", "width": "[32:1]"},
+      {"name": "C32", "direction": "output"}
+    ]
+  },
+  "adder_8bit": {
+    "top_module": "adder_8bit",
+    "parameters": [],
+    "ports": [
+      {"name": "a", "direction": "input", "width": "[7:0]"},
+      {"name": "b", "direction": "input", "width": "[7:0]"},
+      {"name": "cin", "direction": "input"},
+      {"name": "sum", "direction": "output", "width": "[7:0]"},
+      {"name": "cout", "direction": "output"}
+    ]
+  },
+  "adder_pipe_64bit": {
+    "top_module": "adder_pipe_64bit",
+    "notes": [
+      "Active-low reset.",
+      "The oracle instantiates this task with named ports and explicit parameter values."
+    ],
+    "parameters": [
+      {"name": "DATA_WIDTH", "value": "64"},
+      {"name": "STG_WIDTH", "value": "16"}
+    ],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst_n", "direction": "input"},
+      {"name": "i_en", "direction": "input"},
+      {"name": "adda", "direction": "input", "width": "[DATA_WIDTH-1:0]"},
+      {"name": "addb", "direction": "input", "width": "[DATA_WIDTH-1:0]"},
+      {"name": "result", "direction": "output", "width": "[DATA_WIDTH:0]"},
+      {"name": "o_en", "direction": "output"}
+    ]
+  },
+  "alu": {
+    "top_module": "alu",
+    "parameters": [],
+    "ports": [
+      {"name": "a", "direction": "input", "width": "[31:0]"},
+      {"name": "b", "direction": "input", "width": "[31:0]"},
+      {"name": "aluc", "direction": "input", "width": "[5:0]"},
+      {"name": "r", "direction": "output", "width": "[31:0]"},
+      {"name": "zero", "direction": "output"},
+      {"name": "carry", "direction": "output"},
+      {"name": "negative", "direction": "output"},
+      {"name": "overflow", "direction": "output"},
+      {"name": "flag", "direction": "output"}
+    ]
+  },
+  "asyn_fifo": {
+    "top_module": "asyn_fifo",
+    "notes": [
+      "Separate write and read clocks with separate active-low resets."
+    ],
+    "parameters": [
+      {"name": "WIDTH", "value": "8"},
+      {"name": "DEPTH", "value": "16"}
+    ],
+    "ports": [
+      {"name": "wclk", "direction": "input"},
+      {"name": "rclk", "direction": "input"},
+      {"name": "wrstn", "direction": "input"},
+      {"name": "rrstn", "direction": "input"},
+      {"name": "winc", "direction": "input"},
+      {"name": "rinc", "direction": "input"},
+      {"name": "wdata", "direction": "input", "width": "[WIDTH-1:0]"},
+      {"name": "wfull", "direction": "output"},
+      {"name": "rempty", "direction": "output"},
+      {"name": "rdata", "direction": "output", "width": "[WIDTH-1:0]"}
+    ]
+  },
+  "calendar": {
+    "top_module": "calendar",
+    "notes": [
+      "Active-high reset.",
+      "Port names are uppercase in the oracle."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "CLK", "direction": "input"},
+      {"name": "RST", "direction": "input"},
+      {"name": "Hours", "direction": "output", "width": "[5:0]"},
+      {"name": "Mins", "direction": "output", "width": "[5:0]"},
+      {"name": "Secs", "direction": "output", "width": "[5:0]"}
+    ]
+  },
+  "counter_12": {
+    "top_module": "counter_12",
+    "notes": [
+      "Active-low reset."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "rst_n", "direction": "input"},
+      {"name": "clk", "direction": "input"},
+      {"name": "valid_count", "direction": "input"},
+      {"name": "out", "direction": "output", "width": "[3:0]"}
+    ]
+  },
+  "div_16bit": {
+    "top_module": "div_16bit",
+    "notes": [
+      "This task is quarantined from the trusted anchor set because the published oracle bench is broken."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "A", "direction": "input", "width": "[15:0]"},
+      {"name": "B", "direction": "input", "width": "[7:0]"},
+      {"name": "result", "direction": "output", "width": "[15:0]"},
+      {"name": "odd", "direction": "output", "width": "[15:0]"}
+    ]
+  },
+  "edge_detect": {
+    "top_module": "edge_detect",
+    "notes": [
+      "Active-low reset."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst_n", "direction": "input"},
+      {"name": "a", "direction": "input"},
+      {"name": "rise", "direction": "output"},
+      {"name": "down", "direction": "output"}
+    ]
+  },
+  "freq_div": {
+    "top_module": "freq_div",
+    "notes": [
+      "Active-high reset.",
+      "Port names are uppercase in the oracle."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "CLK_in", "direction": "input"},
+      {"name": "CLK_50", "direction": "output"},
+      {"name": "CLK_10", "direction": "output"},
+      {"name": "CLK_1", "direction": "output"},
+      {"name": "RST", "direction": "input"}
+    ]
+  },
+  "fsm": {
+    "top_module": "fsm",
+    "notes": [
+      "Active-high reset.",
+      "The oracle uses uppercase port names."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "IN", "direction": "input"},
+      {"name": "MATCH", "direction": "output"},
+      {"name": "CLK", "direction": "input"},
+      {"name": "RST", "direction": "input"}
+    ]
+  },
+  "multi_16bit": {
+    "top_module": "multi_16bit",
+    "notes": [
+      "Active-low reset.",
+      "Handshake-style `start` input and `done` output."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst_n", "direction": "input"},
+      {"name": "start", "direction": "input"},
+      {"name": "ain", "direction": "input", "width": "[15:0]"},
+      {"name": "bin", "direction": "input", "width": "[15:0]"},
+      {"name": "yout", "direction": "output", "width": "[31:0]"},
+      {"name": "done", "direction": "output"}
+    ]
+  },
+  "multi_booth_8bit": {
+    "top_module": "multi_booth_8bit",
+    "notes": [
+      "Reset input is named `reset` and is active high."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "p", "direction": "output", "width": "[15:0]"},
+      {"name": "rdy", "direction": "output"},
+      {"name": "clk", "direction": "input"},
+      {"name": "reset", "direction": "input"},
+      {"name": "a", "direction": "input", "width": "[7:0]"},
+      {"name": "b", "direction": "input", "width": "[7:0]"}
+    ]
+  },
+  "multi_pipe_4bit": {
+    "top_module": "multi_pipe_4bit",
+    "notes": [
+      "Active-low reset."
+    ],
+    "parameters": [
+      {"name": "size", "value": "4"}
+    ],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst_n", "direction": "input"},
+      {"name": "mul_a", "direction": "input", "width": "[size-1:0]"},
+      {"name": "mul_b", "direction": "input", "width": "[size-1:0]"},
+      {"name": "mul_out", "direction": "output", "width": "[size*2-1:0]"}
+    ]
+  },
+  "multi_pipe_8bit": {
+    "top_module": "multi_pipe_8bit",
+    "notes": [
+      "Active-low reset.",
+      "Includes input and output enable handshake signals."
+    ],
+    "parameters": [
+      {"name": "size", "value": "8"}
+    ],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst_n", "direction": "input"},
+      {"name": "mul_a", "direction": "input", "width": "[size-1:0]"},
+      {"name": "mul_b", "direction": "input", "width": "[size-1:0]"},
+      {"name": "mul_en_in", "direction": "input"},
+      {"name": "mul_en_out", "direction": "output"},
+      {"name": "mul_out", "direction": "output", "width": "[size*2-1:0]"}
+    ]
+  },
+  "parallel2serial": {
+    "top_module": "parallel2serial",
+    "notes": [
+      "Active-low reset."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst_n", "direction": "input"},
+      {"name": "d", "direction": "input", "width": "[3:0]"},
+      {"name": "valid_out", "direction": "output"},
+      {"name": "dout", "direction": "output"}
+    ]
+  },
+  "pe": {
+    "top_module": "pe",
+    "notes": [
+      "Active-high reset.",
+      "The oracle uses positional instantiation, so preserve this port order."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst", "direction": "input"},
+      {"name": "a", "direction": "input", "width": "[31:0]"},
+      {"name": "b", "direction": "input", "width": "[31:0]"},
+      {"name": "c", "direction": "output", "width": "[31:0]"}
+    ]
+  },
+  "pulse_detect": {
+    "top_module": "pulse_detect",
+    "notes": [
+      "Active-low reset.",
+      "The oracle expects `data_out` to assert on the final cycle of a `0 -> 1 -> 0` sequence."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst_n", "direction": "input"},
+      {"name": "data_in", "direction": "input"},
+      {"name": "data_out", "direction": "output"}
+    ]
+  },
+  "right_shifter": {
+    "top_module": "right_shifter",
+    "notes": [
+      "No reset port in the oracle.",
+      "The oracle uses named connections, but the original module header orders ports as `clk, q, d`."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "q", "direction": "output", "width": "[7:0]"},
+      {"name": "d", "direction": "input"}
+    ]
+  },
+  "radix2_div": {
+    "top_module": "radix2_div",
+    "notes": [
+      "This task is quarantined from the trusted anchor set because the published gold RTL fails its own benchmark.",
+      "The hidden bench requires `res_ready` as an input even though the prose description omits it from the port list."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst", "direction": "input"},
+      {"name": "dividend", "direction": "input", "width": "[7:0]"},
+      {"name": "divisor", "direction": "input", "width": "[7:0]"},
+      {"name": "sign", "direction": "input"},
+      {"name": "opn_valid", "direction": "input"},
+      {"name": "res_valid", "direction": "output"},
+      {"name": "res_ready", "direction": "input"},
+      {"name": "result", "direction": "output", "width": "[15:0]"}
+    ]
+  },
+  "serial2parallel": {
+    "top_module": "serial2parallel",
+    "notes": [
+      "Active-low reset."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst_n", "direction": "input"},
+      {"name": "din_serial", "direction": "input"},
+      {"name": "din_valid", "direction": "input"},
+      {"name": "dout_parallel", "direction": "output", "width": "[7:0]"},
+      {"name": "dout_valid", "direction": "output"}
+    ]
+  },
+  "signal_generator": {
+    "top_module": "signal_generator",
+    "notes": [
+      "Active-low reset."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst_n", "direction": "input"},
+      {"name": "wave", "direction": "output", "width": "[4:0]"}
+    ]
+  },
+  "synchronizer": {
+    "top_module": "synchronizer",
+    "notes": [
+      "Separate source and destination clocks with separate active-low resets."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk_a", "direction": "input"},
+      {"name": "clk_b", "direction": "input"},
+      {"name": "arstn", "direction": "input"},
+      {"name": "brstn", "direction": "input"},
+      {"name": "data_in", "direction": "input", "width": "[3:0]"},
+      {"name": "data_en", "direction": "input"},
+      {"name": "dataout", "direction": "output", "width": "[3:0]"}
+    ]
+  },
+  "traffic_light": {
+    "top_module": "traffic_light",
+    "notes": [
+      "Active-low reset.",
+      "The output named `clock` is an 8-bit countdown display, not the input clock."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "rst_n", "direction": "input"},
+      {"name": "clk", "direction": "input"},
+      {"name": "pass_request", "direction": "input"},
+      {"name": "clock", "direction": "output", "width": "[7:0]"},
+      {"name": "red", "direction": "output"},
+      {"name": "yellow", "direction": "output"},
+      {"name": "green", "direction": "output"}
+    ]
+  },
+  "width_8to16": {
+    "top_module": "width_8to16",
+    "notes": [
+      "Active-low reset."
+    ],
+    "parameters": [],
+    "ports": [
+      {"name": "clk", "direction": "input"},
+      {"name": "rst_n", "direction": "input"},
+      {"name": "valid_in", "direction": "input"},
+      {"name": "data_in", "direction": "input", "width": "[7:0]"},
+      {"name": "valid_out", "direction": "output"},
+      {"name": "data_out", "direction": "output", "width": "[15:0]"}
+    ]
+  }
+}

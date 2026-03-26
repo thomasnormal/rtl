@@ -1,0 +1,29 @@
+{
+  "base_model": "Qwen/Qwen3-4B",
+  "renderer_name": "qwen3",
+  "loss_fn": "ppo",
+  "group_size": 4,
+  "max_new_tokens": 768,
+  "episodes_per_step": 32,
+  "budget": {
+    "max_steps": 6,
+    "max_cost": 12.0
+  },
+  "reward": {
+    "match_bonus": 1.0,
+    "cost_penalty": 0.05,
+    "evidence_bonus": 0.25,
+    "false_alarm_penalty": 0.5
+  },
+  "datasets": {
+    "train": [
+      "rtllm_v1_1",
+      "verilogeval_v2_spec_to_rtl"
+    ],
+    "eval": [
+      "verilogeval_v2_spec_to_rtl",
+      "asserteval"
+    ]
+  }
+}
+

@@ -1,0 +1,124 @@
+{
+  "project": "rtl-verifier",
+  "recommended_order": [
+    "rtllm_v1_1",
+    "verilogeval_v2_spec_to_rtl",
+    "rtllm_v2_0",
+    "asserteval",
+    "opentitan_dv",
+    "rtl_repo"
+  ],
+  "datasets": [
+    {
+      "name": "rtllm_v1_1",
+      "role": "anchor_seed",
+      "status": "ready",
+      "example_count": 29,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "design_description.txt",
+        "testbench.v",
+        "verified_verilog.v"
+      ],
+      "license": "MIT",
+      "access": "public",
+      "notes": "Small hand-written designs with explicit descriptions, a hidden simulation bench, and a verified RTL reference."
+    },
+    {
+      "name": "verilogeval_v2_spec_to_rtl",
+      "role": "anchor_seed",
+      "status": "ready",
+      "example_count": 156,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "problem_id",
+        "prompt",
+        "ref",
+        "test"
+      ],
+      "license": "MIT",
+      "access": "public",
+      "notes": "Spec-to-RTL benchmark with the improved VerilogEval v2 harness and structured failure analysis."
+    },
+    {
+      "name": "rtllm_v2_0",
+      "role": "anchor_seed",
+      "status": "ready",
+      "example_count": 50,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "design_description.txt",
+        "testbench.v",
+        "verified_verilog.v",
+        "File_list.md"
+      ],
+      "license": "MIT",
+      "access": "public",
+      "notes": "Expanded RTLLM benchmark with categorized tasks; good for widening anchor-task families before scaling."
+    },
+    {
+      "name": "asserteval",
+      "role": "verification_side",
+      "status": "ready",
+      "example_count": 20,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": false,
+      "has_formal_oracle": true,
+      "fields": [
+        "spec/",
+        "rtl/",
+        "fpv.tcl"
+      ],
+      "license": "repository-specific",
+      "access": "public",
+      "notes": "Use this to train assertion and formal-task generation, not as the main generator benchmark. The current AssertLLM repo README says 20 designs; the later OpenLLM-RTL paper summary says 18, so verify the checkout you actually use."
+    },
+    {
+      "name": "opentitan_dv",
+      "role": "industrial_anchor",
+      "status": "planned",
+      "example_count": null,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "hjson testplan",
+        "DV document",
+        "UVM testbench",
+        "assertions/checkers"
+      ],
+      "license": "Apache-2.0",
+      "access": "public",
+      "notes": "Repository-native industrial verification artifacts for later agentic verification benchmarks."
+    },
+    {
+      "name": "rtl_repo",
+      "role": "scale_corpus",
+      "status": "ready",
+      "example_count": 4000,
+      "has_spec": false,
+      "has_gold_rtl": false,
+      "has_testbench": false,
+      "has_formal_oracle": false,
+      "fields": [
+        "repository_context",
+        "target_completion",
+        "metadata"
+      ],
+      "license": "Apache-2.0",
+      "access": "public",
+      "notes": "Repository-level scale corpus for context conditioning and code exposure, not a trustworthy reward oracle."
+    }
+  ]
+}

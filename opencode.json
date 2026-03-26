@@ -1,0 +1,26 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "AGENTS.md"
+  ],
+  "permission": {
+    "*": "allow",
+    "external_directory": "deny"
+  },
+  "agent": {
+    "generator": {
+      "mode": "primary",
+      "description": "Generate candidate RTL from a public task workspace without access to hidden validators.",
+      "prompt": "{file:./.opencode/prompts/generator.md}",
+      "steps": 80,
+      "temperature": 0.2
+    },
+    "verifier": {
+      "mode": "primary",
+      "description": "Verify candidate RTL using public tools and produce an evidence-backed verdict.",
+      "prompt": "{file:./.opencode/prompts/verifier.md}",
+      "steps": 100,
+      "temperature": 0.1
+    }
+  }
+}
