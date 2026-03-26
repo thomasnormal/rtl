@@ -173,6 +173,10 @@ def test_store_rtllm_tasks_uses_curated_interface_manifest_for_rtllm_v1_1(tmp_pa
         {"name": "read_addr", "direction": "input", "width": "[7:0]"},
         {"name": "read_data", "direction": "output", "width": "[5:0]"},
     ]
+    sv_contract = written[0] / "public" / "spec" / "interface" / "RAM_public_if.sv"
+    assert sv_contract.exists()
+    assert "logic [7:0] write_addr;" in sv_contract.read_text()
+    assert "modport dut (" in sv_contract.read_text()
 
 
 def test_store_rtllm_tasks_requires_curated_manifest_for_rtllm_v1_1(tmp_path: Path) -> None:
@@ -421,6 +425,15 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
         "direction": "input",
         "width": "logic",
     }
+    assert public_metadata["interface"]["ports"][0] == {
+        "name": "clk_i",
+        "direction": "input",
+        "width": "logic",
+    }
+    assert (uart_task.spec_dir / "interface" / "uart_public_if.sv").exists()
+    assert (
+        uart_task.spec_dir / "interface" / "uart_public_if.sv"
+    ).read_text().find("tlul_pkg::tl_h2d_t tl_i;") != -1
 
     task_metadata = json.loads((uart_task.root / "task.json").read_text())
     assert task_metadata["source"]["origin"] == "curated_task_pack"

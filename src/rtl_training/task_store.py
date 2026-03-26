@@ -10,6 +10,10 @@ import shutil
 from typing import Any, Sequence
 
 from .datasets import Tier, discover_rtllm_tasks, discover_verilog_eval_tasks
+from .interface_contracts import (
+    materialize_public_interface_sv,
+    normalize_public_interface_contract,
+)
 from .shared_sources import SharedSourceRegistry, register_shared_source_bundle
 
 
@@ -409,7 +413,10 @@ def _build_curated_public_interface_contract(
                 f"curated interface manifest entry for {dataset_name}/{task_id} has non-list notes"
             )
         interface["notes"] = [str(note) for note in notes]
-    return interface
+    return normalize_public_interface_contract(
+        interface,
+        candidate_top_module=top_module,
+    )
 
 
 def _build_public_interface_contract(*, spec_text: str, candidate_top_module: str) -> dict[str, Any]:
@@ -419,13 +426,13 @@ def _build_public_interface_contract(*, spec_text: str, candidate_top_module: st
     if module_name_lines:
         declared_top_module = module_name_lines[0].split()[0]
 
-    return {
+    return normalize_public_interface_contract({
         "top_module": candidate_top_module,
         "declared_module_name": declared_top_module,
         "inputs": _parse_named_items(sections.get("inputs", [])),
         "outputs": _parse_named_items(sections.get("outputs", [])),
         "parameters": _parse_parameters(sections.get("parameters", [])),
-    }
+    }, candidate_top_module=candidate_top_module)
 
 
 def _build_task_public_interface_contract(
@@ -489,6 +496,13 @@ def _write_task_bundle(
     if tier is not None:
         public_metadata.setdefault("tier", tier)
     public_metadata["spec"] = "spec/"
+    interface = public_metadata.get("interface")
+    if isinstance(interface, dict):
+        public_metadata["interface"] = normalize_public_interface_contract(
+            interface,
+            candidate_top_module=str(public_metadata["candidate_top_module"]),
+        )
+        materialize_public_interface_sv(spec_dir, public_metadata["interface"])
     public_task_path.write_text(json.dumps(public_metadata, indent=2, sort_keys=True) + "\n")
 
     task_metadata: dict[str, Any] = {
@@ -572,7 +586,7 @@ def load_stored_task(task_root: str | Path) -> StoredTask:
     shared_private_raw = metadata.get("shared_private")
     oracle_raw = metadata.get("oracle")
     oracle = None
-    if oracle_raw is not None:
+    if oracle_raw is not None and oracle_raw.get("kind", "simulation") == "simulation":
         oracle = SimulationOracle.from_dict(task_root_path, dict(oracle_raw))
     shared_private_ref = None
     if shared_private_raw is not None:
@@ -788,7 +802,10 @@ def store_generic_task(
         },
     }
     if interface is not None:
-        public_metadata["interface"] = interface
+        public_metadata["interface"] = normalize_public_interface_contract(
+            interface,
+            candidate_top_module=candidate_top_module,
+        )
 
     oracle: SimulationOracle | None = None
     if gold_rtl_path is not None and testbench_path is not None:

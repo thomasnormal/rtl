@@ -7,20 +7,33 @@ import shutil
 
 from .task_store import StoredTask
 
+_RTL_EXTENSIONS = frozenset({".sv", ".v", ".svh", ".vh"})
+
 
 @dataclass(frozen=True)
 class StagedWorkspace:
     root: Path
     agent_name: str
     task_dir: Path
-    spec_path: Path
+    spec_dir: Path
     public_task_path: Path
     submission_dir: Path
-    candidate_output_path: Path | None
-    candidate_input_path: Path | None
+    candidate_input_dir: Path | None
     result_dir: Path
     result_path: Path
     instructions_path: Path
+
+
+def collect_candidate_files(directory: Path) -> tuple[Path, ...]:
+    """Return all RTL source files (.sv, .v, .svh, .vh) under *directory*, sorted by name."""
+    if not directory.is_dir():
+        return ()
+    return tuple(
+        sorted(
+            (p for p in directory.iterdir() if p.is_file() and p.suffix in _RTL_EXTENSIONS),
+            key=lambda p: p.name,
+        )
+    )
 
 
 def project_root() -> Path:
@@ -43,10 +56,12 @@ def stage_generator_workspace(
         [
             "# Generator Task",
             "",
-            "- Read `task/spec.txt` and `task/task.json`.",
-            "- Treat `task/task.json` as the authoritative public contract for the top module, interface hints, and deliverables.",
-            "- Ensure `submission/candidate.sv` defines the top module named by `task/task.json`.",
-            "- Write the candidate RTL to `submission/candidate.sv`.",
+            "- Read the spec files under `task/spec/` and `task/task.json`.",
+            "- Treat `task/spec/interface/` as the concrete SV form of the public top-level interface when it exists.",
+            "- Treat `task/task.json` as the authoritative machine-readable contract for the top module, interface hints, and deliverables.",
+            "- If `task/spec/compat/` exists, treat the SV files there as a mandatory compatibility ABI. The generated RTL must compile against that ABI and satisfy any required named interfaces or bind points it defines.",
+            "- Write candidate RTL files to `submission/`. The top module must match `task/task.json`.",
+            "- You may produce one or more `.sv`/`.v` files under `submission/`.",
             "- Write a machine-readable summary to `result/result.json`.",
             "- There is no oracle validator in this workspace.",
         ]
@@ -56,11 +71,10 @@ def stage_generator_workspace(
         root=workspace.root,
         agent_name=workspace.agent_name,
         task_dir=workspace.task_dir,
-        spec_path=workspace.spec_path,
+        spec_dir=workspace.spec_dir,
         public_task_path=workspace.public_task_path,
         submission_dir=workspace.submission_dir,
-        candidate_output_path=workspace.submission_dir / "candidate.sv",
-        candidate_input_path=None,
+        candidate_input_dir=None,
         result_dir=workspace.result_dir,
         result_path=workspace.result_path,
         instructions_path=workspace.instructions_path,
@@ -69,7 +83,7 @@ def stage_generator_workspace(
 
 def stage_verifier_workspace(
     task: StoredTask,
-    candidate_rtl_path: str | Path,
+    candidate_rtl_dir: str | Path,
     workspace_root: str | Path,
     *,
     template_root: str | Path | None = None,
@@ -82,38 +96,97 @@ def stage_verifier_workspace(
     )
     candidate_dir = workspace.root / "candidate"
     candidate_dir.mkdir(parents=True, exist_ok=True)
-    candidate_input = candidate_dir / Path(candidate_rtl_path).name
-    shutil.copy2(candidate_rtl_path, candidate_input)
-    candidate_input.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+    source_dir = Path(candidate_rtl_dir)
+    if source_dir.is_dir():
+        for src_file in sorted(source_dir.iterdir()):
+            if src_file.is_file():
+                dest = candidate_dir / src_file.name
+                shutil.copy2(src_file, dest)
+                dest.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+    else:
+        # Single file path for convenience.
+        dest = candidate_dir / source_dir.name
+        shutil.copy2(source_dir, dest)
+        dest.chmod(stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
     task_note = "\n".join(
         [
             "# Verifier Task",
             "",
-            "- Read `task/spec.txt`, `task/task.json`, and `candidate/current.sv`.",
-            "- Treat `task/task.json` as the authoritative public contract for the expected top module and interface hints.",
+            "- Read the spec files under `task/spec/`, `task/task.json`, and the candidate RTL files under `candidate/`.",
+            "- Treat `task/spec/interface/` as the concrete SV form of the public top-level interface when it exists.",
+            "- Treat `task/task.json` as the authoritative machine-readable public contract for the expected top module and interface hints.",
+            "- If `task/spec/compat/` exists, treat the SV files there as the task's deep-DV compatibility ABI and use them when evaluating whether the candidate is compatible with deeper verification.",
             "- Treat the candidate RTL as immutable input. Do not edit files under `candidate/`.",
             "- Turn the spec into a concrete requirement checklist before judging the RTL.",
             "- Use the available tools to gather evidence.",
-            "- Do not stop at code inspection. Write executable checks: prefer native SVAs, bind files, and self-checking SystemVerilog benches under `xrun`, and escalate to native UVM under `xrun -uvm` when the protocol is non-trivial.",
+            "- Do not stop at code inspection. Write executable checks: prefer native SVAs, bind files, and self-checking SystemVerilog benches under `xrun`, use cocotb when a Python reference model or scoreboard is clearer, and escalate to native UVM under `xrun -uvm` when the protocol is non-trivial.",
             "- Save the requirement checklist and the generated verification artifacts under `result/evidence/`.",
             "- Write the final verdict bundle to `result/result.json`.",
             "- Put larger evidence artifacts under `result/evidence/`.",
             "- There is no hidden oracle in this workspace.",
         ]
     )
-    workspace.instructions_path.write_text(task_note.replace("candidate/current.sv", str(candidate_input.relative_to(workspace.root))) + "\n")
+    workspace.instructions_path.write_text(task_note + "\n")
     return StagedWorkspace(
         root=workspace.root,
         agent_name=workspace.agent_name,
         task_dir=workspace.task_dir,
-        spec_path=workspace.spec_path,
+        spec_dir=workspace.spec_dir,
         public_task_path=workspace.public_task_path,
         submission_dir=workspace.submission_dir,
-        candidate_output_path=None,
-        candidate_input_path=candidate_input,
+        candidate_input_dir=candidate_dir,
         result_dir=workspace.result_dir,
         result_path=workspace.result_path,
         instructions_path=workspace.instructions_path,
+    )
+
+
+@dataclass(frozen=True)
+class ConverterWorkspace:
+    root: Path
+    input_dir: Path
+    pdf_path: Path
+    output_dir: Path
+    instructions_path: Path
+
+
+def stage_converter_workspace(
+    pdf_path: str | Path,
+    workspace_root: str | Path,
+    *,
+    template_root: str | Path | None = None,
+) -> ConverterWorkspace:
+    """Stage a workspace for the PDF-to-markdown converter agent."""
+    workspace_path = Path(workspace_root)
+    workspace_path.mkdir(parents=True, exist_ok=False)
+
+    input_dir = workspace_path / "input"
+    input_dir.mkdir()
+    staged_pdf = input_dir / "source.pdf"
+    shutil.copy2(pdf_path, staged_pdf)
+
+    output_dir = workspace_path / "output"
+    output_dir.mkdir()
+
+    _copy_opencode_templates(
+        template_root=Path(template_root) if template_root else project_root(),
+        workspace_root=workspace_path,
+    )
+
+    instructions_path = workspace_path / "TASK.md"
+    instructions_path.write_text(
+        "# Converter Task\n\n"
+        "- Convert the PDF in `input/source.pdf` to markdown.\n"
+        "- Write all output files to `output/`.\n"
+        "- See the converter agent prompt for detailed instructions.\n"
+    )
+
+    return ConverterWorkspace(
+        root=workspace_path,
+        input_dir=input_dir,
+        pdf_path=staged_pdf,
+        output_dir=output_dir,
+        instructions_path=instructions_path,
     )
 
 
@@ -122,7 +195,7 @@ class _BaseWorkspace:
     root: Path
     agent_name: str
     task_dir: Path
-    spec_path: Path
+    spec_dir: Path
     public_task_path: Path
     submission_dir: Path
     result_dir: Path
@@ -152,7 +225,7 @@ def _stage_public_workspace(
         root=workspace_path,
         agent_name=agent_name,
         task_dir=task_dir,
-        spec_path=task_dir / task.spec_path.name,
+        spec_dir=task_dir / "spec",
         public_task_path=task_dir / task.public_task_path.name,
         submission_dir=submission_dir,
         result_dir=result_dir,

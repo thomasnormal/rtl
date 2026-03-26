@@ -10,7 +10,9 @@ Goal:
 
 Process:
 
-1. Read `TASK.md`, `task/spec.txt`, `task/task.json`, and the candidate RTL provided in `candidate/`.
+1. Read `TASK.md`, the spec files under `task/spec/`, `task/task.json`, and the candidate RTL provided in `candidate/`.
+   - Treat `task/spec/interface/` as the concrete SV declaration of the public DUT boundary when it exists.
+   - Treat `task/task.json` as the authoritative machine-readable public contract.
 2. If you need tool guidance, load the relevant skill before first use:
    - `sv-verification`
    - `rtl-layout`
@@ -39,42 +41,63 @@ Process:
      - `result/evidence/tb_smoke.sv`
      - `result/evidence/tb_random.sv`
      - `result/evidence/ref_model.sv`
+   - Cocotb is also allowed when a Python test or reference model is the clearest way to exercise the DUT, for example:
+     - `result/evidence/test_smoke.py`
+     - `result/evidence/test_scoreboard.py`
 6. Use SVAs aggressively for temporal requirements.
    - Prefer concurrent assertions for reset behavior, handshakes, ordering, latency, pulse width, one-hot or mutual exclusion rules, output stability, and bounded eventuality obligations.
    - Name each property clearly.
    - Use `bind` or wrapper modules instead of editing the DUT.
    - If a property is easier to express in simulation than formal, still write it as native SystemVerilog assertions and run it with `xrun`.
-7. Escalate to UVM when the interface is genuinely sequence- or protocol-heavy.
+7. Use cocotb when Python gives you faster high-quality evidence.
+   - Cocotb tests are Python coroutines decorated with `@cocotb.test()` that drive `dut.<signal>.value`, await simulator time or edges, and assert outputs or scoreboard state.
+   - A minimal pattern looks like:
+     ```python
+     import cocotb
+     from cocotb.triggers import Timer
+     
+     @cocotb.test()
+     async def smoke(dut):
+         dut.a.value = 3
+         dut.b.value = 5
+         await Timer(1, units="ns")
+         assert int(dut.sum.value) == 8
+     ```
+   - Use cocotb when a Python reference model, randomized data generation, or richer scoreboard logic is substantially easier than pure SystemVerilog.
+   - Do not use cocotb as an excuse to skip strong temporal checks that belong in SVAs.
+8. Escalate to UVM when the interface is genuinely sequence- or protocol-heavy.
    - Use plain SystemVerilog for simple single-module tasks.
-   - Use a minimal native UVM environment when you need transactions, reusable sequences, monitors, scoreboards, multiple channels, backpressure, or longer protocol stories.
+   - Use cocotb for lightweight Python-driven stimulus or scoreboards when that is cheaper than building a full UVM environment.
+   - Use a minimal native UVM environment when you need transactions, reusable sequences, monitors, scoreboards, multiple channels, backpressure, or longer protocol stories that are naturally expressed in native SV.
    - A minimal UVM environment usually means:
      - transaction item
      - driver and monitor connected through a virtual interface
      - scoreboard or reference model
      - one focused smoke test, then one randomized or corner-case test
    - Run UVM in the native SV scheduler. Do not hand-wave "UVM-style" logic in Python or prose.
-8. Run the generated checks and keep the commands reproducible.
+9. Run the generated checks and keep the commands reproducible.
    - For plain SystemVerilog and SVA simulation, prefer `xrun`, for example:
      - `xrun -64bit -sv -q -l result/evidence/xrun_smoke.log -xmlibdirname result/evidence/xcelium_smoke.d <candidate-and-bench-files>`
+   - For cocotb, keep the simulator-backed Python test reproducible and save the launch command or wrapper script under `result/evidence/`.
    - For UVM environments that import `uvm_pkg`, prefer:
      - `xrun -64bit -uvm -sv -q -l result/evidence/xrun_uvm.log -xmlibdirname result/evidence/xcelium_uvm.d <candidate-and-uvm-files>`
    - Reuse `-xmlibdirname` in a scratch directory when iterating.
    - Avoid wave dumps unless they are needed to explain a failure.
    - Use `sby` only when the property is small and crisp enough for bounded formal to add useful evidence quickly.
-9. Verdict discipline:
+10. Verdict discipline:
    - Do not return `good` from inspection alone.
    - Every critical requirement needs executable evidence or an explicit unresolved gap.
    - If UVM/SVA/testbench code does not compile or run, count that as missing evidence, not as success.
    - If critical checks are unresolved, do not hide that in the summary.
-10. Write `result/result.json` with:
+11. Write `result/result.json` with:
    - `status`
    - `verdict` (`good` or `bad`)
    - `confidence`
    - `summary`
    - `requirements_checked`
    - `evidence_files`
-11. Store larger generated artifacts under `result/evidence/`.
-12. Clean up large temporary files before finishing.
+12. Store larger generated artifacts under `result/evidence/`.
+13. Clean up large temporary files before finishing.
 
 Important:
 

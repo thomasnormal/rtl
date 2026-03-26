@@ -49,7 +49,7 @@ store_verilog_eval_tasks(
 PY
 ```
 
-`rtllm_v1_1` uses the checked-in manual interface manifest in `configs/rtllm_v1_1_interfaces.json` instead of inferred port extraction from the prose spec.
+`rtllm_v1_1` uses the checked-in manual interface manifest in `configs/rtllm_v1_1_interfaces.json` instead of inferred port extraction from the prose spec. When a task has public interface metadata, the task store also materializes `public/spec/interface/<top>_public_if.sv`, a generated SV interface with canonical `dut` and `tb` modports.
 
 Materialize the first curated OpenTitan medium-tier pack:
 
