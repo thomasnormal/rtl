@@ -3,6 +3,7 @@ from pathlib import Path
 from rtl_training.interface_contracts import (
     materialize_public_interface_sv,
     normalize_public_interface_contract,
+    prepare_public_interface_contract,
 )
 
 
@@ -83,3 +84,115 @@ def test_materialize_public_interface_sv_writes_sv_interface_and_readme(tmp_path
     assert "input clk" in content
     assert "output read_data" in content
 
+
+def test_prepare_opentitan_public_interface_projects_package_types_to_local_sv(tmp_path: Path) -> None:
+    source_root = tmp_path / "opentitan"
+    reg_pkg = source_root / "hw" / "ip" / "uart" / "rtl" / "uart_reg_pkg.sv"
+    reg_pkg.parent.mkdir(parents=True)
+    reg_pkg.write_text(
+        "package uart_reg_pkg;\n"
+        "  parameter int NumAlerts = 1;\n"
+        "  parameter int NumRegs = 13;\n"
+        "endpackage\n"
+    )
+
+    prepared = prepare_public_interface_contract(
+        {
+            "top_module": "uart",
+            "declared_module_name": "uart",
+            "parameters": [
+                {"name": "AlertAsyncOn", "value": "{NumAlerts{1'b1}}"},
+                {"name": "AlertSkewCycles", "value": "1"},
+                {"name": "RaclPolicySelVec", "value": "'{NumRegs{0}}"},
+                {"name": "EnableRacl", "value": "1'b0"},
+                {"name": "RaclErrorRsp", "value": "EnableRacl"},
+            ],
+            "inputs": [
+                {"name": "clk_i", "direction": "input", "width": "logic"},
+                {"name": "tl_i", "direction": "input", "width": "tlul_pkg::tl_h2d_t"},
+                {
+                    "name": "alert_rx_i",
+                    "direction": "input",
+                    "width": "prim_alert_pkg::alert_rx_t [NumAlerts-1:0]",
+                },
+            ],
+            "outputs": [
+                {"name": "tl_o", "direction": "output", "width": "tlul_pkg::tl_d2h_t"},
+            ],
+        },
+        candidate_top_module="uart",
+        profile="opentitan_self_contained_v1",
+        task_id="uart",
+        source_root=source_root,
+    )
+
+    assert prepared.interface["parameters"] == [
+        {"name": "AlertAsyncOn", "value": "1'b1"},
+        {"name": "AlertSkewCycles", "value": "1"},
+        {"name": "RaclPolicySelVec", "value": "'0"},
+        {"name": "EnableRacl", "value": "1'b0"},
+        {"name": "RaclErrorRsp", "value": "EnableRacl"},
+    ]
+    assert prepared.interface["ports"] == [
+        {"name": "clk_i", "direction": "input", "width": "logic"},
+        {
+            "name": "tl_i",
+            "direction": "input",
+            "width": "uart_public_types_pkg::uart_tl_i_t",
+        },
+        {
+            "name": "alert_rx_i",
+            "direction": "input",
+            "width": "uart_public_types_pkg::uart_alert_rx_i_t",
+        },
+        {
+            "name": "tl_o",
+            "direction": "output",
+            "width": "uart_public_types_pkg::uart_tl_o_t",
+        },
+    ]
+    assert dict(prepared.support_files)["uart_public_types_pkg.sv"].find(
+        "typedef logic [108:0] uart_tl_i_t;"
+    ) != -1
+    assert dict(prepared.support_files)["uart_public_types_pkg.sv"].find(
+        "typedef logic [3:0] uart_alert_rx_i_t;"
+    ) != -1
+    assert prepared.hidden_metadata["profile"] == "opentitan_self_contained_v1"
+    assert prepared.hidden_metadata["native_interface"]["ports"][1]["width"] == "tlul_pkg::tl_h2d_t"
+    assert prepared.hidden_metadata["projection"]["support_files"] == ["uart_public_types_pkg.sv"]
+
+
+def test_materialize_public_interface_sv_writes_support_package_when_requested(tmp_path: Path) -> None:
+    interface = normalize_public_interface_contract(
+        {
+            "top_module": "uart",
+            "declared_module_name": "uart",
+            "ports": [
+                {
+                    "name": "tl_i",
+                    "direction": "input",
+                    "width": "uart_public_types_pkg::uart_tl_i_t",
+                },
+            ],
+            "parameters": [],
+        },
+        candidate_top_module="uart",
+    )
+
+    written = materialize_public_interface_sv(
+        tmp_path,
+        interface,
+        support_files=(
+            (
+                "uart_public_types_pkg.sv",
+                "package uart_public_types_pkg;\n"
+                "  typedef logic [108:0] uart_tl_i_t;\n"
+                "endpackage\n",
+            ),
+        ),
+    )
+
+    assert (written.interface_dir / "uart_public_types_pkg.sv").read_text().startswith(
+        "package uart_public_types_pkg;"
+    )
+    assert "`include \"uart_public_types_pkg.sv\"" in written.sv_path.read_text()

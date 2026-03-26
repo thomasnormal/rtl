@@ -45,6 +45,7 @@ def test_stage_generator_workspace_exposes_only_public_task_material(tmp_path: P
     assert "required compile/elaboration check is `xrun`/Xcelium" in instructions
     assert "`yosys` does not satisfy the compile-check requirement" in instructions
     assert "Do not depend on upstream or OpenTitan repository packages" in instructions
+    assert "task-local SV packages or typedef files" in instructions
 
     config = json.loads((workspace.root / "opencode.json").read_text())
     assert config["permission"]["*"] == "allow"

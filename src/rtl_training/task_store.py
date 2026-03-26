@@ -14,6 +14,7 @@ from .datasets import Tier, discover_rtllm_tasks, discover_verilog_eval_tasks
 from .interface_contracts import (
     materialize_public_interface_sv,
     normalize_public_interface_contract,
+    prepare_public_interface_contract,
 )
 from .shared_sources import SharedSourceRegistry, register_shared_source_bundle
 
@@ -278,7 +279,7 @@ def _load_curated_interface_manifest(dataset_name: str) -> dict[str, dict[str, A
 
 
 @lru_cache(maxsize=None)
-def _load_curated_task_pack_manifest(dataset_name: str) -> tuple[dict[str, Any], ...]:
+def _load_curated_task_pack_document(dataset_name: str) -> dict[str, Any]:
     manifest_path = _CURATED_TASK_PACK_MANIFESTS.get(dataset_name)
     if manifest_path is None:
         raise ValueError(f"no curated task pack manifest registered for {dataset_name}")
@@ -291,6 +292,12 @@ def _load_curated_task_pack_manifest(dataset_name: str) -> tuple[dict[str, Any],
             f"curated task pack manifest dataset_name {manifest_dataset_name!r} "
             f"does not match {dataset_name!r}"
         )
+    return raw
+
+
+@lru_cache(maxsize=None)
+def _load_curated_task_pack_manifest(dataset_name: str) -> tuple[dict[str, Any], ...]:
+    raw = _load_curated_task_pack_document(dataset_name)
     raw_tasks = raw.get("tasks")
     if not isinstance(raw_tasks, list):
         raise ValueError(f"curated task pack manifest for {dataset_name} must contain a tasks list")
@@ -470,6 +477,7 @@ def _write_task_bundle(
     tier: Tier | None = None,
     raw_oracle_dir: Path | None = None,
     raw_oracle_metadata: dict[str, Any] | None = None,
+    public_interface_support_files: tuple[tuple[str, str], ...] = (),
 ) -> Path:
     """Write a task bundle to *output_root/dataset_name/task_id/*.
 
@@ -503,7 +511,11 @@ def _write_task_bundle(
             interface,
             candidate_top_module=str(public_metadata["candidate_top_module"]),
         )
-        materialize_public_interface_sv(spec_dir, public_metadata["interface"])
+        materialize_public_interface_sv(
+            spec_dir,
+            public_metadata["interface"],
+            support_files=public_interface_support_files,
+        )
     public_task_path.write_text(json.dumps(public_metadata, indent=2, sort_keys=True) + "\n")
 
     task_metadata: dict[str, Any] = {
@@ -787,6 +799,7 @@ def store_generic_task(
     shared_private_ref: SharedPrivateSourceRef | None = None,
     raw_oracle_dir: str | Path | None = None,
     raw_oracle_metadata: dict[str, Any] | None = None,
+    public_interface_support_files: tuple[tuple[str, str], ...] = (),
 ) -> Path:
     """Ingest a hand-assembled task into the task store.
 
@@ -841,6 +854,7 @@ def store_generic_task(
         tier=tier,
         raw_oracle_dir=None if raw_oracle_dir is None else Path(raw_oracle_dir),
         raw_oracle_metadata=raw_oracle_metadata,
+        public_interface_support_files=public_interface_support_files,
     )
 
 
@@ -852,6 +866,10 @@ def store_curated_task_pack(
     source_root: str | Path | None = None,
 ) -> tuple[Path, ...]:
     manifest = _load_curated_task_pack_manifest(dataset_name)
+    manifest_document = _load_curated_task_pack_document(dataset_name)
+    default_interface_profile = manifest_document.get("default_public_interface_profile")
+    if default_interface_profile is not None:
+        default_interface_profile = str(default_interface_profile)
     specs_root = _curated_task_pack_specs_root(dataset_name)
     source_root_path = Path(source_root).expanduser().resolve() if source_root is not None else None
     registry_root = Path(output_root).resolve().parent / "shared_sources"
@@ -869,6 +887,13 @@ def store_curated_task_pack(
         task_id = str(task["task_id"])
         candidate_top_module = str(task["candidate_top_module"])
         interface = task.get("interface")
+        spec_subdir = str(task["spec_subdir"])
+        source_metadata: dict[str, Any] = {
+            "origin": "curated_task_pack",
+            "manifest": str(_CURATED_TASK_PACK_MANIFESTS[dataset_name].relative_to(specs_root.parents[1])),
+            "spec_subdir": spec_subdir,
+        }
+        public_interface_support_files: tuple[tuple[str, str], ...] = ()
         if interface is not None:
             if not isinstance(interface, dict):
                 raise ValueError(
@@ -880,18 +905,25 @@ def store_curated_task_pack(
                     f"curated task pack top module for {dataset_name}/{task_id} is "
                     f"{top_module!r}, expected {candidate_top_module!r}"
                 )
-        spec_subdir = str(task["spec_subdir"])
+            interface_profile = task.get("public_interface_profile", default_interface_profile)
+            if interface_profile is not None:
+                prepared_interface = prepare_public_interface_contract(
+                    interface,
+                    candidate_top_module=candidate_top_module,
+                    profile=str(interface_profile),
+                    task_id=task_id,
+                    source_root=source_root_path,
+                )
+                interface = prepared_interface.interface
+                public_interface_support_files = prepared_interface.support_files
+                if prepared_interface.hidden_metadata is not None:
+                    source_metadata["public_interface_internal"] = prepared_interface.hidden_metadata
         spec_dir = specs_root / spec_subdir
         if not spec_dir.is_dir():
             raise FileNotFoundError(
                 f"missing curated spec directory for {dataset_name}/{task_id}: {spec_dir}"
             )
         task_tier = tier if tier is not None else task.get("tier")
-        source_metadata: dict[str, Any] = {
-            "origin": "curated_task_pack",
-            "manifest": str(_CURATED_TASK_PACK_MANIFESTS[dataset_name].relative_to(specs_root.parents[1])),
-            "spec_subdir": spec_subdir,
-        }
         source_docs = task.get("source_docs")
         if source_docs is not None:
             if not isinstance(source_docs, list):
@@ -993,6 +1025,7 @@ def store_curated_task_pack(
                 shared_private_ref=shared_private_ref,
                 raw_oracle_dir=raw_oracle_dir,
                 raw_oracle_metadata=raw_oracle_metadata,
+                public_interface_support_files=public_interface_support_files,
             )
         )
         if tempdir_cm is not None:

@@ -430,10 +430,18 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
         "direction": "input",
         "width": "logic",
     }
+    assert public_metadata["interface"]["ports"][2] == {
+        "name": "tl_i",
+        "direction": "input",
+        "width": "uart_public_types_pkg::uart_tl_i_t",
+    }
     assert (uart_task.spec_dir / "interface" / "uart_public_if.sv").exists()
-    assert (
-        uart_task.spec_dir / "interface" / "uart_public_if.sv"
-    ).read_text().find("tlul_pkg::tl_h2d_t tl_i;") != -1
+    public_if_text = (uart_task.spec_dir / "interface" / "uart_public_if.sv").read_text()
+    assert "tlul_pkg::" not in public_if_text
+    assert "`include \"uart_public_types_pkg.sv\"" in public_if_text
+    public_pkg_text = (uart_task.spec_dir / "interface" / "uart_public_types_pkg.sv").read_text()
+    assert "typedef logic [108:0] uart_tl_i_t;" in public_pkg_text
+    assert "typedef logic [65:0] uart_tl_o_t;" in public_pkg_text
 
     task_metadata = json.loads((uart_task.root / "task.json").read_text())
     assert task_metadata["source"]["origin"] == "curated_task_pack"
@@ -445,6 +453,13 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
         "hw/ip/uart/dv",
     ]
     assert task_metadata["source"]["private_source_mode"] == "shared_bundle"
+    assert task_metadata["source"]["public_interface_internal"]["profile"] == (
+        "opentitan_self_contained_v1"
+    )
+    assert (
+        task_metadata["source"]["public_interface_internal"]["projection"]["ports"][2]["native_type"]
+        == "tlul_pkg::tl_h2d_t"
+    )
     assert task_metadata["oracle"]["kind"] == "opentitan_dvsim"
     assert task_metadata["oracle"]["cfg"] == "hw/ip/uart/dv/uart_sim_cfg.hjson"
     assert task_metadata["oracle"]["test"] == "uart_smoke"

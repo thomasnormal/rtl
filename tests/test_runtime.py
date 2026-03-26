@@ -51,6 +51,7 @@ def test_prepare_generator_episode_instructions_require_behavioral_spec_and_buil
     assert "required compile/elaboration check is `xrun`/Xcelium" in instructions
     assert "`yosys` does not satisfy" in instructions
     assert "`yosys` only as a fallback" in instructions
+    assert "task-local SV packages or typedef files" in instructions
 
 
 def test_prepare_verifier_episode_stages_candidate_dir(tmp_path: Path) -> None:
@@ -114,4 +115,5 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     assert "required compile sanity check is `xrun`/Xcelium" in prompt
     assert "`yosys` does not satisfy this requirement" in prompt
     assert "Do not rely on upstream/OpenTitan package imports" in prompt
+    assert "task-local SV packages or typedef files" in prompt
     assert "`yosys` only as a fallback" in prompt

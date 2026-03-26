@@ -9,6 +9,7 @@ Process:
    - If `task/spec/doc/` exists, read the functional spec files there and extract a concrete requirement checklist before coding.
    - Write that requirement checklist to `result/requirements.md` and keep it synchronized with the implementation and checks you run.
    - Treat `task/spec/interface/` as the concrete SV declaration of the public top-level interface when it exists.
+   - If `task/spec/interface/` contains task-local SV packages or typedef files, use those as the public type definitions instead of importing upstream repository packages.
    - Treat `task/task.json` as the authoritative machine-readable public contract for the top module, interface hints, and required deliverables.
    - If `task/spec/compat/` exists, treat the SV files there as a mandatory compatibility ABI. Your RTL must compile against that ABI and satisfy any required named interfaces / bind points it defines exactly.
 2. If you need tool guidance, load the relevant skill before first use:

@@ -64,9 +64,11 @@ store_opentitan_ip_docs_tasks(
 PY
 ```
 
-For the OpenTitan pack, the public task contains the copied upstream docs, while the task metadata points at a shared hidden source bundle under `data/shared_sources/registry.json` for upstream `rtl/` and `dv/` paths. Those private assets are not staged into agent workspaces.
+For the OpenTitan pack, the public task contains the copied upstream docs, but the public SV boundary is projected into task-local package-free artifacts under `public/spec/interface/` (for example `uart_public_if.sv` plus `uart_public_types_pkg.sv`). The hidden task metadata retains the repo-native port types so the oracle can generate wrappers/adapters without forcing the generator to import upstream OpenTitan packages.
 
-The UART task also carries a hidden copied golden RTL reference under `oracle/golden_rtl/`, plus a repo-native `dvsim` smoke oracle description in the task metadata.
+The task metadata also points at a shared hidden source bundle under `data/shared_sources/registry.json` for upstream `rtl/` and `dv/` paths. Those private assets are not staged into agent workspaces.
+
+The UART task also carries a hidden copied golden RTL reference under `oracle/golden_rtl/`, plus a repo-native `dvsim` smoke oracle description in the task metadata. Gold selftests stage compat stubs so the upstream DV flow stays runnable, while candidate validation can stage the real public compat ABI and a hidden wrapper overlay.
 
 Run the OpenTitan UART gold selftest:
 

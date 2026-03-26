@@ -60,6 +60,7 @@ def stage_generator_workspace(
             "- If `task/spec/README.md` exists, read it first. If `task/spec/doc/` exists, read the functional spec files there and derive a requirement checklist before coding.",
             "- Write the requirement checklist to `result/requirements.md` and use it to drive the implementation.",
             "- Treat `task/spec/interface/` as the concrete SV form of the public top-level interface when it exists.",
+            "- If `task/spec/interface/` contains task-local SV packages or typedef files, those are the public type definitions to use. Do not reach for upstream repository packages when the task-local interface collateral already defines the boundary.",
             "- Treat `task/task.json` as the authoritative machine-readable contract for the top module, interface hints, and deliverables.",
             "- If `task/spec/compat/` exists, treat the SV files there as a mandatory compatibility ABI. The generated RTL must compile against that ABI and satisfy any required named interfaces or bind points it defines exactly.",
             "- Interface and compatibility are necessary but not sufficient. The candidate must implement the full functional behavior described by the spec, not just a stub that satisfies ports or shallow compatibility checks.",

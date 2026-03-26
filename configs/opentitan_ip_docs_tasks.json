@@ -1,5 +1,6 @@
 {
   "dataset_name": "opentitan_ip_docs",
+  "default_public_interface_profile": "opentitan_self_contained_v1",
   "tasks": [
     {
       "task_id": "uart",

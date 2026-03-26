@@ -27,6 +27,8 @@ DEFAULT_GENERATOR_PROMPT = (
     "Before writing RTL, read the behavioral spec under task/spec/, especially task/spec/README.md "
     "and task/spec/doc/ when present, and turn it into a requirement checklist saved under result/. "
     "Treat task/spec/interface/ as the concrete SV declaration of the public DUT boundary and "
+    "use any task-local SV packages or typedef files there as the public type source instead of "
+    "upstream repository packages. "
     "task/task.json as the machine-readable contract, but interface and compatibility are necessary "
     "not sufficient: implement the full functional behavior from the spec, not a stub. "
     "Do not make the solution depend on importing upstream repository packages just to satisfy the "
