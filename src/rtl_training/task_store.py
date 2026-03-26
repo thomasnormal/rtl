@@ -1004,13 +1004,25 @@ def store_curated_task_pack(
                         f"curated task pack raw_oracle asset for {dataset_name}/{task_id} "
                         "must contain source and dest"
                     )
-                source_path = source_root_path / str(raw_asset["source"])
+                source_base = str(raw_asset.get("source_base", "source_root"))
+                if source_base == "source_root":
+                    source_base_path = source_root_path
+                elif source_base == "task_library_root":
+                    source_base_path = specs_root
+                else:
+                    raise ValueError(
+                        f"curated task pack raw_oracle asset for {dataset_name}/{task_id} "
+                        f"has unsupported source_base {source_base!r}"
+                    )
+                source_path = source_base_path / str(raw_asset["source"])
                 destination = raw_oracle_dir / str(raw_asset["dest"])
                 if source_path.is_dir():
                     shutil.copytree(source_path, destination, dirs_exist_ok=True)
                 else:
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(source_path, destination)
+            if (raw_oracle_dir / "repo_overlay").exists():
+                raw_oracle_metadata.setdefault("repo_overlay_dir", "repo_overlay")
         written.append(
             store_generic_task(
                 output_root=output_root,

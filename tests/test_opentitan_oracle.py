@@ -22,7 +22,9 @@ def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: 
     (task_root / "public" / "spec" / "interface" / "uart_public_types_pkg.sv").write_text(
         "package uart_public_types_pkg;\n"
         "  typedef logic [108:0] uart_tl_i_t;\n"
+        "  typedef logic [3:0] uart_alert_rx_i_t;\n"
         "  typedef logic [65:0] uart_tl_o_t;\n"
+        "  typedef logic [1:0] uart_alert_tx_o_t;\n"
         "endpackage\n"
     )
     (task_root / "public" / "spec" / "compat" / "uart_compat_if.sv").write_text(
@@ -149,10 +151,24 @@ def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: 
                                     "cast_required": True,
                                 },
                                 {
+                                    "name": "alert_rx_i",
+                                    "direction": "input",
+                                    "native_type": "prim_alert_pkg::alert_rx_t [NumAlerts-1:0]",
+                                    "public_type": "uart_public_types_pkg::uart_alert_rx_i_t",
+                                    "cast_required": True,
+                                },
+                                {
                                     "name": "tl_o",
                                     "direction": "output",
                                     "native_type": "tlul_pkg::tl_d2h_t",
                                     "public_type": "uart_public_types_pkg::uart_tl_o_t",
+                                    "cast_required": True,
+                                },
+                                {
+                                    "name": "alert_tx_o",
+                                    "direction": "output",
+                                    "native_type": "prim_alert_pkg::alert_tx_t [NumAlerts-1:0]",
+                                    "public_type": "uart_public_types_pkg::uart_alert_tx_o_t",
                                     "cast_required": True,
                                 },
                             ],
@@ -243,11 +259,18 @@ def test_build_opentitan_candidate_validation_plan_wraps_projected_candidate(tmp
     (repo_root / "util" / "dvsim" / "dvsim.py").write_text("print('fake dvsim')\n")
     (repo_root / "hw" / "ip" / "uart" / "rtl").mkdir(parents=True)
     (repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").write_text(
-        "module uart(\n"
+        "module uart\n"
+        "  import uart_reg_pkg::*;\n"
+        "#(\n"
+        "  parameter int NumAlerts = 2,\n"
+        "  parameter int AlertAsyncOn = 1\n"
+        ") (\n"
         "  input logic clk_i,\n"
         "  input logic rst_ni,\n"
         "  input tlul_pkg::tl_h2d_t tl_i,\n"
-        "  output tlul_pkg::tl_d2h_t tl_o\n"
+        "  input prim_alert_pkg::alert_rx_t [NumAlerts-1:0] alert_rx_i,\n"
+        "  output tlul_pkg::tl_d2h_t tl_o,\n"
+        "  output prim_alert_pkg::alert_tx_t [NumAlerts-1:0] alert_tx_o\n"
         ");\n"
         "endmodule\n"
     )
@@ -266,7 +289,9 @@ def test_build_opentitan_candidate_validation_plan_wraps_projected_candidate(tmp
         "  input logic clk_i,\n"
         "  input logic rst_ni,\n"
         "  input uart_public_types_pkg::uart_tl_i_t tl_i,\n"
-        "  output uart_public_types_pkg::uart_tl_o_t tl_o\n"
+        "  input uart_public_types_pkg::uart_alert_rx_i_t alert_rx_i,\n"
+        "  output uart_public_types_pkg::uart_tl_o_t tl_o,\n"
+        "  output uart_public_types_pkg::uart_alert_tx_o_t alert_tx_o\n"
         ");\n"
         "endmodule\n"
     )
@@ -279,11 +304,46 @@ def test_build_opentitan_candidate_validation_plan_wraps_projected_candidate(tmp
 
     overlay_dir = plan.repo_root / "hw" / "ip" / "uart" / "rtl"
     wrapper_text = (overlay_dir / "uart.sv").read_text()
-    assert "`include \"uart_public_types_pkg.sv\"" in wrapper_text
-    assert "`include \"candidate/uart_candidate.sv\"" in wrapper_text
-    assert "module uart(" in wrapper_text
-    assert "uart_public_types_pkg::uart_tl_i_t candidate_tl_i;" in wrapper_text
-    assert "assign candidate_tl_i = uart_public_types_pkg::uart_tl_i_t'(tl_i);" in wrapper_text
-    assert "assign tl_o = tlul_pkg::tl_d2h_t'(candidate_tl_o);" in wrapper_text
+    assert "`include \"uart_public_types_pkg.sv\"" not in wrapper_text
+    assert "`include \"candidate/uart_candidate.sv\"" not in wrapper_text
+    assert "package uart_public_types_pkg;" in wrapper_text
+    assert "module uart_candidate(" in wrapper_text
+    assert "module uart\n  import uart_reg_pkg::*;\n#(" in wrapper_text
+    assert "public_cast_tl_i_t candidate_tl_i;" in wrapper_text
+    assert (
+        "typedef prim_alert_pkg::alert_tx_t [NumAlerts-1:0] native_cast_alert_tx_o_t;" in wrapper_text
+    )
+    assert "assign candidate_tl_i = public_cast_tl_i_t'(tl_i);" in wrapper_text
+    assert "assign tl_o = native_cast_tl_o_t'(candidate_tl_o);" in wrapper_text
+    assert "assign alert_tx_o = native_cast_alert_tx_o_t'(candidate_alert_tx_o);" in wrapper_text
     renamed_candidate = (overlay_dir / "candidate" / "uart_candidate.sv").read_text()
     assert "module uart_candidate(" in renamed_candidate
+
+
+def test_build_opentitan_plan_applies_hidden_repo_overlay(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo_src"
+    (repo_root / "util" / "dvsim").mkdir(parents=True)
+    (repo_root / "util" / "dvsim" / "dvsim.py").write_text("print('fake dvsim')\n")
+    (repo_root / "hw" / "ip" / "uart" / "rtl").mkdir(parents=True)
+    (repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").write_text("module uart; endmodule\n")
+    (repo_root / "hw" / "ip" / "uart" / "dv" / "tb").mkdir(parents=True)
+    (repo_root / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv").write_text("module tb; // upstream\nendmodule\n")
+    (repo_root / "hw" / "ip" / "uart" / "dv").mkdir(parents=True, exist_ok=True)
+    (repo_root / "hw" / "ip" / "uart" / "dv" / "uart_sim_cfg.hjson").write_text("name: uart\n")
+
+    task_root = tmp_path / "task"
+    registry_path = tmp_path / "registry" / "registry.json"
+    _write_fake_opentitan_task(task_root, repo_root, registry_path)
+    overlay_file = task_root / "oracle" / "repo_overlay" / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv"
+    overlay_file.parent.mkdir(parents=True, exist_ok=True)
+    overlay_file.write_text("module tb; // overlay\nendmodule\n")
+    metadata = json.loads((task_root / "task.json").read_text())
+    metadata["oracle"]["repo_overlay_dir"] = "repo_overlay"
+    (task_root / "task.json").write_text(json.dumps(metadata, indent=2) + "\n")
+
+    task = load_stored_task(task_root)
+    plan = build_opentitan_gold_selftest_plan(task, work_root=tmp_path / "work")
+
+    assert (
+        plan.repo_root / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv"
+    ).read_text() == "module tb; // overlay\nendmodule\n"

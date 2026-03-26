@@ -465,11 +465,16 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
     assert task_metadata["oracle"]["test"] == "uart_smoke"
     assert task_metadata["oracle"]["golden_rtl_dir"] == "golden_rtl"
     assert task_metadata["oracle"]["overlay_rel_dir"] == "hw/ip/uart/rtl"
+    assert task_metadata["oracle"]["repo_overlay_dir"] == "repo_overlay"
     assert uart_task.private_dir is None
     assert uart_task.shared_private_ref is not None
     assert uart_task.shared_private_ref.subpaths == ("hw/ip/uart/rtl", "hw/ip/uart/dv")
     assert (uart_task.root / "oracle" / "golden_rtl" / "uart.sv").exists()
     assert (uart_task.root / "oracle" / "golden_rtl" / "uart_core.sv").exists()
+    assert (uart_task.root / "oracle" / "repo_overlay" / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv").exists()
+    assert (
+        uart_task.root / "oracle" / "repo_overlay" / "hw" / "ip" / "uart" / "dv" / "compat" / "uart_compat_bind.sv"
+    ).exists()
     registry = SharedSourceRegistry.load(uart_task.shared_private_ref.registry_path)
     bundle = registry.by_id(uart_task.shared_private_ref.bundle_id)
     assert bundle.root == Path("~/opentitan").expanduser().resolve()

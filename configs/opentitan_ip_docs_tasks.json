@@ -31,6 +31,16 @@
           {
             "source": "hw/ip/uart/rtl",
             "dest": "golden_rtl"
+          },
+          {
+            "source_base": "task_library_root",
+            "source": "_hidden/uart/repo_overlay/hw/ip/uart/dv/tb/tb.sv",
+            "dest": "repo_overlay/hw/ip/uart/dv/tb/tb.sv"
+          },
+          {
+            "source_base": "task_library_root",
+            "source": "_hidden/uart/repo_overlay/hw/ip/uart/dv/compat/uart_compat_bind.sv",
+            "dest": "repo_overlay/hw/ip/uart/dv/compat/uart_compat_bind.sv"
           }
         ]
       },

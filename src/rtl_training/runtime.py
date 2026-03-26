@@ -35,11 +35,19 @@ DEFAULT_GENERATOR_PROMPT = (
     "public task boundary. "
     "If task/spec/compat/ exists, treat it as a mandatory SV compatibility ABI and ensure the "
     "candidate RTL compiles against it exactly, including required named instances or bind points. "
+    "Treat `submission/` as a self-contained deliverable set and do not `include` files from `task/` "
+    "inside submission RTL. If you need task-local public typedefs or packages, mirror them into "
+    "normal compilation-unit files under `submission/` and `import` them there. "
     "Before finishing, run at least one compile sanity check when the workspace has enough context "
     "to do so. For OpenTitan-style tasks, package-heavy SystemVerilog, interfaces, compat SV, or "
     "UVM-style collateral, the required compile sanity check is `xrun`/Xcelium; `yosys` does not "
-    "satisfy this requirement there and is only a fallback for small standalone RTL. Then ensure "
-    "at least one .sv or .v file exists under submission/ and result/result.json is present."
+    "satisfy this requirement there and is only a fallback for small standalone RTL. The compile "
+    "check only counts if it elaborates the DUT top module named in task/task.json, or a smoke test "
+    "that instantiates that DUT top; a helper interface or package alone does not count. If you use "
+    "`xrun`, select the DUT top explicitly with `-top <dut>` or instantiate it in a tiny smoke bench. "
+    "If the compile check fails, or the implementation is intentionally partial, result/result.json "
+    "must not claim `status: pass`. Then ensure at least one .sv or .v file exists under submission/ "
+    "and result/result.json is present."
 )
 
 DEFAULT_VERIFIER_PROMPT = (

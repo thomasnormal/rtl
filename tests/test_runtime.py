@@ -52,6 +52,10 @@ def test_prepare_generator_episode_instructions_require_behavioral_spec_and_buil
     assert "`yosys` does not satisfy" in instructions
     assert "`yosys` only as a fallback" in instructions
     assert "task-local SV packages or typedef files" in instructions
+    assert "`submission/` must be a self-contained deliverable set" in instructions
+    assert "Do not use `` `include `` paths that reach into `task/`" in instructions
+    assert "compile check only counts if it elaborates the DUT top module" in instructions
+    assert "helper interface or package alone does not count" in instructions
 
 
 def test_prepare_verifier_episode_stages_candidate_dir(tmp_path: Path) -> None:
@@ -117,3 +121,7 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     assert "Do not rely on upstream/OpenTitan package imports" in prompt
     assert "task-local SV packages or typedef files" in prompt
     assert "`yosys` only as a fallback" in prompt
+    assert "`submission/` as a self-contained deliverable set" in prompt
+    assert "Do not `include` files from `task/` inside submission RTL" in prompt
+    assert "compile check only counts if it elaborates the DUT top module" in prompt
+    assert "If the compile check fails, `status` must not be `pass`" in prompt

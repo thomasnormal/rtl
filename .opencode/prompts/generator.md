@@ -20,7 +20,11 @@ Process:
 3. Implement the full functional behavior from the spec. Interface and compatibility are necessary but not sufficient; do not return a stub that only satisfies ports, type shapes, or shallow compatibility checks.
    - Do not make the solution depend on importing upstream repository packages just to satisfy the public task boundary.
 4. Write the candidate RTL to `submission/`. You may produce one or more `.sv`/`.v` files.
+   - Treat `submission/` as a self-contained deliverable set. Do not `include` files from `task/` inside submission RTL.
+   - If you need task-local public typedefs or packages, mirror them into normal compilation-unit files under `submission/` and `import` them there; do not rely on workspace-relative include paths.
 5. Run at least one compile sanity check against the generated RTL and the public task collateral when the workspace contains enough package / interface context to do so. For OpenTitan-style tasks, package-heavy SystemVerilog, interfaces, compat SV, or UVM-style collateral, the required compile sanity check is `xrun`/Xcelium. In those cases, `yosys` does not satisfy this requirement. Use `yosys` only as a fallback for small standalone RTL where vendor/package context is not needed. Record the command and outcome in `result/requirements.md`.
+   - The compile check only counts if it elaborates the DUT top module named in `task/task.json`, or a smoke test that instantiates that DUT top. A helper interface or package alone does not count.
+   - If you use `xrun`, select the DUT top explicitly with `-top <dut>` or instantiate it in a tiny smoke bench.
 6. Write `result/result.json` with:
    - `status`
    - `output_file`
@@ -37,5 +41,9 @@ Important:
 - For medium and larger specs, prioritize the functional spec chapters under `task/spec/doc/` over the compact summaries in `task/task.json`.
 - Do not rely on upstream/OpenTitan package imports as part of the public solution contract. If the public task leaks repository-specific package types, treat that as a task-definition bug rather than something to patch around in `submission/`.
 - For OpenTitan-style tasks, package-typed ports, or compat-driven tasks, do not use `yosys` as the required compile check. Run `xrun`/Xcelium against the candidate and the public collateral instead.
+- Treat `submission/` as a self-contained deliverable set. Do not `include` files from `task/` inside submission RTL.
+- The compile check only counts if it elaborates the DUT top module from `task/task.json`; elaborating only a helper interface or package does not count.
+- If the compile check fails, `status` must not be `pass`.
+- If the implementation is intentionally partial, minimal, or missing major spec behavior, `status` must not be `pass`.
 - Do not claim verification you did not perform yourself.
 - Prefer cheap checks first, then stronger checks only if needed.

@@ -67,10 +67,16 @@ def stage_generator_workspace(
             "- Do not depend on upstream or OpenTitan repository packages just to satisfy the public task boundary. If the task leaks repo-specific package types, treat that as a task-definition problem rather than patching `submission/` with package scaffolding.",
             "- Write candidate RTL files to `submission/`. The top module must match `task/task.json`.",
             "- You may produce one or more `.sv`/`.v` files under `submission/`.",
+            "- `submission/` must be a self-contained deliverable set. Do not use `` `include `` paths that reach into `task/` from the submission RTL.",
+            "- If you need task-local public typedefs or packages, mirror them into normal compilation-unit files under `submission/` and `import` them there rather than relying on workspace-relative include paths.",
             "- Before finishing, run at least one compile sanity check against the generated RTL and the public task collateral when the workspace contains enough SV/package context to do so. Record the command and outcome in `result/requirements.md`.",
             "- For OpenTitan-style tasks and any task with package-typed ports, interfaces, compat SV, or UVM-style collateral, the required compile/elaboration check is `xrun`/Xcelium. In those cases, `yosys` does not satisfy the compile-check requirement.",
             "- Use `yosys` only as a fallback for small standalone RTL where vendor/package context is not needed.",
+            "- The compile check only counts if it elaborates the DUT top module named in `task/task.json`, or a smoke test that instantiates that DUT top. A helper interface or package alone does not count.",
+            "- If you use `xrun`, select the DUT top explicitly with `-top <dut>` or instantiate it in a tiny smoke bench.",
             "- Write a machine-readable summary to `result/result.json`.",
+            "- If the compile check fails, `result/result.json` must not claim `status: pass`.",
+            "- If the implementation is partial, minimal, or intentionally omits major spec behavior, `result/result.json` must not claim `status: pass`.",
             "- There is no oracle validator in this workspace.",
         ]
     )

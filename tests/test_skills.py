@@ -10,6 +10,8 @@ def test_xrun_skill_prefers_xcelium_for_package_heavy_tasks() -> None:
     assert "compile/elaboration" in skill
     assert "Prefer `xrun`" in skill
     assert "required compile check" in skill
+    assert "explicitly select the DUT top" in skill
+    assert "helper interface or package alone does not count" in skill
 
 
 def test_yosys_skill_mentions_fallback_role() -> None:
