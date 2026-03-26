@@ -3,6 +3,7 @@ import stat
 
 from rtl_training.runtime import prepare_generator_episode, prepare_verifier_episode
 from rtl_training.task_store import store_rtllm_tasks
+from rtl_training.workspace import collect_candidate_files
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,42 +31,66 @@ def test_prepare_generator_episode_points_opencode_at_staged_workspace(tmp_path:
 
     assert episode.request.workspace_root == episode.workspace.root
     assert episode.request.agent == "generator"
-    assert episode.workspace.candidate_output_path == episode.workspace.root / "submission" / "candidate.sv"
+    assert episode.workspace.submission_dir == episode.workspace.root / "submission"
 
 
-def test_prepare_verifier_episode_stages_candidate_separately(tmp_path: Path) -> None:
+def test_prepare_generator_episode_instructions_require_behavioral_spec_and_build_check(tmp_path: Path) -> None:
     task_root = _create_task(tmp_path)
-    candidate = tmp_path / "candidate.sv"
-    candidate.write_text("module adder_8bit; endmodule\n")
+
+    episode = prepare_generator_episode(
+        task_root,
+        tmp_path / "episode",
+        template_root=ROOT,
+    )
+
+    instructions = episode.workspace.instructions_path.read_text()
+    assert "task/spec/doc/" in instructions
+    assert "requirement checklist" in instructions
+    assert "Interface and compatibility are necessary but not sufficient" in instructions
+    assert "compile sanity check" in instructions
+    assert "required compile/elaboration check is `xrun`/Xcelium" in instructions
+    assert "`yosys` does not satisfy" in instructions
+    assert "`yosys` only as a fallback" in instructions
+
+
+def test_prepare_verifier_episode_stages_candidate_dir(tmp_path: Path) -> None:
+    task_root = _create_task(tmp_path)
+    candidate_dir = tmp_path / "submission"
+    candidate_dir.mkdir()
+    (candidate_dir / "candidate.sv").write_text("module adder_8bit; endmodule\n")
 
     episode = prepare_verifier_episode(
         task_root,
-        candidate,
+        candidate_dir,
         tmp_path / "verifier_episode",
         template_root=ROOT,
     )
 
     assert episode.request.agent == "verifier"
-    assert episode.workspace.candidate_input_path is not None
-    assert episode.workspace.candidate_input_path.read_text() == "module adder_8bit; endmodule\n"
-    mode = stat.S_IMODE(episode.workspace.candidate_input_path.stat().st_mode)
+    assert episode.workspace.candidate_input_dir is not None
+    staged_files = collect_candidate_files(episode.workspace.candidate_input_dir)
+    assert len(staged_files) == 1
+    assert staged_files[0].read_text() == "module adder_8bit; endmodule\n"
+    mode = stat.S_IMODE(staged_files[0].stat().st_mode)
     assert mode & stat.S_IWUSR == 0
 
 
 def test_prepare_verifier_episode_instructions_call_for_native_sva_and_uvm(tmp_path: Path) -> None:
     task_root = _create_task(tmp_path)
-    candidate = tmp_path / "candidate.sv"
-    candidate.write_text("module adder_8bit; endmodule\n")
+    candidate_dir = tmp_path / "submission"
+    candidate_dir.mkdir()
+    (candidate_dir / "candidate.sv").write_text("module adder_8bit; endmodule\n")
 
     episode = prepare_verifier_episode(
         task_root,
-        candidate,
+        candidate_dir,
         tmp_path / "verifier_episode",
         template_root=ROOT,
     )
 
     instructions = episode.workspace.instructions_path.read_text()
     assert "native SVAs" in instructions
+    assert "cocotb" in instructions
     assert "`xrun`" in instructions
     assert "`xrun -uvm`" in instructions
 
@@ -73,5 +98,19 @@ def test_prepare_verifier_episode_instructions_call_for_native_sva_and_uvm(tmp_p
 def test_verifier_prompt_mentions_xrun_sva_and_uvm() -> None:
     prompt = (ROOT / ".opencode" / "prompts" / "verifier.md").read_text()
     assert "native SystemVerilog/UVM execution under `xrun`" in prompt
+    assert "Cocotb is also allowed" in prompt
+    assert "@cocotb.test()" in prompt
     assert "For plain SystemVerilog and SVA simulation, prefer `xrun`" in prompt
     assert "For UVM environments that import `uvm_pkg`, prefer:" in prompt
+
+
+def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
+    prompt = (ROOT / ".opencode" / "prompts" / "generator.md").read_text()
+    assert "task/spec/doc/" in prompt
+    assert "full functional behavior" in prompt
+    assert "Interface and compatibility are necessary but not sufficient" in prompt
+    assert "requirement checklist" in prompt
+    assert "compile sanity check" in prompt
+    assert "required compile sanity check is `xrun`/Xcelium" in prompt
+    assert "`yosys` does not satisfy this requirement" in prompt
+    assert "`yosys` only as a fallback" in prompt

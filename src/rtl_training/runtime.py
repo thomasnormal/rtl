@@ -24,12 +24,18 @@ DEFAULT_CONVERTER_PROMPT = (
 
 DEFAULT_GENERATOR_PROMPT = (
     "Read TASK.md and complete the generator task. "
-    "If task/spec/interface/ exists, treat it as the concrete SV declaration of the public DUT "
-    "boundary. "
+    "Before writing RTL, read the behavioral spec under task/spec/, especially task/spec/README.md "
+    "and task/spec/doc/ when present, and turn it into a requirement checklist saved under result/. "
+    "Treat task/spec/interface/ as the concrete SV declaration of the public DUT boundary and "
+    "task/task.json as the machine-readable contract, but interface and compatibility are necessary "
+    "not sufficient: implement the full functional behavior from the spec, not a stub. "
     "If task/spec/compat/ exists, treat it as a mandatory SV compatibility ABI and ensure the "
-    "candidate RTL compiles against it. "
-    "When finished, ensure at least one .sv or .v file exists under submission/ "
-    "and result/result.json is present."
+    "candidate RTL compiles against it exactly, including required named instances or bind points. "
+    "Before finishing, run at least one compile sanity check when the workspace has enough context "
+    "to do so. For OpenTitan-style tasks, package-heavy SystemVerilog, interfaces, compat SV, or "
+    "UVM-style collateral, the required compile sanity check is `xrun`/Xcelium; `yosys` does not "
+    "satisfy this requirement there and is only a fallback for small standalone RTL. Then ensure "
+    "at least one .sv or .v file exists under submission/ and result/result.json is present."
 )
 
 DEFAULT_VERIFIER_PROMPT = (

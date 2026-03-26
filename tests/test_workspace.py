@@ -39,6 +39,11 @@ def test_stage_generator_workspace_exposes_only_public_task_material(tmp_path: P
     assert "There is no oracle validator" in instructions
     assert "machine-readable contract" in instructions
     assert "task/spec/interface/" in instructions
+    assert "task/spec/doc/" in instructions
+    assert "requirement checklist" in instructions
+    assert "Interface and compatibility are necessary but not sufficient" in instructions
+    assert "required compile/elaboration check is `xrun`/Xcelium" in instructions
+    assert "`yosys` does not satisfy the compile-check requirement" in instructions
 
     config = json.loads((workspace.root / "opencode.json").read_text())
     assert config["permission"]["*"] == "allow"
