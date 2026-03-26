@@ -64,7 +64,7 @@ store_opentitan_ip_docs_tasks(
 PY
 ```
 
-For the OpenTitan pack, the public task contains the copied upstream docs, while the task store also carries hidden upstream `rtl/` and `dv/` directories under `private/` for future oracle work. Those private assets are not staged into agent workspaces.
+For the OpenTitan pack, the public task contains the copied upstream docs, while the task metadata points at a shared hidden source bundle under `data/shared_sources/registry.json` for upstream `rtl/` and `dv/` paths. Those private assets are not staged into agent workspaces.
 
 Stage a generator workspace for OpenCode:
 

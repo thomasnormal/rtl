@@ -3,12 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 import json
+import os
 from pathlib import Path
 import re
 import shutil
 from typing import Any, Sequence
 
 from .datasets import Tier, discover_rtllm_tasks, discover_verilog_eval_tasks
+from .shared_sources import SharedSourceRegistry, register_shared_source_bundle
 
 
 @dataclass(frozen=True)
@@ -82,9 +84,43 @@ class StoredTask:
     public_dir: Path
     public_task_path: Path
     private_dir: Path | None
+    shared_private_ref: "SharedPrivateSourceRef | None"
     metadata: dict[str, Any]
     oracle: SimulationOracle | None
     tier: Tier | None = None
+
+
+@dataclass(frozen=True)
+class SharedPrivateSourceRef:
+    registry_path: Path
+    bundle_id: str
+    subpaths: tuple[str, ...]
+
+    @classmethod
+    def from_dict(cls, task_root: Path, raw: dict[str, Any]) -> "SharedPrivateSourceRef":
+        raw_subpaths = raw.get("subpaths", ())
+        if not isinstance(raw_subpaths, list):
+            raise ValueError("shared_private.subpaths must be a list")
+        return cls(
+            registry_path=(task_root / str(raw["registry"])).resolve(),
+            bundle_id=str(raw["bundle_id"]),
+            subpaths=tuple(str(item) for item in raw_subpaths),
+        )
+
+    def to_dict(self, task_root: Path) -> dict[str, Any]:
+        return {
+            "registry": os.path.relpath(self.registry_path, task_root),
+            "bundle_id": self.bundle_id,
+            "subpaths": list(self.subpaths),
+        }
+
+    def bundle_root(self) -> Path:
+        registry = SharedSourceRegistry.load(self.registry_path)
+        return registry.by_id(self.bundle_id).root
+
+    def resolve_paths(self) -> tuple[Path, ...]:
+        root = self.bundle_root()
+        return tuple(root / subpath for subpath in self.subpaths)
 
 
 _MODULE_DECL_RE = re.compile(r"\bmodule\s+([A-Za-z_][A-Za-z0-9_$]*)\b")
@@ -422,7 +458,10 @@ def _write_task_bundle(
     oracle: SimulationOracle | None,
     source_metadata: dict[str, Any],
     private_sources: Sequence[str | Path] = (),
+    shared_private_ref: SharedPrivateSourceRef | None = None,
     tier: Tier | None = None,
+    raw_oracle_dir: Path | None = None,
+    raw_oracle_metadata: dict[str, Any] | None = None,
 ) -> Path:
     """Write a task bundle to *output_root/dataset_name/task_id/*.
 
@@ -466,6 +505,8 @@ def _write_task_bundle(
         task_metadata["tier"] = tier
 
     private_assets: list[str] = []
+    if private_sources and shared_private_ref is not None:
+        raise ValueError("task bundle cannot use copied private sources and shared private refs together")
     if private_sources:
         private_dir = task_root / "private"
         private_dir.mkdir(parents=True, exist_ok=True)
@@ -482,6 +523,8 @@ def _write_task_bundle(
             "directory": "private",
             "assets": private_assets,
         }
+    elif shared_private_ref is not None:
+        task_metadata["shared_private"] = shared_private_ref.to_dict(task_root)
 
     if oracle is not None:
         oracle_dir = task_root / "oracle"
@@ -511,6 +554,11 @@ def _write_task_bundle(
             support_files=tuple(support_destinations),
         )
         task_metadata["oracle"] = stored_oracle.to_dict(task_root)
+    elif raw_oracle_dir is not None:
+        oracle_dest = task_root / "oracle"
+        shutil.copytree(raw_oracle_dir, oracle_dest, dirs_exist_ok=True)
+        if raw_oracle_metadata is not None:
+            task_metadata["oracle"] = raw_oracle_metadata
 
     (task_root / "task.json").write_text(json.dumps(task_metadata, indent=2, sort_keys=True) + "\n")
     return task_root
@@ -521,10 +569,17 @@ def load_stored_task(task_root: str | Path) -> StoredTask:
     metadata = json.loads((task_root_path / "task.json").read_text())
     public = dict(metadata["public"])
     private = metadata.get("private")
+    shared_private_raw = metadata.get("shared_private")
     oracle_raw = metadata.get("oracle")
     oracle = None
     if oracle_raw is not None:
         oracle = SimulationOracle.from_dict(task_root_path, dict(oracle_raw))
+    shared_private_ref = None
+    if shared_private_raw is not None:
+        shared_private_ref = SharedPrivateSourceRef.from_dict(
+            task_root_path,
+            dict(shared_private_raw),
+        )
     raw_tier = metadata.get("tier")
     tier: Tier | None = raw_tier if raw_tier is not None else None
     spec_ref = str(public["spec"])
@@ -547,6 +602,7 @@ def load_stored_task(task_root: str | Path) -> StoredTask:
             if isinstance(private, dict) and "directory" in private
             else None
         ),
+        shared_private_ref=shared_private_ref,
         metadata=metadata,
         oracle=oracle,
         tier=tier,
@@ -713,6 +769,7 @@ def store_generic_task(
     pass_criteria: PassCriteria | None = None,
     source_metadata: dict[str, Any] | None = None,
     private_sources: Sequence[str | Path] = (),
+    shared_private_ref: SharedPrivateSourceRef | None = None,
 ) -> Path:
     """Ingest a hand-assembled task into the task store.
 
@@ -758,6 +815,7 @@ def store_generic_task(
         oracle=oracle,
         source_metadata=effective_source_metadata,
         private_sources=private_sources,
+        shared_private_ref=shared_private_ref,
         tier=tier,
     )
 
@@ -772,6 +830,16 @@ def store_curated_task_pack(
     manifest = _load_curated_task_pack_manifest(dataset_name)
     specs_root = _curated_task_pack_specs_root(dataset_name)
     source_root_path = Path(source_root).expanduser().resolve() if source_root is not None else None
+    registry_root = Path(output_root).resolve().parent / "shared_sources"
+    shared_bundle = None
+    if source_root_path is not None and any(
+        str(task.get("private_source_mode", "copy")) == "shared_bundle" for task in manifest
+    ):
+        shared_bundle = register_shared_source_bundle(
+            registry_root,
+            name=dataset_name,
+            source_root=source_root_path,
+        )
     written: list[Path] = []
     for task in manifest:
         task_id = str(task["task_id"])
@@ -808,6 +876,7 @@ def store_curated_task_pack(
                 )
             source_metadata["source_docs"] = [str(item) for item in source_docs]
         private_sources: tuple[Path, ...] = ()
+        shared_private_ref = None
         raw_private_source_dirs = task.get("private_source_dirs")
         if raw_private_source_dirs is not None:
             if source_root_path is None:
@@ -820,8 +889,26 @@ def store_curated_task_pack(
                     f"curated task pack private_source_dirs for {dataset_name}/{task_id} "
                     "must be a list"
                 )
-            private_sources = tuple(source_root_path / str(item) for item in raw_private_source_dirs)
+            private_source_mode = str(task.get("private_source_mode", "copy"))
+            if private_source_mode == "copy":
+                private_sources = tuple(source_root_path / str(item) for item in raw_private_source_dirs)
+            elif private_source_mode == "shared_bundle":
+                if shared_bundle is None:
+                    raise ValueError(
+                        f"curated task pack {dataset_name}/{task_id} expected a shared bundle"
+                    )
+                shared_private_ref = SharedPrivateSourceRef(
+                    registry_path=(registry_root / "registry.json"),
+                    bundle_id=shared_bundle.bundle_id,
+                    subpaths=tuple(str(item) for item in raw_private_source_dirs),
+                )
+            else:
+                raise ValueError(
+                    f"curated task pack private_source_mode for {dataset_name}/{task_id} "
+                    f"must be 'copy' or 'shared_bundle', got {private_source_mode!r}"
+                )
             source_metadata["private_source_dirs"] = [str(item) for item in raw_private_source_dirs]
+            source_metadata["private_source_mode"] = private_source_mode
         if source_root_path is not None:
             source_metadata["source_root"] = str(source_root_path)
         written.append(
@@ -835,6 +922,7 @@ def store_curated_task_pack(
                 interface=dict(interface) if interface is not None else None,
                 source_metadata=source_metadata,
                 private_sources=private_sources,
+                shared_private_ref=shared_private_ref,
             )
         )
     return tuple(written)
@@ -852,3 +940,122 @@ def store_opentitan_ip_docs_tasks(
         tier=tier,
         source_root=source_root,
     )
+
+
+def store_cvdp_tasks(
+    jsonl_path: str | Path,
+    output_root: str | Path,
+    *,
+    dataset_name: str = "cvdp",
+    tier: Tier | None = "small",
+) -> tuple[Path, ...]:
+    """Ingest tasks from the CVDP benchmark JSONL into the task store.
+
+    Each task gets a plain-text spec and a cocotb oracle harness.  Gold RTL
+    is not required — the cocotb tests are the oracle.
+    """
+    import tempfile
+
+    jsonl = Path(jsonl_path)
+    output = Path(output_root)
+    written: list[Path] = []
+
+    for line in jsonl.read_text().splitlines():
+        if not line.strip():
+            continue
+        record = json.loads(line)
+
+        # Skip modify/bugfix/complete tasks that supply existing RTL.
+        input_ctx = record.get("input", {}).get("context", {})
+        if any(v.strip() for v in input_ctx.values()):
+            continue
+
+        task_id = str(record["id"])
+        categories = list(record.get("categories", []))
+        spec_text = str(record["input"]["prompt"])
+        harness_files: dict[str, str] = dict(record["harness"]["files"])
+
+        # Parse .env to get TOPLEVEL (candidate module name) and MODULE (test module)
+        env_text = harness_files.get("src/.env", "")
+        env_vars: dict[str, str] = {}
+        for env_line in env_text.splitlines():
+            if "=" in env_line:
+                key, _, val = env_line.partition("=")
+                env_vars[key.strip()] = val.strip()
+
+        toplevel = env_vars.get("TOPLEVEL", task_id)
+        test_module = env_vars.get("MODULE", "")
+        verilog_sources = env_vars.get("VERILOG_SOURCES", "")
+
+        # Determine the expected candidate RTL filename from VERILOG_SOURCES
+        # e.g., "/code/rtl/16qam_mapper.sv" → "16qam_mapper.sv"
+        candidate_filenames = [
+            Path(s.strip()).name
+            for s in verilog_sources.split()
+            if s.strip()
+        ]
+
+        # Write cocotb oracle files to a temp dir, then pass to _write_task_bundle
+        with tempfile.TemporaryDirectory() as tmp:
+            cocotb_dir = Path(tmp) / "cocotb"
+            cocotb_dir.mkdir()
+            for file_key, file_content in harness_files.items():
+                if file_key == "docker-compose.yml":
+                    continue
+                # Strip the "src/" prefix for oracle storage
+                if file_key.startswith("src/"):
+                    dest_name = file_key[4:]
+                else:
+                    dest_name = file_key
+                dest = cocotb_dir / dest_name
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_text(file_content)
+
+            # Determine difficulty from categories
+            task_tier = tier
+            if "easy" in categories:
+                task_tier = "small"
+            elif "medium" in categories:
+                task_tier = "small"  # CVDP medium is still small by our scale
+
+            public_metadata: dict[str, Any] = {
+                "dataset_name": dataset_name,
+                "task_id": task_id,
+                "candidate_top_module": toplevel,
+                "deliverables": {
+                    "rtl": "submission/",
+                    "summary": "result/result.json",
+                },
+            }
+
+            oracle_metadata: dict[str, Any] = {
+                "kind": "cocotb",
+                "test_dir": "oracle",
+                "toplevel": toplevel,
+                "test_module": test_module,
+                "candidate_filenames": candidate_filenames,
+                "env": env_vars,
+            }
+
+            source_metadata: dict[str, Any] = {
+                "origin": "cvdp_benchmark",
+                "cvdp_id": task_id,
+                "categories": categories,
+            }
+
+            written.append(
+                _write_task_bundle(
+                    output_root=output,
+                    dataset_name=dataset_name,
+                    task_id=task_id,
+                    spec_source=spec_text,
+                    public_metadata=public_metadata,
+                    oracle=None,
+                    source_metadata=source_metadata,
+                    tier=task_tier,
+                    raw_oracle_dir=cocotb_dir,
+                    raw_oracle_metadata=oracle_metadata,
+                )
+            )
+
+    return tuple(written)

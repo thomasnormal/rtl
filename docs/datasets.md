@@ -46,7 +46,7 @@ The first OpenTitan medium-tier pack is now checked in as curated task bundles f
 - `dma`
 - `sysrst_ctrl`
 
-These are manually ingested spec bundles copied from the local `~/opentitan` checkout, not rewritten summaries and not an automated ingest pipeline. The public task metadata is curated, the spec content itself is the upstream OpenTitan documentation with its original directory structure preserved, and the materialized task store also keeps hidden upstream `rtl/` and `dv/` slices for future oracle work.
+These are manually ingested spec bundles copied from the local `~/opentitan` checkout, not rewritten summaries and not an automated ingest pipeline. The public task metadata is curated, the spec content itself is the upstream OpenTitan documentation with its original directory structure preserved, and the materialized task store references a shared hidden source bundle for upstream `rtl/` and `dv/` paths needed by future oracle work.
 
 ### 5. RTL-Repo
 

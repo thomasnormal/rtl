@@ -18,6 +18,7 @@
         "hw/ip/uart/rtl",
         "hw/ip/uart/dv"
       ],
+      "private_source_mode": "shared_bundle",
       "interface": {
         "top_module": "uart",
         "declared_module_name": "uart",
@@ -73,6 +74,7 @@
         "hw/ip/i2c/rtl",
         "hw/ip/i2c/dv"
       ],
+      "private_source_mode": "shared_bundle",
       "interface": {
         "top_module": "i2c",
         "declared_module_name": "i2c",
@@ -140,6 +142,7 @@
         "hw/ip/spi_host/rtl",
         "hw/ip/spi_host/dv"
       ],
+      "private_source_mode": "shared_bundle",
       "interface": {
         "top_module": "spi_host",
         "declared_module_name": "spi_host",
@@ -197,6 +200,7 @@
         "hw/ip/dma/rtl",
         "hw/ip/dma/dv"
       ],
+      "private_source_mode": "shared_bundle",
       "interface": {
         "top_module": "dma",
         "declared_module_name": "dma",
@@ -255,6 +259,7 @@
         "hw/ip/sysrst_ctrl/rtl",
         "hw/ip/sysrst_ctrl/dv"
       ],
+      "private_source_mode": "shared_bundle",
       "interface": {
         "top_module": "sysrst_ctrl",
         "declared_module_name": "sysrst_ctrl",

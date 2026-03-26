@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from rtl_training.shared_sources import SharedSourceRegistry
 from rtl_training.task_store import (
     load_stored_task,
     store_generic_task,
@@ -430,9 +431,19 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
         "hw/ip/uart/rtl",
         "hw/ip/uart/dv",
     ]
-    assert uart_task.private_dir == uart_task.root / "private"
-    assert (uart_task.private_dir / "rtl" / "uart.sv").exists()
-    assert (uart_task.private_dir / "dv" / "README.md").exists()
+    assert task_metadata["source"]["private_source_mode"] == "shared_bundle"
+    assert uart_task.private_dir is None
+    assert uart_task.shared_private_ref is not None
+    assert uart_task.shared_private_ref.subpaths == ("hw/ip/uart/rtl", "hw/ip/uart/dv")
+    registry = SharedSourceRegistry.load(uart_task.shared_private_ref.registry_path)
+    bundle = registry.by_id(uart_task.shared_private_ref.bundle_id)
+    assert bundle.root == Path("~/opentitan").expanduser().resolve()
+    assert bundle.git_commit is not None
+    assert bundle.git_dirty is not None
+    assert uart_task.shared_private_ref.resolve_paths() == (
+        bundle.root / "hw/ip/uart/rtl",
+        bundle.root / "hw/ip/uart/dv",
+    )
 
 
 def test_load_stored_task_backward_compat_old_spec_format(tmp_path: Path) -> None:
