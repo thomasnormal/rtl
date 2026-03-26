@@ -19,6 +19,20 @@
         "hw/ip/uart/dv"
       ],
       "private_source_mode": "shared_bundle",
+      "raw_oracle": {
+        "kind": "opentitan_dvsim",
+        "cfg": "hw/ip/uart/dv/uart_sim_cfg.hjson",
+        "test": "uart_smoke",
+        "tool": "xcelium",
+        "golden_rtl_dir": "golden_rtl",
+        "overlay_rel_dir": "hw/ip/uart/rtl",
+        "assets": [
+          {
+            "source": "hw/ip/uart/rtl",
+            "dest": "golden_rtl"
+          }
+        ]
+      },
       "interface": {
         "top_module": "uart",
         "declared_module_name": "uart",

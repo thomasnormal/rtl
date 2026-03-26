@@ -66,6 +66,24 @@ PY
 
 For the OpenTitan pack, the public task contains the copied upstream docs, while the task metadata points at a shared hidden source bundle under `data/shared_sources/registry.json` for upstream `rtl/` and `dv/` paths. Those private assets are not staged into agent workspaces.
 
+The UART task also carries a hidden copied golden RTL reference under `oracle/golden_rtl/`, plus a repo-native `dvsim` smoke oracle description in the task metadata.
+
+Run the OpenTitan UART gold selftest:
+
+```bash
+python - <<'PY'
+from rtl_training.opentitan_oracle import validate_opentitan_gold_reference
+from rtl_training.task_store import load_stored_task
+
+task = load_stored_task("data/task_store/opentitan_ip_docs/uart")
+result = validate_opentitan_gold_reference(
+    task,
+    work_root="runs/oracle_eval",
+)
+print("PASS" if result.passed else "FAIL", result.plan.log_path)
+PY
+```
+
 Stage a generator workspace for OpenCode:
 
 ```bash

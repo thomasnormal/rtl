@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import tempfile
 from typing import Any, Sequence
 
 from .datasets import Tier, discover_rtllm_tasks, discover_verilog_eval_tasks
@@ -784,6 +785,8 @@ def store_generic_task(
     source_metadata: dict[str, Any] | None = None,
     private_sources: Sequence[str | Path] = (),
     shared_private_ref: SharedPrivateSourceRef | None = None,
+    raw_oracle_dir: str | Path | None = None,
+    raw_oracle_metadata: dict[str, Any] | None = None,
 ) -> Path:
     """Ingest a hand-assembled task into the task store.
 
@@ -808,6 +811,8 @@ def store_generic_task(
         )
 
     oracle: SimulationOracle | None = None
+    if raw_oracle_dir is not None and (gold_rtl_path is not None or testbench_path is not None):
+        raise ValueError("generic task cannot use both simulation oracle inputs and raw_oracle_dir")
     if gold_rtl_path is not None and testbench_path is not None:
         oracle = SimulationOracle(
             testbench_path=Path(testbench_path),
@@ -834,6 +839,8 @@ def store_generic_task(
         private_sources=private_sources,
         shared_private_ref=shared_private_ref,
         tier=tier,
+        raw_oracle_dir=None if raw_oracle_dir is None else Path(raw_oracle_dir),
+        raw_oracle_metadata=raw_oracle_metadata,
     )
 
 
@@ -928,6 +935,50 @@ def store_curated_task_pack(
             source_metadata["private_source_mode"] = private_source_mode
         if source_root_path is not None:
             source_metadata["source_root"] = str(source_root_path)
+        raw_oracle_dir: Path | None = None
+        raw_oracle_metadata: dict[str, Any] | None = None
+        raw_oracle = task.get("raw_oracle")
+        tempdir_cm = None
+        if raw_oracle is not None:
+            if source_root_path is None:
+                raise ValueError(
+                    f"curated task pack {dataset_name}/{task_id} requires source_root "
+                    "to materialize raw_oracle assets"
+                )
+            if not isinstance(raw_oracle, dict):
+                raise ValueError(
+                    f"curated task pack raw_oracle for {dataset_name}/{task_id} must be an object"
+                )
+            raw_oracle_metadata = {
+                str(key): value
+                for key, value in raw_oracle.items()
+                if key != "assets"
+            }
+            raw_assets = raw_oracle.get("assets", [])
+            if not isinstance(raw_assets, list):
+                raise ValueError(
+                    f"curated task pack raw_oracle assets for {dataset_name}/{task_id} must be a list"
+                )
+            tempdir_cm = tempfile.TemporaryDirectory()
+            raw_oracle_dir = Path(tempdir_cm.name) / "oracle"
+            raw_oracle_dir.mkdir(parents=True, exist_ok=True)
+            for raw_asset in raw_assets:
+                if not isinstance(raw_asset, dict):
+                    raise ValueError(
+                        f"curated task pack raw_oracle asset for {dataset_name}/{task_id} must be an object"
+                    )
+                if "source" not in raw_asset or "dest" not in raw_asset:
+                    raise ValueError(
+                        f"curated task pack raw_oracle asset for {dataset_name}/{task_id} "
+                        "must contain source and dest"
+                    )
+                source_path = source_root_path / str(raw_asset["source"])
+                destination = raw_oracle_dir / str(raw_asset["dest"])
+                if source_path.is_dir():
+                    shutil.copytree(source_path, destination, dirs_exist_ok=True)
+                else:
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source_path, destination)
         written.append(
             store_generic_task(
                 output_root=output_root,
@@ -940,8 +991,12 @@ def store_curated_task_pack(
                 source_metadata=source_metadata,
                 private_sources=private_sources,
                 shared_private_ref=shared_private_ref,
+                raw_oracle_dir=raw_oracle_dir,
+                raw_oracle_metadata=raw_oracle_metadata,
             )
         )
+        if tempdir_cm is not None:
+            tempdir_cm.cleanup()
     return tuple(written)
 
 
