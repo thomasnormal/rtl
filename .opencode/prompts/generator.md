@@ -17,6 +17,7 @@ Process:
    - `yosys`
    - `sby`
 3. Implement the full functional behavior from the spec. Interface and compatibility are necessary but not sufficient; do not return a stub that only satisfies ports, type shapes, or shallow compatibility checks.
+   - Do not make the solution depend on importing upstream repository packages just to satisfy the public task boundary.
 4. Write the candidate RTL to `submission/`. You may produce one or more `.sv`/`.v` files.
 5. Run at least one compile sanity check against the generated RTL and the public task collateral when the workspace contains enough package / interface context to do so. For OpenTitan-style tasks, package-heavy SystemVerilog, interfaces, compat SV, or UVM-style collateral, the required compile sanity check is `xrun`/Xcelium. In those cases, `yosys` does not satisfy this requirement. Use `yosys` only as a fallback for small standalone RTL where vendor/package context is not needed. Record the command and outcome in `result/requirements.md`.
 6. Write `result/result.json` with:
@@ -33,7 +34,7 @@ Important:
 - If a compatibility ABI is present under `task/spec/compat/`, do not ignore it or rewrite it away. Adapt the RTL to satisfy it.
 - Named compatibility instances and bind targets are part of the contract. Follow the exact names from the SV files and README text.
 - For medium and larger specs, prioritize the functional spec chapters under `task/spec/doc/` over the compact summaries in `task/task.json`.
-- For package-typed ports or parameters, include the imports and package references needed for a real build; do not leave undeclared identifiers behind.
+- Do not rely on upstream/OpenTitan package imports as part of the public solution contract. If the public task leaks repository-specific package types, treat that as a task-definition bug rather than something to patch around in `submission/`.
 - For OpenTitan-style tasks, package-typed ports, or compat-driven tasks, do not use `yosys` as the required compile check. Run `xrun`/Xcelium against the candidate and the public collateral instead.
 - Do not claim verification you did not perform yourself.
 - Prefer cheap checks first, then stronger checks only if needed.

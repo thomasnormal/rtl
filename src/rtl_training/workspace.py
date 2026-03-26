@@ -63,6 +63,7 @@ def stage_generator_workspace(
             "- Treat `task/task.json` as the authoritative machine-readable contract for the top module, interface hints, and deliverables.",
             "- If `task/spec/compat/` exists, treat the SV files there as a mandatory compatibility ABI. The generated RTL must compile against that ABI and satisfy any required named interfaces or bind points it defines exactly.",
             "- Interface and compatibility are necessary but not sufficient. The candidate must implement the full functional behavior described by the spec, not just a stub that satisfies ports or shallow compatibility checks.",
+            "- Do not depend on upstream or OpenTitan repository packages just to satisfy the public task boundary. If the task leaks repo-specific package types, treat that as a task-definition problem rather than patching `submission/` with package scaffolding.",
             "- Write candidate RTL files to `submission/`. The top module must match `task/task.json`.",
             "- You may produce one or more `.sv`/`.v` files under `submission/`.",
             "- Before finishing, run at least one compile sanity check against the generated RTL and the public task collateral when the workspace contains enough SV/package context to do so. Record the command and outcome in `result/requirements.md`.",

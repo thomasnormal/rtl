@@ -29,6 +29,8 @@ DEFAULT_GENERATOR_PROMPT = (
     "Treat task/spec/interface/ as the concrete SV declaration of the public DUT boundary and "
     "task/task.json as the machine-readable contract, but interface and compatibility are necessary "
     "not sufficient: implement the full functional behavior from the spec, not a stub. "
+    "Do not make the solution depend on importing upstream repository packages just to satisfy the "
+    "public task boundary. "
     "If task/spec/compat/ exists, treat it as a mandatory SV compatibility ABI and ensure the "
     "candidate RTL compiles against it exactly, including required named instances or bind points. "
     "Before finishing, run at least one compile sanity check when the workspace has enough context "

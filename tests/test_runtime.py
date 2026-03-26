@@ -113,4 +113,5 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     assert "compile sanity check" in prompt
     assert "required compile sanity check is `xrun`/Xcelium" in prompt
     assert "`yosys` does not satisfy this requirement" in prompt
+    assert "Do not rely on upstream/OpenTitan package imports" in prompt
     assert "`yosys` only as a fallback" in prompt
