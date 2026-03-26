@@ -38,9 +38,101 @@ Use these later, after the small-task pipeline is stable. They are valuable beca
 
 They are not good phase-0 data because setup cost is too high.
 
+The first OpenTitan medium-tier pack is now checked in as curated task bundles for:
+
+- `uart`
+- `i2c`
+- `spi_host`
+- `dma`
+- `sysrst_ctrl`
+
+These are manual summaries backed by the local `~/opentitan` checkout, not an automated ingest pipeline. That is intentional: the public spec given to the agent is curated, stable, and reviewable.
+
 ### 5. RTL-Repo
 
 Use RTL-Repo for scale and repository context, not as the main RL reward source. It broadens code exposure and can help later with generator pretraining or repository-conditioned tasks.
+
+## Tiering Strategy
+
+Use four user-facing tiers, and keep them separate in both ingest and evaluation.
+
+### Small
+
+Use this for the current anchor path:
+
+- RTLLM v1.1 / v2.0
+- VerilogEval
+- AssertEval
+
+Properties:
+
+- short natural-language specs or small prompt-style tasks
+- direct hidden simulation or formal collateral
+- good for oracle calibration, verifier pretraining, and regression testing
+
+### Medium
+
+Target roughly 10-30 page PDFs or rendered PDFs.
+
+Best sources:
+
+- individual OpenTitan IP datasheets plus DV docs, starting with the checked-in `uart`, `i2c`, `spi_host`, `dma`, and `sysrst_ctrl` task pack
+- focused OpenHW core manuals or manual chapters
+- open protocol specs such as Wishbone B4, paired with public implementations and trainer-built oracles
+
+Properties:
+
+- one IP or protocol at a time
+- enough prose/tables/timing to require retrieval and requirement extraction
+- still bounded enough that one verifier episode can plausibly cover the whole spec
+
+Important:
+
+- do not wait for “perfect native PDFs”; authoritative HTML docs are fine, and for the first OpenTitan pack we use reviewed markdown task bundles derived from those docs
+
+### Large
+
+Target roughly 30-300 page manuals.
+
+Best public sources:
+
+- OpenTitan top-level datasheets and integration docs
+- CVA6 user manual
+- CORE-V-MCU user manual
+- NVDLA integration and hardware docs
+- ONFI protocol specs as an open memory/protocol family
+
+Properties:
+
+- subsystem, controller, or SoC-level integration concerns
+- multiple interfaces, registers, modes, and timing stories
+- retrieval/chunking becomes mandatory
+
+### Industrial
+
+Reserve this for standards and SoC architecture packages that need legal review or private ingest.
+
+Examples:
+
+- JEDEC DDR3 / DDR6
+- large internal SoC specs
+- other consortium or vendor standards with redistribution limits
+
+Properties:
+
+- often multi-document and hundreds of pages
+- usually not safe to mix into the public pipeline
+- require a separate private artifact store, private chunk index, and explicit license tracking
+
+## Recommended Next Datasets
+
+If the goal is “more data soon” without getting blocked on licensing, the next best sequence is:
+
+1. OpenTitan IP docs as the first medium tier
+2. OpenHW single-core manuals as the second medium tier
+3. OpenTitan top-level docs, CVA6, CORE-V-MCU, and NVDLA as the first large tier
+4. ONFI as the first open memory/protocol large tier
+5. JEDEC DDR3 / DDR6 only after the private/licensed pipeline exists
 
 ## Task Store Record
 

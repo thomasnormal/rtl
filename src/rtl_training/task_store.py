@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 import re
 import shutil
-from typing import Any
+from typing import Any, Sequence
 
-from .datasets import discover_rtllm_tasks, discover_verilog_eval_tasks
+from .datasets import Tier, discover_rtllm_tasks, discover_verilog_eval_tasks
 
 
 @dataclass(frozen=True)
@@ -78,11 +78,12 @@ class StoredTask:
     root: Path
     dataset_name: str
     task_id: str
-    spec_path: Path
+    spec_dir: Path
     public_dir: Path
     public_task_path: Path
     metadata: dict[str, Any]
     oracle: SimulationOracle | None
+    tier: Tier | None = None
 
 
 _MODULE_DECL_RE = re.compile(r"\bmodule\s+([A-Za-z_][A-Za-z0-9_$]*)\b")
@@ -102,6 +103,18 @@ _RTLLM_INVALID_TASKS: dict[str, str] = {
 
 _CURATED_INTERFACE_MANIFESTS: dict[str, Path] = {
     "rtllm_v1_1": Path(__file__).resolve().parents[2] / "configs" / "rtllm_v1_1_interfaces.json",
+}
+
+_CURATED_TASK_PACK_MANIFESTS: dict[str, Path] = {
+    "opentitan_ip_docs": Path(__file__).resolve().parents[2]
+    / "configs"
+    / "opentitan_ip_docs_tasks.json",
+}
+
+_CURATED_TASK_PACK_SPECS: dict[str, Path] = {
+    "opentitan_ip_docs": Path(__file__).resolve().parents[2]
+    / "task_library"
+    / "opentitan_ip_docs",
 }
 
 
@@ -220,6 +233,40 @@ def _load_curated_interface_manifest(dataset_name: str) -> dict[str, dict[str, A
             )
         manifest[str(task_id)] = dict(task_interface)
     return manifest
+
+
+@lru_cache(maxsize=None)
+def _load_curated_task_pack_manifest(dataset_name: str) -> tuple[dict[str, Any], ...]:
+    manifest_path = _CURATED_TASK_PACK_MANIFESTS.get(dataset_name)
+    if manifest_path is None:
+        raise ValueError(f"no curated task pack manifest registered for {dataset_name}")
+    raw = json.loads(manifest_path.read_text())
+    if not isinstance(raw, dict):
+        raise ValueError(f"curated task pack manifest for {dataset_name} must be an object")
+    manifest_dataset_name = str(raw.get("dataset_name", ""))
+    if manifest_dataset_name != dataset_name:
+        raise ValueError(
+            f"curated task pack manifest dataset_name {manifest_dataset_name!r} "
+            f"does not match {dataset_name!r}"
+        )
+    raw_tasks = raw.get("tasks")
+    if not isinstance(raw_tasks, list):
+        raise ValueError(f"curated task pack manifest for {dataset_name} must contain a tasks list")
+    tasks: list[dict[str, Any]] = []
+    for raw_task in raw_tasks:
+        if not isinstance(raw_task, dict):
+            raise ValueError(
+                f"curated task pack manifest entry for {dataset_name} must be an object"
+            )
+        tasks.append(dict(raw_task))
+    return tuple(tasks)
+
+
+def _curated_task_pack_specs_root(dataset_name: str) -> Path:
+    specs_root = _CURATED_TASK_PACK_SPECS.get(dataset_name)
+    if specs_root is None:
+        raise ValueError(f"no curated task pack specs registered for {dataset_name}")
+    return specs_root
 
 
 def _normalize_curated_parameters(
@@ -369,19 +416,36 @@ def _write_task_bundle(
     output_root: Path,
     dataset_name: str,
     task_id: str,
-    spec_text: str,
-    spec_name: str,
+    spec_source: str | Path,
     public_metadata: dict[str, Any],
     oracle: SimulationOracle | None,
     source_metadata: dict[str, Any],
+    tier: Tier | None = None,
 ) -> Path:
+    """Write a task bundle to *output_root/dataset_name/task_id/*.
+
+    *spec_source* is either a plain-text string (written as ``spec/spec.txt``)
+    or a :class:`~pathlib.Path` pointing to a file or directory that is copied
+    into ``public/spec/``.
+    """
     task_root = output_root / dataset_name / task_id
     public_dir = task_root / "public"
-    public_dir.mkdir(parents=True, exist_ok=True)
-    spec_path = public_dir / spec_name
+    spec_dir = public_dir / "spec"
+    spec_dir.mkdir(parents=True, exist_ok=True)
     public_task_path = public_dir / "task.json"
 
-    spec_path.write_text(spec_text)
+    if isinstance(spec_source, str):
+        (spec_dir / "spec.txt").write_text(spec_source)
+    else:
+        source_path = Path(spec_source)
+        if source_path.is_dir():
+            shutil.copytree(source_path, spec_dir, dirs_exist_ok=True)
+        else:
+            shutil.copy2(source_path, spec_dir / source_path.name)
+
+    if tier is not None:
+        public_metadata.setdefault("tier", tier)
+    public_metadata["spec"] = "spec/"
     public_task_path.write_text(json.dumps(public_metadata, indent=2, sort_keys=True) + "\n")
 
     task_metadata: dict[str, Any] = {
@@ -389,11 +453,13 @@ def _write_task_bundle(
         "task_id": task_id,
         "public": {
             "directory": "public",
-            "spec": str(spec_path.relative_to(task_root)),
+            "spec": "public/spec/",
             "task": str(public_task_path.relative_to(task_root)),
         },
         "source": source_metadata,
     }
+    if tier is not None:
+        task_metadata["tier"] = tier
 
     if oracle is not None:
         oracle_dir = task_root / "oracle"
@@ -436,15 +502,26 @@ def load_stored_task(task_root: str | Path) -> StoredTask:
     oracle = None
     if oracle_raw is not None:
         oracle = SimulationOracle.from_dict(task_root_path, dict(oracle_raw))
+    raw_tier = metadata.get("tier")
+    tier: Tier | None = raw_tier if raw_tier is not None else None
+    spec_ref = str(public["spec"])
+    spec_resolved = task_root_path / spec_ref
+    # Backward compat: old format has "public/spec.txt" (a file).
+    # New format has "public/spec/" (a directory).
+    if spec_resolved.is_dir():
+        spec_dir = spec_resolved
+    else:
+        spec_dir = spec_resolved.parent
     return StoredTask(
         root=task_root_path,
         dataset_name=str(metadata["dataset_name"]),
         task_id=str(metadata["task_id"]),
-        spec_path=task_root_path / str(public["spec"]),
+        spec_dir=spec_dir,
         public_dir=task_root_path / str(public["directory"]),
         public_task_path=task_root_path / str(public["task"]),
         metadata=metadata,
         oracle=oracle,
+        tier=tier,
     )
 
 
@@ -454,6 +531,7 @@ def store_rtllm_tasks(
     *,
     dataset_name: str,
     include_invalid: bool = False,
+    tier: Tier | None = None,
 ) -> tuple[Path, ...]:
     tasks = discover_rtllm_tasks(source_root, dataset_name=dataset_name)
     written: list[Path] = []
@@ -485,10 +563,9 @@ def store_rtllm_tasks(
             "dataset_name": dataset_name,
             "task_id": task.task_id,
             "candidate_top_module": public_interface["top_module"],
-            "spec": "spec.txt",
             "interface": public_interface,
             "deliverables": {
-                "rtl": "submission/candidate.sv",
+                "rtl": "submission/",
                 "summary": "result/result.json",
             },
         }
@@ -520,11 +597,11 @@ def store_rtllm_tasks(
                 output_root=Path(output_root),
                 dataset_name=dataset_name,
                 task_id=task.task_id,
-                spec_text=spec_text,
-                spec_name="spec.txt",
+                spec_source=spec_text,
                 public_metadata=public_metadata,
                 oracle=oracle,
                 source_metadata=source_metadata,
+                tier=tier,
             )
         )
     return tuple(written)
@@ -536,6 +613,7 @@ def store_verilog_eval_tasks(
     *,
     dataset_name: str,
     subset: str = "dataset_spec-to-rtl",
+    tier: Tier | None = None,
 ) -> tuple[Path, ...]:
     tasks = discover_verilog_eval_tasks(
         source_root,
@@ -550,9 +628,8 @@ def store_verilog_eval_tasks(
             "dataset_name": dataset_name,
             "task_id": task.task_id,
             "candidate_top_module": "TopModule",
-            "spec": "spec.txt",
             "deliverables": {
-                "rtl": "submission/candidate.sv",
+                "rtl": "submission/",
                 "summary": "result/result.json",
             },
         }
@@ -581,11 +658,151 @@ def store_verilog_eval_tasks(
                 output_root=Path(output_root),
                 dataset_name=dataset_name,
                 task_id=task.task_id,
-                spec_text=task.spec_path.read_text(),
-                spec_name="spec.txt",
+                spec_source=task.spec_path.read_text(),
                 public_metadata=public_metadata,
                 oracle=oracle,
+                source_metadata=source_metadata,
+                tier=tier,
+            )
+        )
+    return tuple(written)
+
+
+def store_generic_task(
+    *,
+    output_root: str | Path,
+    dataset_name: str,
+    task_id: str,
+    spec_source: str | Path,
+    tier: Tier | None = None,
+    candidate_top_module: str,
+    interface: dict[str, Any] | None = None,
+    gold_rtl_path: str | Path | None = None,
+    testbench_path: str | Path | None = None,
+    support_files: Sequence[str | Path] = (),
+    reference_top_module: str | None = None,
+    requires_reference_rtl: bool = False,
+    pass_criteria: PassCriteria | None = None,
+    source_metadata: dict[str, Any] | None = None,
+) -> Path:
+    """Ingest a hand-assembled task into the task store.
+
+    Unlike :func:`store_rtllm_tasks` and :func:`store_verilog_eval_tasks`,
+    this function does not discover files — the caller supplies all paths.
+    *spec_source* can be a plain-text string, a file path, or a directory
+    path containing markdown, images, and other spec artifacts.
+    """
+    public_metadata: dict[str, Any] = {
+        "dataset_name": dataset_name,
+        "task_id": task_id,
+        "candidate_top_module": candidate_top_module,
+        "deliverables": {
+            "rtl": "submission/",
+            "summary": "result/result.json",
+        },
+    }
+    if interface is not None:
+        public_metadata["interface"] = interface
+
+    oracle: SimulationOracle | None = None
+    if gold_rtl_path is not None and testbench_path is not None:
+        oracle = SimulationOracle(
+            testbench_path=Path(testbench_path),
+            gold_rtl_path=Path(gold_rtl_path),
+            requires_reference_rtl=requires_reference_rtl,
+            candidate_top_module=candidate_top_module,
+            reference_top_module=reference_top_module or candidate_top_module,
+            pass_criteria=pass_criteria or PassCriteria(),
+            support_files=tuple(Path(p) for p in support_files),
+        )
+
+    effective_source_metadata: dict[str, Any] = {"origin": "generic"}
+    if source_metadata is not None:
+        effective_source_metadata.update(source_metadata)
+
+    return _write_task_bundle(
+        output_root=Path(output_root),
+        dataset_name=dataset_name,
+        task_id=task_id,
+        spec_source=spec_source,
+        public_metadata=public_metadata,
+        oracle=oracle,
+        source_metadata=effective_source_metadata,
+        tier=tier,
+    )
+
+
+def store_curated_task_pack(
+    output_root: str | Path,
+    *,
+    dataset_name: str,
+    tier: Tier | None = None,
+    source_root: str | Path | None = None,
+) -> tuple[Path, ...]:
+    manifest = _load_curated_task_pack_manifest(dataset_name)
+    specs_root = _curated_task_pack_specs_root(dataset_name)
+    source_root_path = Path(source_root).expanduser().resolve() if source_root is not None else None
+    written: list[Path] = []
+    for task in manifest:
+        task_id = str(task["task_id"])
+        candidate_top_module = str(task["candidate_top_module"])
+        interface = task.get("interface")
+        if interface is not None:
+            if not isinstance(interface, dict):
+                raise ValueError(
+                    f"curated task pack interface for {dataset_name}/{task_id} must be an object"
+                )
+            top_module = str(interface.get("top_module", candidate_top_module))
+            if top_module != candidate_top_module:
+                raise ValueError(
+                    f"curated task pack top module for {dataset_name}/{task_id} is "
+                    f"{top_module!r}, expected {candidate_top_module!r}"
+                )
+        spec_subdir = str(task["spec_subdir"])
+        spec_dir = specs_root / spec_subdir
+        if not spec_dir.is_dir():
+            raise FileNotFoundError(
+                f"missing curated spec directory for {dataset_name}/{task_id}: {spec_dir}"
+            )
+        task_tier = tier if tier is not None else task.get("tier")
+        source_metadata: dict[str, Any] = {
+            "origin": "curated_task_pack",
+            "manifest": str(_CURATED_TASK_PACK_MANIFESTS[dataset_name].relative_to(specs_root.parents[1])),
+            "spec_subdir": spec_subdir,
+        }
+        source_docs = task.get("source_docs")
+        if source_docs is not None:
+            if not isinstance(source_docs, list):
+                raise ValueError(
+                    f"curated task pack source_docs for {dataset_name}/{task_id} must be a list"
+                )
+            source_metadata["source_docs"] = [str(item) for item in source_docs]
+        if source_root_path is not None:
+            source_metadata["source_root"] = str(source_root_path)
+        written.append(
+            store_generic_task(
+                output_root=output_root,
+                dataset_name=dataset_name,
+                task_id=task_id,
+                spec_source=spec_dir,
+                tier=task_tier,
+                candidate_top_module=candidate_top_module,
+                interface=dict(interface) if interface is not None else None,
                 source_metadata=source_metadata,
             )
         )
     return tuple(written)
+
+
+def store_opentitan_ip_docs_tasks(
+    output_root: str | Path,
+    *,
+    tier: Tier | None = None,
+    source_root: str | Path | None = None,
+) -> tuple[Path, ...]:
+    return store_curated_task_pack(
+        output_root,
+        dataset_name="opentitan_ip_docs",
+        tier=tier,
+        source_root=source_root,
+    )

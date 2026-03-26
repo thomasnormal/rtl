@@ -15,8 +15,10 @@ That keeps deterministic validation available to the training framework without 
 
 - `configs/datasets.json`: dataset manifest and acquisition order.
 - `configs/rtllm_v1_1_interfaces.json`: curated manual interface contract for all RTLLM v1.1 tasks.
+- `configs/opentitan_ip_docs_tasks.json`: curated manual OpenTitan medium-tier task manifest.
 - `configs/verifier_smoke.json`: a first-pass verifier-training config.
 - `src/rtl_training/`: task-store, OpenCode runtime, hidden-oracle validation, and RL helpers.
+- `task_library/opentitan_ip_docs/`: hand-written OpenTitan task bundles for `uart`, `i2c`, `spi_host`, `dma`, and `sysrst_ctrl`.
 - `opencode.json` and `.opencode/`: checked-in OpenCode prompts and hardware-tool skills.
 - `tests/`: regression tests for public/oracle separation, OpenCode workspaces, and reward/config logic.
 - `docs/`: project plan, dataset notes, and an engineering log.
@@ -49,6 +51,19 @@ PY
 
 `rtllm_v1_1` uses the checked-in manual interface manifest in `configs/rtllm_v1_1_interfaces.json` instead of inferred port extraction from the prose spec.
 
+Materialize the first curated OpenTitan medium-tier pack:
+
+```bash
+python - <<'PY'
+from rtl_training.task_store import store_opentitan_ip_docs_tasks
+
+store_opentitan_ip_docs_tasks(
+    "data/task_store",
+    source_root="~/opentitan",
+)
+PY
+```
+
 Stage a generator workspace for OpenCode:
 
 ```bash
@@ -57,17 +72,17 @@ from rtl_training.runtime import prepare_generator_episode
 
 episode = prepare_generator_episode(
     "data/task_store/rtllm_v2_0/adder_8bit",
-    "runs/episode_0001",
+    "/tmp/rtl-episodes/episode_0001",
 )
 print(episode.workspace.root)
-print(episode.workspace.candidate_output_path)
+print(episode.workspace.submission_dir)
 PY
 ```
 
 Run the generator with OpenCode from the staged workspace:
 
 ```bash
-cd runs/episode_0001
+cd /tmp/rtl-episodes/episode_0001
 opencode run --agent generator --format json "Read TASK.md and complete the generator task."
 ```
 
@@ -81,7 +96,7 @@ from rtl_training.task_store import load_stored_task
 task = load_stored_task("data/task_store/rtllm_v2_0/adder_8bit")
 result = validate_candidate(
     task,
-    "runs/episode_0001/submission/candidate.sv",
+    "runs/episode_0001/submission",
     work_root="runs/oracle_eval",
 )
 print("PASS" if result.passed else "FAIL", result.simulator, result.plan.log_path)
@@ -106,7 +121,7 @@ The verifier benchmark treats `candidate/` as immutable input. If the agent edit
 
 ## Isolation Boundary
 
-The generator and verifier can have full bash inside the staged workspace, but the hidden oracle stays outside that workspace. In practice the checked-in `opencode.json` leaves `bash` enabled while denying `external_directory`, so the agent can use the local hardware toolchain without seeing the trainer-owned oracle assets.
+The generator and verifier can have full bash inside the staged workspace, but the hidden oracle stays outside that workspace. In practice the checked-in `opencode.json` leaves `bash` enabled while denying `external_directory`, so the agent can use the local hardware toolchain without seeing the trainer-owned oracle assets. Batch and verifier runs now stage episodes under `/tmp/rtl-episodes` by default, then move the finished workspace back under `runs/...` for inspection. Override that with `RTL_EPISODE_STAGING_ROOT=/path/to/staging`, and stale temporary workspaces older than 24 hours are cleaned automatically before new episodes start.
 
 ## Tinker Setup
 

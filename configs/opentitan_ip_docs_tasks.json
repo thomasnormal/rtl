@@ -1,0 +1,288 @@
+{
+  "dataset_name": "opentitan_ip_docs",
+  "tasks": [
+    {
+      "task_id": "uart",
+      "tier": "medium",
+      "candidate_top_module": "uart",
+      "spec_subdir": "uart",
+      "source_docs": [
+        "hw/ip/uart/README.md",
+        "hw/ip/uart/doc/interfaces.md",
+        "hw/ip/uart/doc/theory_of_operation.md",
+        "hw/ip/uart/dv/README.md",
+        "hw/ip/uart/data/uart.hjson",
+        "hw/ip/uart/rtl/uart.sv"
+      ],
+      "interface": {
+        "top_module": "uart",
+        "declared_module_name": "uart",
+        "inputs": [
+          {"name": "clk_i", "direction": "input", "width": "logic"},
+          {"name": "rst_ni", "direction": "input", "width": "logic"},
+          {"name": "tl_i", "direction": "input", "width": "tlul_pkg::tl_h2d_t"},
+          {"name": "alert_rx_i", "direction": "input", "width": "prim_alert_pkg::alert_rx_t [NumAlerts-1:0]"},
+          {"name": "racl_policies_i", "direction": "input", "width": "top_racl_pkg::racl_policy_vec_t"},
+          {"name": "cio_rx_i", "direction": "input", "width": "logic"}
+        ],
+        "outputs": [
+          {"name": "tl_o", "direction": "output", "width": "tlul_pkg::tl_d2h_t"},
+          {"name": "alert_tx_o", "direction": "output", "width": "prim_alert_pkg::alert_tx_t [NumAlerts-1:0]"},
+          {"name": "racl_error_o", "direction": "output", "width": "top_racl_pkg::racl_error_log_t"},
+          {"name": "lsio_trigger_o", "direction": "output", "width": "logic"},
+          {"name": "cio_tx_o", "direction": "output", "width": "logic"},
+          {"name": "cio_tx_en_o", "direction": "output", "width": "logic"},
+          {"name": "intr_tx_watermark_o", "direction": "output", "width": "logic"},
+          {"name": "intr_tx_empty_o", "direction": "output", "width": "logic"},
+          {"name": "intr_rx_watermark_o", "direction": "output", "width": "logic"},
+          {"name": "intr_tx_done_o", "direction": "output", "width": "logic"},
+          {"name": "intr_rx_overflow_o", "direction": "output", "width": "logic"},
+          {"name": "intr_rx_frame_err_o", "direction": "output", "width": "logic"},
+          {"name": "intr_rx_break_err_o", "direction": "output", "width": "logic"},
+          {"name": "intr_rx_timeout_o", "direction": "output", "width": "logic"},
+          {"name": "intr_rx_parity_err_o", "direction": "output", "width": "logic"}
+        ],
+        "parameters": [
+          {"name": "AlertAsyncOn", "value": "{NumAlerts{1'b1}}"},
+          {"name": "AlertSkewCycles", "value": "1"},
+          {"name": "EnableRacl", "value": "1'b0"},
+          {"name": "RaclErrorRsp", "value": "EnableRacl"},
+          {"name": "RaclPolicySelVec", "value": "'{NumRegs{0}}"}
+        ],
+        "ports": []
+      }
+    },
+    {
+      "task_id": "i2c",
+      "tier": "medium",
+      "candidate_top_module": "i2c",
+      "spec_subdir": "i2c",
+      "source_docs": [
+        "hw/ip/i2c/README.md",
+        "hw/ip/i2c/doc/interfaces.md",
+        "hw/ip/i2c/doc/theory_of_operation.md",
+        "hw/ip/i2c/dv/README.md",
+        "hw/ip/i2c/data/i2c.hjson",
+        "hw/ip/i2c/rtl/i2c.sv"
+      ],
+      "interface": {
+        "top_module": "i2c",
+        "declared_module_name": "i2c",
+        "inputs": [
+          {"name": "clk_i", "direction": "input", "width": "logic"},
+          {"name": "rst_ni", "direction": "input", "width": "logic"},
+          {"name": "ram_cfg_i", "direction": "input", "width": "prim_ram_1p_pkg::ram_1p_cfg_t"},
+          {"name": "tl_i", "direction": "input", "width": "tlul_pkg::tl_h2d_t"},
+          {"name": "alert_rx_i", "direction": "input", "width": "prim_alert_pkg::alert_rx_t [NumAlerts-1:0]"},
+          {"name": "racl_policies_i", "direction": "input", "width": "top_racl_pkg::racl_policy_vec_t"},
+          {"name": "cio_scl_i", "direction": "input", "width": "logic"},
+          {"name": "cio_sda_i", "direction": "input", "width": "logic"}
+        ],
+        "outputs": [
+          {"name": "ram_cfg_rsp_o", "direction": "output", "width": "prim_ram_1p_pkg::ram_1p_cfg_rsp_t"},
+          {"name": "tl_o", "direction": "output", "width": "tlul_pkg::tl_d2h_t"},
+          {"name": "alert_tx_o", "direction": "output", "width": "prim_alert_pkg::alert_tx_t [NumAlerts-1:0]"},
+          {"name": "racl_error_o", "direction": "output", "width": "top_racl_pkg::racl_error_log_t"},
+          {"name": "cio_scl_o", "direction": "output", "width": "logic"},
+          {"name": "cio_scl_en_o", "direction": "output", "width": "logic"},
+          {"name": "cio_sda_o", "direction": "output", "width": "logic"},
+          {"name": "cio_sda_en_o", "direction": "output", "width": "logic"},
+          {"name": "lsio_trigger_o", "direction": "output", "width": "logic"},
+          {"name": "intr_fmt_threshold_o", "direction": "output", "width": "logic"},
+          {"name": "intr_rx_threshold_o", "direction": "output", "width": "logic"},
+          {"name": "intr_acq_threshold_o", "direction": "output", "width": "logic"},
+          {"name": "intr_rx_overflow_o", "direction": "output", "width": "logic"},
+          {"name": "intr_controller_halt_o", "direction": "output", "width": "logic"},
+          {"name": "intr_scl_interference_o", "direction": "output", "width": "logic"},
+          {"name": "intr_sda_interference_o", "direction": "output", "width": "logic"},
+          {"name": "intr_stretch_timeout_o", "direction": "output", "width": "logic"},
+          {"name": "intr_sda_unstable_o", "direction": "output", "width": "logic"},
+          {"name": "intr_cmd_complete_o", "direction": "output", "width": "logic"},
+          {"name": "intr_tx_stretch_o", "direction": "output", "width": "logic"},
+          {"name": "intr_tx_threshold_o", "direction": "output", "width": "logic"},
+          {"name": "intr_acq_stretch_o", "direction": "output", "width": "logic"},
+          {"name": "intr_unexp_stop_o", "direction": "output", "width": "logic"},
+          {"name": "intr_host_timeout_o", "direction": "output", "width": "logic"}
+        ],
+        "parameters": [
+          {"name": "AlertAsyncOn", "value": "{NumAlerts{1'b1}}"},
+          {"name": "AlertSkewCycles", "value": "1"},
+          {"name": "InputDelayCycles", "value": "0"},
+          {"name": "EnableRacl", "value": "1'b0"},
+          {"name": "RaclErrorRsp", "value": "EnableRacl"},
+          {"name": "RaclPolicySelVec", "value": "'{NumRegs{0}}"}
+        ],
+        "ports": []
+      }
+    },
+    {
+      "task_id": "spi_host",
+      "tier": "medium",
+      "candidate_top_module": "spi_host",
+      "spec_subdir": "spi_host",
+      "source_docs": [
+        "hw/ip/spi_host/README.md",
+        "hw/ip/spi_host/doc/interfaces.md",
+        "hw/ip/spi_host/doc/theory_of_operation.md",
+        "hw/ip/spi_host/dv/README.md",
+        "hw/ip/spi_host/data/spi_host.hjson",
+        "hw/ip/spi_host/rtl/spi_host.sv"
+      ],
+      "interface": {
+        "top_module": "spi_host",
+        "declared_module_name": "spi_host",
+        "inputs": [
+          {"name": "clk_i", "direction": "input", "width": "logic"},
+          {"name": "rst_ni", "direction": "input", "width": "logic"},
+          {"name": "tl_i", "direction": "input", "width": "tlul_pkg::tl_h2d_t"},
+          {"name": "alert_rx_i", "direction": "input", "width": "prim_alert_pkg::alert_rx_t [NumAlerts-1:0]"},
+          {"name": "racl_policies_i", "direction": "input", "width": "top_racl_pkg::racl_policy_vec_t"},
+          {"name": "passthrough_i", "direction": "input", "width": "spi_device_pkg::passthrough_req_t"},
+          {"name": "cio_sd_i", "direction": "input", "width": "logic [3:0]"}
+        ],
+        "outputs": [
+          {"name": "tl_o", "direction": "output", "width": "tlul_pkg::tl_d2h_t"},
+          {"name": "alert_tx_o", "direction": "output", "width": "prim_alert_pkg::alert_tx_t [NumAlerts-1:0]"},
+          {"name": "racl_error_o", "direction": "output", "width": "top_racl_pkg::racl_error_log_t"},
+          {"name": "cio_sck_o", "direction": "output", "width": "logic"},
+          {"name": "cio_sck_en_o", "direction": "output", "width": "logic"},
+          {"name": "cio_csb_o", "direction": "output", "width": "logic [NumCS-1:0]"},
+          {"name": "cio_csb_en_o", "direction": "output", "width": "logic [NumCS-1:0]"},
+          {"name": "cio_sd_o", "direction": "output", "width": "logic [3:0]"},
+          {"name": "cio_sd_en_o", "direction": "output", "width": "logic [3:0]"},
+          {"name": "passthrough_o", "direction": "output", "width": "spi_device_pkg::passthrough_rsp_t"},
+          {"name": "lsio_trigger_o", "direction": "output", "width": "logic"},
+          {"name": "intr_error_o", "direction": "output", "width": "logic"},
+          {"name": "intr_spi_event_o", "direction": "output", "width": "logic"}
+        ],
+        "parameters": [
+          {"name": "AlertAsyncOn", "value": "{NumAlerts{1'b1}}"},
+          {"name": "AlertSkewCycles", "value": "1"},
+          {"name": "NumCS", "value": "1"},
+          {"name": "EnableRacl", "value": "1'b0"},
+          {"name": "RaclErrorRsp", "value": "EnableRacl"},
+          {"name": "RaclPolicySelVec", "value": "'{NumRegs{0}}"},
+          {"name": "RaclPolicySelWinRXDATA", "value": "0"},
+          {"name": "RaclPolicySelWinTXDATA", "value": "0"}
+        ],
+        "ports": []
+      }
+    },
+    {
+      "task_id": "dma",
+      "tier": "medium",
+      "candidate_top_module": "dma",
+      "spec_subdir": "dma",
+      "source_docs": [
+        "hw/ip/dma/README.md",
+        "hw/ip/dma/doc/interfaces.md",
+        "hw/ip/dma/doc/theory_of_operation.md",
+        "hw/ip/dma/dv/README.md",
+        "hw/ip/dma/data/dma.hjson",
+        "hw/ip/dma/rtl/dma.sv"
+      ],
+      "interface": {
+        "top_module": "dma",
+        "declared_module_name": "dma",
+        "inputs": [
+          {"name": "clk_i", "direction": "input", "width": "logic"},
+          {"name": "rst_ni", "direction": "input", "width": "logic"},
+          {"name": "scanmode_i", "direction": "input", "width": "prim_mubi_pkg::mubi4_t"},
+          {"name": "lsio_trigger_i", "direction": "input", "width": "dma_pkg::lsio_trigger_t"},
+          {"name": "alert_rx_i", "direction": "input", "width": "prim_alert_pkg::alert_rx_t [NumAlerts-1:0]"},
+          {"name": "racl_policies_i", "direction": "input", "width": "top_racl_pkg::racl_policy_vec_t"},
+          {"name": "tl_d_i", "direction": "input", "width": "tlul_pkg::tl_h2d_t"},
+          {"name": "ctn_tl_d2h_i", "direction": "input", "width": "tlul_pkg::tl_d2h_t"},
+          {"name": "host_tl_h_i", "direction": "input", "width": "tlul_pkg::tl_d2h_t"},
+          {"name": "sys_i", "direction": "input", "width": "dma_pkg::sys_rsp_t"}
+        ],
+        "outputs": [
+          {"name": "intr_dma_done_o", "direction": "output", "width": "logic"},
+          {"name": "intr_dma_chunk_done_o", "direction": "output", "width": "logic"},
+          {"name": "intr_dma_error_o", "direction": "output", "width": "logic"},
+          {"name": "alert_tx_o", "direction": "output", "width": "prim_alert_pkg::alert_tx_t [NumAlerts-1:0]"},
+          {"name": "racl_error_o", "direction": "output", "width": "top_racl_pkg::racl_error_log_t"},
+          {"name": "tl_d_o", "direction": "output", "width": "tlul_pkg::tl_d2h_t"},
+          {"name": "ctn_tl_h2d_o", "direction": "output", "width": "tlul_pkg::tl_h2d_t"},
+          {"name": "host_tl_h_o", "direction": "output", "width": "tlul_pkg::tl_h2d_t"},
+          {"name": "sys_o", "direction": "output", "width": "dma_pkg::sys_req_t"}
+        ],
+        "parameters": [
+          {"name": "AlertAsyncOn", "value": "{NumAlerts{1'b1}}"},
+          {"name": "AlertSkewCycles", "value": "1"},
+          {"name": "EnableDataIntgGen", "value": "1'b1"},
+          {"name": "EnableRspDataIntgCheck", "value": "1'b1"},
+          {"name": "TlUserRsvd", "value": "'0"},
+          {"name": "SysRaclRole", "value": "'0"},
+          {"name": "OtAgentId", "value": "0"},
+          {"name": "EnableRacl", "value": "1'b0"},
+          {"name": "RaclErrorRsp", "value": "EnableRacl"},
+          {"name": "RaclPolicySelVec", "value": "'{NumRegs{0}}"}
+        ],
+        "ports": []
+      }
+    },
+    {
+      "task_id": "sysrst_ctrl",
+      "tier": "medium",
+      "candidate_top_module": "sysrst_ctrl",
+      "spec_subdir": "sysrst_ctrl",
+      "source_docs": [
+        "hw/ip/sysrst_ctrl/README.md",
+        "hw/ip/sysrst_ctrl/doc/interfaces.md",
+        "hw/ip/sysrst_ctrl/doc/theory_of_operation.md",
+        "hw/ip/sysrst_ctrl/dv/README.md",
+        "hw/ip/sysrst_ctrl/data/sysrst_ctrl.hjson",
+        "hw/ip/sysrst_ctrl/rtl/sysrst_ctrl.sv"
+      ],
+      "interface": {
+        "top_module": "sysrst_ctrl",
+        "declared_module_name": "sysrst_ctrl",
+        "inputs": [
+          {"name": "clk_i", "direction": "input", "width": "logic"},
+          {"name": "clk_aon_i", "direction": "input", "width": "logic"},
+          {"name": "rst_ni", "direction": "input", "width": "logic"},
+          {"name": "rst_aon_ni", "direction": "input", "width": "logic"},
+          {"name": "tl_i", "direction": "input", "width": "tlul_pkg::tl_h2d_t"},
+          {"name": "alert_rx_i", "direction": "input", "width": "prim_alert_pkg::alert_rx_t [NumAlerts-1:0]"},
+          {"name": "cio_ac_present_i", "direction": "input", "width": "logic"},
+          {"name": "cio_ec_rst_l_i", "direction": "input", "width": "logic"},
+          {"name": "cio_key0_in_i", "direction": "input", "width": "logic"},
+          {"name": "cio_key1_in_i", "direction": "input", "width": "logic"},
+          {"name": "cio_key2_in_i", "direction": "input", "width": "logic"},
+          {"name": "cio_pwrb_in_i", "direction": "input", "width": "logic"},
+          {"name": "cio_lid_open_i", "direction": "input", "width": "logic"},
+          {"name": "cio_flash_wp_l_i", "direction": "input", "width": "logic"}
+        ],
+        "outputs": [
+          {"name": "tl_o", "direction": "output", "width": "tlul_pkg::tl_d2h_t"},
+          {"name": "alert_tx_o", "direction": "output", "width": "prim_alert_pkg::alert_tx_t [NumAlerts-1:0]"},
+          {"name": "wkup_req_o", "direction": "output", "width": "logic"},
+          {"name": "rst_req_o", "direction": "output", "width": "logic"},
+          {"name": "intr_event_detected_o", "direction": "output", "width": "logic"},
+          {"name": "cio_bat_disable_o", "direction": "output", "width": "logic"},
+          {"name": "cio_flash_wp_l_o", "direction": "output", "width": "logic"},
+          {"name": "cio_ec_rst_l_o", "direction": "output", "width": "logic"},
+          {"name": "cio_key0_out_o", "direction": "output", "width": "logic"},
+          {"name": "cio_key1_out_o", "direction": "output", "width": "logic"},
+          {"name": "cio_key2_out_o", "direction": "output", "width": "logic"},
+          {"name": "cio_pwrb_out_o", "direction": "output", "width": "logic"},
+          {"name": "cio_z3_wakeup_o", "direction": "output", "width": "logic"},
+          {"name": "cio_bat_disable_en_o", "direction": "output", "width": "logic"},
+          {"name": "cio_flash_wp_l_en_o", "direction": "output", "width": "logic"},
+          {"name": "cio_ec_rst_l_en_o", "direction": "output", "width": "logic"},
+          {"name": "cio_key0_out_en_o", "direction": "output", "width": "logic"},
+          {"name": "cio_key1_out_en_o", "direction": "output", "width": "logic"},
+          {"name": "cio_key2_out_en_o", "direction": "output", "width": "logic"},
+          {"name": "cio_pwrb_out_en_o", "direction": "output", "width": "logic"},
+          {"name": "cio_z3_wakeup_en_o", "direction": "output", "width": "logic"}
+        ],
+        "parameters": [
+          {"name": "AlertAsyncOn", "value": "{NumAlerts{1'b1}}"},
+          {"name": "AlertSkewCycles", "value": "1"}
+        ],
+        "ports": []
+      }
+    }
+  ]
+}

@@ -1,12 +1,48 @@
 {
   "project": "rtl-verifier",
+  "tiers": [
+    {
+      "name": "small",
+      "page_range": "short text to roughly 10 pages",
+      "goal": "trusted anchor tasks with direct hidden-oracle benches or formal collateral",
+      "acquisition": "native benchmark text/spec pairs"
+    },
+    {
+      "name": "medium",
+      "page_range": "10-30 pages",
+      "goal": "single-IP manuals and protocol slices that still fit into one verification episode",
+      "acquisition": "prefer official PDF docs; otherwise render authoritative HTML docs to PDF during ingest"
+    },
+    {
+      "name": "large",
+      "page_range": "30-300 pages",
+      "goal": "subsystem, core, controller, and SoC-level manuals with richer integration constraints",
+      "acquisition": "repository-linked user manuals, top-level datasheets, and open protocol standards"
+    },
+    {
+      "name": "industrial",
+      "page_range": "300+ pages or multi-document corpora",
+      "goal": "real standards and SoC architecture packages that require retrieval, chunking, and legal review",
+      "acquisition": "treat public and license-gated sources separately"
+    }
+  ],
   "recommended_order": [
     "rtllm_v1_1",
     "verilogeval_v2_spec_to_rtl",
     "rtllm_v2_0",
     "asserteval",
+    "opentitan_ip_docs",
+    "openhw_core_ip_manuals",
+    "wishbone_b4",
+    "opentitan_top_docs",
+    "cva6_user_manual",
+    "core_v_mcu_user_manual",
+    "nvdla_docs",
+    "onfi_specs",
     "opentitan_dv",
-    "rtl_repo"
+    "rtl_repo",
+    "jedec_ddr3_private",
+    "jedec_ddr6_private"
   ],
   "datasets": [
     {
@@ -25,7 +61,8 @@
       ],
       "license": "MIT",
       "access": "public",
-      "notes": "Small hand-written designs with explicit descriptions, a hidden simulation bench, and a verified RTL reference."
+      "notes": "Small hand-written designs with explicit descriptions, a hidden simulation bench, and a verified RTL reference.",
+      "default_tier": "small"
     },
     {
       "name": "verilogeval_v2_spec_to_rtl",
@@ -44,7 +81,8 @@
       ],
       "license": "MIT",
       "access": "public",
-      "notes": "Spec-to-RTL benchmark with the improved VerilogEval v2 harness and structured failure analysis."
+      "notes": "Spec-to-RTL benchmark with the improved VerilogEval v2 harness and structured failure analysis.",
+      "default_tier": "micro"
     },
     {
       "name": "rtllm_v2_0",
@@ -63,7 +101,8 @@
       ],
       "license": "MIT",
       "access": "public",
-      "notes": "Expanded RTLLM benchmark with categorized tasks; good for widening anchor-task families before scaling."
+      "notes": "Expanded RTLLM benchmark with categorized tasks; good for widening anchor-task families before scaling.",
+      "default_tier": "small"
     },
     {
       "name": "asserteval",
@@ -81,7 +120,8 @@
       ],
       "license": "repository-specific",
       "access": "public",
-      "notes": "Use this to train assertion and formal-task generation, not as the main generator benchmark. The current AssertLLM repo README says 20 designs; the later OpenLLM-RTL paper summary says 18, so verify the checkout you actually use."
+      "notes": "Use this to train assertion and formal-task generation, not as the main generator benchmark. The current AssertLLM repo README says 20 designs; the later OpenLLM-RTL paper summary says 18, so verify the checkout you actually use.",
+      "default_tier": "small"
     },
     {
       "name": "opentitan_dv",
@@ -100,7 +140,164 @@
       ],
       "license": "Apache-2.0",
       "access": "public",
-      "notes": "Repository-native industrial verification artifacts for later agentic verification benchmarks."
+      "notes": "Repository-native industrial verification artifacts for later agentic verification benchmarks.",
+      "default_tier": "large"
+    },
+    {
+      "name": "opentitan_ip_docs",
+      "role": "medium_spec_corpus",
+      "status": "ready",
+      "example_count": 5,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "curated spec markdown bundle",
+        "DV document",
+        "RTL path",
+        "testplan/checkers"
+      ],
+      "license": "Apache-2.0",
+      "access": "public",
+      "notes": "First curated pack is checked into the repo as manual task bundles for uart, i2c, spi_host, dma, and sysrst_ctrl from the local OpenTitan checkout. GPIO was not present in this checkout, so sysrst_ctrl is the fifth medium-tier task for now.",
+      "default_tier": "medium"
+    },
+    {
+      "name": "openhw_core_ip_manuals",
+      "role": "medium_spec_corpus",
+      "status": "planned",
+      "example_count": null,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "user-manual chapter PDF",
+        "RTL repo link",
+        "verification collateral link"
+      ],
+      "license": "repository-specific open license",
+      "access": "public",
+      "notes": "Use focused OpenHW manuals or manual chapters, especially CORE-V single-core manuals, as medium-sized architecture specs. These are a good bridge from toy tasks to real manuals because they already point at mature RTL and verification repos.",
+      "default_tier": "medium"
+    },
+    {
+      "name": "wishbone_b4",
+      "role": "medium_protocol_corpus",
+      "status": "planned",
+      "example_count": null,
+      "has_spec": true,
+      "has_gold_rtl": false,
+      "has_testbench": false,
+      "has_formal_oracle": false,
+      "fields": [
+        "protocol PDF",
+        "reference timing diagrams",
+        "paired implementation repo"
+      ],
+      "license": "OpenCores-hosted PDF",
+      "access": "public",
+      "notes": "Use Wishbone B4 as an open protocol-spec family. It is useful for medium-tier interface tasks once paired with OpenCores or LiteX-compatible implementations and hand-built oracle benches.",
+      "default_tier": "medium"
+    },
+    {
+      "name": "opentitan_top_docs",
+      "role": "large_spec_corpus",
+      "status": "planned",
+      "example_count": null,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "top-level datasheet",
+        "integration spec",
+        "chip-level DV doc",
+        "generated RTL/config"
+      ],
+      "license": "Apache-2.0",
+      "access": "public",
+      "notes": "Use OpenTitan top-level datasheets such as Earl Grey and Darjeeling for large-tier SoC-style specifications. These give a real integration story while staying fully public and repo-linked.",
+      "default_tier": "large"
+    },
+    {
+      "name": "cva6_user_manual",
+      "role": "large_spec_corpus",
+      "status": "planned",
+      "example_count": 1,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "user manual PDF",
+        "requirements specification",
+        "design document",
+        "RTL repo link"
+      ],
+      "license": "repository-specific open license",
+      "access": "public",
+      "notes": "Use the CVA6 user manual family as a large public CPU-core corpus. It is large enough to force retrieval/chunking, but still connected to public RTL and verification infrastructure.",
+      "default_tier": "large"
+    },
+    {
+      "name": "core_v_mcu_user_manual",
+      "role": "large_spec_corpus",
+      "status": "planned",
+      "example_count": 1,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "user manual PDF or rendered HTML",
+        "SoC RTL repo link",
+        "peripheral collateral"
+      ],
+      "license": "repository-specific open license",
+      "access": "public",
+      "notes": "Use CORE-V-MCU as a public large-tier SoC manual with multiple peripherals, DMA, and subsystem integration concerns.",
+      "default_tier": "large"
+    },
+    {
+      "name": "nvdla_docs",
+      "role": "large_spec_corpus",
+      "status": "planned",
+      "example_count": 1,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "integration guide",
+        "hardware manual",
+        "testbench/sanity tests",
+        "synthesis collateral"
+      ],
+      "license": "NVIDIA Open NVDLA License",
+      "access": "public",
+      "notes": "Use NVDLA as a large public accelerator-scale corpus. The docs are paired with RTL, a reference testbench, sanity tests, and synthesis material, which makes it unusually useful for verifier-agent work.",
+      "default_tier": "large"
+    },
+    {
+      "name": "onfi_specs",
+      "role": "large_protocol_corpus",
+      "status": "planned",
+      "example_count": null,
+      "has_spec": true,
+      "has_gold_rtl": false,
+      "has_testbench": false,
+      "has_formal_oracle": false,
+      "fields": [
+        "official ONFI PDF",
+        "errata",
+        "paired controller repo"
+      ],
+      "license": "ONFI specification license",
+      "access": "public",
+      "notes": "Use ONFI protocol specs as the open large-tier analogue to DDR-style memory-interface work. They are downloadable public PDFs and cover high-speed NAND interfaces with real timing/protocol complexity.",
+      "default_tier": "large"
     },
     {
       "name": "rtl_repo",
@@ -119,6 +316,44 @@
       "license": "Apache-2.0",
       "access": "public",
       "notes": "Repository-level scale corpus for context conditioning and code exposure, not a trustworthy reward oracle."
+    },
+    {
+      "name": "jedec_ddr3_private",
+      "role": "industrial_spec_corpus",
+      "status": "license-gated",
+      "example_count": 1,
+      "has_spec": true,
+      "has_gold_rtl": false,
+      "has_testbench": false,
+      "has_formal_oracle": false,
+      "fields": [
+        "JEDEC standard PDF",
+        "controller implementation repo",
+        "oracle collateral built in-house"
+      ],
+      "license": "JEDEC / redistribution-restricted",
+      "access": "licensed",
+      "notes": "Use this only once legal access is settled. DDR3-class standards are exactly the kind of industrial corpora you want, but they should sit in a separate private pipeline, not the public dataset path.",
+      "default_tier": "industrial"
+    },
+    {
+      "name": "jedec_ddr6_private",
+      "role": "industrial_spec_corpus",
+      "status": "license-gated",
+      "example_count": 1,
+      "has_spec": true,
+      "has_gold_rtl": false,
+      "has_testbench": false,
+      "has_formal_oracle": false,
+      "fields": [
+        "JEDEC standard PDF",
+        "controller implementation repo",
+        "oracle collateral built in-house"
+      ],
+      "license": "JEDEC / redistribution-restricted",
+      "access": "licensed",
+      "notes": "Treat DDR6 and similar next-generation standards as a separate industrial-private tier. They are valuable long-term targets, but not good public bootstrap data because the standards and collateral are access-controlled.",
+      "default_tier": "industrial"
     }
   ]
 }

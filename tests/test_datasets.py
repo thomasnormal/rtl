@@ -16,6 +16,11 @@ def test_manifest_anchor_counts_and_order() -> None:
     assert manifest.ordered_recommendations()[0].name == "rtllm_v1_1"
     assert manifest.total_example_count("anchor_seed") == 235
     assert manifest.by_name("asserteval").has_formal_oracle is True
+    assert manifest.by_name("opentitan_ip_docs").default_tier == "medium"
+    assert manifest.by_name("opentitan_ip_docs").status == "ready"
+    assert manifest.by_name("opentitan_ip_docs").example_count == 5
+    assert manifest.by_name("cva6_user_manual").default_tier == "large"
+    assert manifest.by_name("jedec_ddr6_private").default_tier == "industrial"
 
 
 def test_manifest_rejects_unknown_dataset_names() -> None:

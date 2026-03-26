@@ -3,7 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from rtl_training.task_store import load_stored_task, store_rtllm_tasks, store_verilog_eval_tasks
+from rtl_training.task_store import (
+    load_stored_task,
+    store_generic_task,
+    store_opentitan_ip_docs_tasks,
+    store_rtllm_tasks,
+    store_verilog_eval_tasks,
+)
 
 
 def test_store_rtllm_tasks_separates_public_inputs_from_hidden_oracle(tmp_path: Path) -> None:
@@ -18,7 +24,7 @@ def test_store_rtllm_tasks_separates_public_inputs_from_hidden_oracle(tmp_path: 
     written = store_rtllm_tasks(source_root, output_root, dataset_name="rtllm_v2_0")
     task = load_stored_task(written[0])
 
-    assert task.spec_path.read_text() == "8-bit adder"
+    assert (task.spec_dir / "spec.txt").read_text() == "8-bit adder"
     assert task.public_dir == written[0] / "public"
     assert not (task.public_dir / "gold_rtl.v").exists()
     assert not (task.public_dir / "testbench.v").exists()
@@ -30,7 +36,7 @@ def test_store_rtllm_tasks_separates_public_inputs_from_hidden_oracle(tmp_path: 
 
     public_metadata = json.loads(task.public_task_path.read_text())
     assert public_metadata["candidate_top_module"] == "adder_8bit"
-    assert public_metadata["spec"] == "spec.txt"
+    assert public_metadata["spec"] == "spec/"
 
 
 def test_store_rtllm_tasks_copies_hidden_support_files_and_selects_verified_top(tmp_path: Path) -> None:
@@ -84,7 +90,7 @@ def test_store_rtllm_tasks_extracts_public_interface_contract_from_structured_sp
     written = store_rtllm_tasks(source_root, output_root, dataset_name="rtllm_v2_0")
     public_metadata = json.loads((written[0] / "public" / "task.json").read_text())
 
-    assert public_metadata["deliverables"]["rtl"] == "submission/candidate.sv"
+    assert public_metadata["deliverables"]["rtl"] == "submission/"
     assert public_metadata["interface"]["top_module"] == "RAM"
     assert public_metadata["interface"]["declared_module_name"] == "RAM"
     assert public_metadata["interface"]["inputs"] == [
@@ -233,3 +239,158 @@ def test_store_verilog_eval_tasks_keeps_reference_model_hidden(tmp_path: Path) -
     assert task.oracle.candidate_top_module == "TopModule"
     assert not any(path.name.startswith("gold_rtl") for path in task.public_dir.iterdir())
     assert not any(path.name.startswith("testbench") for path in task.public_dir.iterdir())
+
+
+def test_store_rtllm_tasks_writes_tier_when_provided(tmp_path: Path) -> None:
+    source_root = tmp_path / "RTLLM"
+    task_dir = source_root / "Arithmetic" / "Adder" / "adder_8bit"
+    task_dir.mkdir(parents=True)
+    (task_dir / "design_description.txt").write_text("8-bit adder")
+    (task_dir / "verified_adder_8bit.v").write_text("module verified_adder_8bit; endmodule\n")
+    (task_dir / "testbench.v").write_text("module testbench; endmodule\n")
+
+    written = store_rtllm_tasks(
+        source_root, tmp_path / "task_store", dataset_name="rtllm_v2_0", tier="small"
+    )
+    task = load_stored_task(written[0])
+
+    assert task.tier == "small"
+    public_metadata = json.loads(task.public_task_path.read_text())
+    assert public_metadata["tier"] == "small"
+
+
+def test_store_generic_task_with_text_spec(tmp_path: Path) -> None:
+    task_root = store_generic_task(
+        output_root=tmp_path / "task_store",
+        dataset_name="custom",
+        task_id="my_adder",
+        spec_source="Design a 4-bit adder.",
+        candidate_top_module="adder_4bit",
+        tier="micro",
+    )
+    task = load_stored_task(task_root)
+
+    assert task.tier == "micro"
+    assert task.oracle is None
+    assert (task.spec_dir / "spec.txt").read_text() == "Design a 4-bit adder."
+    public = json.loads(task.public_task_path.read_text())
+    assert public["spec"] == "spec/"
+    assert public["candidate_top_module"] == "adder_4bit"
+
+
+def test_store_generic_task_with_directory_spec(tmp_path: Path) -> None:
+    spec_dir = tmp_path / "my_spec"
+    spec_dir.mkdir()
+    (spec_dir / "spec.md").write_text("# DDR5 Controller\n\nDetailed spec.")
+    (spec_dir / "timing.png").write_bytes(b"\x89PNG")
+
+    task_root = store_generic_task(
+        output_root=tmp_path / "task_store",
+        dataset_name="custom",
+        task_id="ddr5_ctrl",
+        spec_source=spec_dir,
+        candidate_top_module="ddr5_ctrl",
+        tier="industrial",
+    )
+    task = load_stored_task(task_root)
+
+    assert task.tier == "industrial"
+    assert (task.spec_dir / "spec.md").read_text() == "# DDR5 Controller\n\nDetailed spec."
+    assert (task.spec_dir / "timing.png").exists()
+
+
+def test_store_generic_task_with_oracle(tmp_path: Path) -> None:
+    gold = tmp_path / "gold.v"
+    gold.write_text("module adder; endmodule\n")
+    tb = tmp_path / "tb.v"
+    tb.write_text("module testbench; endmodule\n")
+
+    task_root = store_generic_task(
+        output_root=tmp_path / "task_store",
+        dataset_name="custom",
+        task_id="adder",
+        spec_source="Simple adder.",
+        candidate_top_module="adder",
+        gold_rtl_path=gold,
+        testbench_path=tb,
+    )
+    task = load_stored_task(task_root)
+
+    assert task.oracle is not None
+    assert task.oracle.candidate_top_module == "adder"
+
+
+def test_store_generic_task_preserves_source_metadata(tmp_path: Path) -> None:
+    task_root = store_generic_task(
+        output_root=tmp_path / "task_store",
+        dataset_name="custom",
+        task_id="meta_task",
+        spec_source="metadata demo",
+        candidate_top_module="meta_task",
+        source_metadata={"origin": "manual", "source_docs": ["spec.md"]},
+    )
+    metadata = json.loads((task_root / "task.json").read_text())
+
+    assert metadata["source"] == {"origin": "manual", "source_docs": ["spec.md"]}
+
+
+def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path) -> None:
+    written = store_opentitan_ip_docs_tasks(
+        tmp_path / "task_store",
+        source_root="~/opentitan",
+    )
+
+    assert sorted(path.name for path in written) == [
+        "dma",
+        "i2c",
+        "spi_host",
+        "sysrst_ctrl",
+        "uart",
+    ]
+
+    uart_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "uart")
+    assert uart_task.tier == "medium"
+    assert (uart_task.spec_dir / "spec.md").read_text().startswith("# OpenTitan UART")
+
+    public_metadata = json.loads(uart_task.public_task_path.read_text())
+    assert public_metadata["candidate_top_module"] == "uart"
+    assert public_metadata["interface"]["top_module"] == "uart"
+    assert public_metadata["interface"]["inputs"][0] == {
+        "name": "clk_i",
+        "direction": "input",
+        "width": "logic",
+    }
+
+    task_metadata = json.loads((uart_task.root / "task.json").read_text())
+    assert task_metadata["source"]["origin"] == "curated_task_pack"
+    assert task_metadata["source"]["spec_subdir"] == "uart"
+    assert "hw/ip/uart/README.md" in task_metadata["source"]["source_docs"]
+    assert task_metadata["source"]["source_root"] == str(Path("~/opentitan").expanduser().resolve())
+
+
+def test_load_stored_task_backward_compat_old_spec_format(tmp_path: Path) -> None:
+    """Old format: spec points to a single file, not a directory."""
+    task_root = tmp_path / "old_task"
+    public_dir = task_root / "public"
+    public_dir.mkdir(parents=True)
+    (public_dir / "spec.txt").write_text("old spec")
+    (public_dir / "task.json").write_text(json.dumps({"dataset_name": "old", "task_id": "t1"}) + "\n")
+    (task_root / "task.json").write_text(
+        json.dumps({
+            "dataset_name": "old",
+            "task_id": "t1",
+            "public": {
+                "directory": "public",
+                "spec": "public/spec.txt",
+                "task": "public/task.json",
+            },
+            "source": {},
+        })
+        + "\n"
+    )
+
+    task = load_stored_task(task_root)
+
+    # spec_dir should be the parent of the old spec file
+    assert task.spec_dir == task_root / "public"
+    assert (task.spec_dir / "spec.txt").read_text() == "old spec"
