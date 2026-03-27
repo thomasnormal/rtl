@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import tarfile
+import tempfile
 from typing import Any
 
 
@@ -119,19 +121,83 @@ def detect_source_bundle(source_root: str | Path, *, name: str) -> SharedSourceB
     )
 
 
+def _stream_git_snapshot(*, source_root: Path, git_commit: str, snapshot_root: Path) -> None:
+    snapshot_root.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=snapshot_root.parent) as temp_dir:
+        temp_root = Path(temp_dir) / snapshot_root.name
+        temp_root.mkdir(parents=True, exist_ok=True)
+        with subprocess.Popen(
+            ("git", "-C", str(source_root), "archive", "--format=tar", git_commit),
+            stdout=subprocess.PIPE,
+        ) as process:
+            assert process.stdout is not None
+            with tarfile.open(fileobj=process.stdout, mode="r|") as archive:
+                try:
+                    archive.extractall(temp_root, filter="data")
+                except TypeError:
+                    archive.extractall(temp_root)
+            returncode = process.wait()
+        if returncode != 0:
+            raise subprocess.CalledProcessError(returncode, ("git", "-C", str(source_root), "archive", "--format=tar", git_commit))
+        temp_root.replace(snapshot_root)
+
+
+def freeze_git_source_bundle(
+    registry_root: str | Path,
+    *,
+    name: str,
+    source_root: str | Path,
+    git_commit: str,
+) -> SharedSourceBundle:
+    registry_root_path = Path(registry_root).resolve()
+    bundle_id = f"{_sanitize_name(name)}-{git_commit[:12]}"
+    snapshot_root = registry_root_path / "bundles" / bundle_id
+    if not snapshot_root.exists():
+        _stream_git_snapshot(
+            source_root=Path(source_root).expanduser().resolve(),
+            git_commit=git_commit,
+            snapshot_root=snapshot_root,
+        )
+    return SharedSourceBundle(
+        bundle_id=bundle_id,
+        name=name,
+        root=snapshot_root,
+        source_kind="git_snapshot",
+        git_commit=git_commit,
+        git_dirty=False,
+    )
+
+
 def register_shared_source_bundle(
     registry_root: str | Path,
     *,
     name: str,
     source_root: str | Path,
+    freeze_git_checkout: bool = True,
 ) -> SharedSourceBundle:
     registry_path = Path(registry_root).resolve() / "registry.json"
     registry = SharedSourceRegistry.load(registry_path)
-    bundle = detect_source_bundle(source_root, name=name)
+    detected = detect_source_bundle(source_root, name=name)
+    bundle = detected
+    if freeze_git_checkout and detected.git_commit is not None:
+        bundle = freeze_git_source_bundle(
+            registry_root,
+            name=name,
+            source_root=source_root,
+            git_commit=detected.git_commit,
+        )
 
     existing: list[SharedSourceBundle] = []
     replaced = False
     for current in registry.bundles:
+        if (
+            freeze_git_checkout
+            and detected.git_commit is not None
+            and current.name == name
+            and current.git_commit == detected.git_commit
+            and current.source_kind == "git_checkout"
+        ):
+            continue
         if current.bundle_id == bundle.bundle_id:
             existing.append(bundle)
             replaced = True
@@ -142,4 +208,3 @@ def register_shared_source_bundle(
 
     SharedSourceRegistry(path=registry_path, bundles=tuple(existing)).write()
     return bundle
-

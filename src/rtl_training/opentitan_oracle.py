@@ -24,6 +24,41 @@ _MODULE_DECL_RE = re.compile(r"\bmodule\s+([A-Za-z_][A-Za-z0-9_$]*)\b")
 
 
 @dataclass(frozen=True)
+class OpenTitanOracleMutationEdit:
+    path: str
+    find: str
+    replace: str
+
+    @classmethod
+    def from_dict(cls, raw: object) -> "OpenTitanOracleMutationEdit":
+        if not isinstance(raw, dict):
+            raise ValueError("OpenTitan oracle mutation edit must be an object")
+        return cls(
+            path=str(raw["path"]),
+            find=str(raw["find"]),
+            replace=str(raw["replace"]),
+        )
+
+
+@dataclass(frozen=True)
+class OpenTitanOracleMutant:
+    name: str
+    edits: tuple[OpenTitanOracleMutationEdit, ...]
+
+    @classmethod
+    def from_dict(cls, raw: object) -> "OpenTitanOracleMutant":
+        if not isinstance(raw, dict):
+            raise ValueError("OpenTitan oracle mutant must be an object")
+        raw_edits = raw.get("edits")
+        if not isinstance(raw_edits, list) or not raw_edits:
+            raise ValueError("OpenTitan oracle mutant must define a non-empty edits list")
+        return cls(
+            name=str(raw["name"]),
+            edits=tuple(OpenTitanOracleMutationEdit.from_dict(edit) for edit in raw_edits),
+        )
+
+
+@dataclass(frozen=True)
 class OpenTitanDvsimOracle:
     cfg: str
     test: str
@@ -32,6 +67,7 @@ class OpenTitanDvsimOracle:
     repo_overlay_dir: Path | None
     overlay_rel_dir: str
     source_root: Path
+    mutants: tuple[OpenTitanOracleMutant, ...] = ()
 
     @classmethod
     def from_task(cls, task: StoredTask) -> "OpenTitanDvsimOracle":
@@ -59,6 +95,10 @@ class OpenTitanDvsimOracle:
             ),
             overlay_rel_dir=str(raw["overlay_rel_dir"]),
             source_root=source_root,
+            mutants=tuple(
+                OpenTitanOracleMutant.from_dict(item)
+                for item in raw.get("mutants", ())
+            ),
         )
 
 
@@ -82,6 +122,13 @@ class OpenTitanDvsimRunResult:
     stderr: str
 
 
+@dataclass(frozen=True)
+class OpenTitanCompatInterfaceSpec:
+    interface_name: str
+    instance_name: str
+    signals: tuple[str, ...]
+
+
 def build_opentitan_gold_selftest_plan(
     task: StoredTask,
     *,
@@ -94,9 +141,32 @@ def build_opentitan_gold_selftest_plan(
         oracle,
         work_root=work_root,
         run_name="opentitan_gold_selftest",
-        compat_mode="stub",
+        compat_mode="gold",
     )
     shutil.copytree(oracle.golden_rtl_dir, overlay_dir)
+    _stage_gold_reference_wrapper(task, overlay_dir=overlay_dir)
+    return _finalize_dvsim_plan(task, oracle, work_dir, repo_root)
+
+
+def build_opentitan_mutant_plan(
+    task: StoredTask,
+    *,
+    mutant_name: str,
+    work_root: str | Path,
+) -> OpenTitanDvsimPlan:
+    oracle = OpenTitanDvsimOracle.from_task(task)
+    mutant = _select_mutant(oracle, mutant_name)
+
+    work_dir, repo_root, overlay_dir = _prepare_repo_overlay(
+        task,
+        oracle,
+        work_root=work_root,
+        run_name=f"opentitan_mutant_{_sanitize_run_component(mutant.name)}",
+        compat_mode="gold",
+    )
+    shutil.copytree(oracle.golden_rtl_dir, overlay_dir)
+    _stage_gold_reference_wrapper(task, overlay_dir=overlay_dir)
+    _apply_mutant_edits(overlay_dir, mutant)
     return _finalize_dvsim_plan(task, oracle, work_dir, repo_root)
 
 
@@ -157,6 +227,24 @@ def validate_opentitan_gold_reference(
     return run_opentitan_dvsim_plan(plan, timeout_s=timeout_s)
 
 
+def validate_opentitan_mutant_bank(
+    task: StoredTask,
+    *,
+    work_root: str | Path,
+    timeout_s: int = 1800,
+) -> dict[str, OpenTitanDvsimRunResult]:
+    oracle = OpenTitanDvsimOracle.from_task(task)
+    results: dict[str, OpenTitanDvsimRunResult] = {}
+    for mutant in oracle.mutants:
+        plan = build_opentitan_mutant_plan(
+            task,
+            mutant_name=mutant.name,
+            work_root=work_root,
+        )
+        results[mutant.name] = run_opentitan_dvsim_plan(plan, timeout_s=timeout_s)
+    return results
+
+
 def _copy_repo_tree(source_root: Path, destination_root: Path) -> None:
     shutil.copytree(
         source_root,
@@ -174,6 +262,33 @@ def _link_or_copy_file(src: str, dst: str) -> None:
         if err.errno not in {errno.EXDEV, errno.EPERM, errno.ENOTSUP, errno.EACCES}:
             raise
         shutil.copy2(src, dst)
+
+
+def _sanitize_run_component(value: str) -> str:
+    sanitized = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip())
+    return sanitized.strip("-") or "mutant"
+
+
+def _select_mutant(oracle: OpenTitanDvsimOracle, mutant_name: str) -> OpenTitanOracleMutant:
+    for mutant in oracle.mutants:
+        if mutant.name == mutant_name:
+            return mutant
+    raise KeyError(mutant_name)
+
+
+def _apply_mutant_edits(overlay_dir: Path, mutant: OpenTitanOracleMutant) -> None:
+    for edit in mutant.edits:
+        target_path = overlay_dir / edit.path
+        if not target_path.is_file():
+            raise FileNotFoundError(f"OpenTitan mutant target does not exist: {target_path}")
+        text = target_path.read_text()
+        count = text.count(edit.find)
+        if count != 1:
+            raise ValueError(
+                f"OpenTitan mutant {mutant.name!r} expected exactly one match for "
+                f"{edit.path!r}, found {count}"
+            )
+        target_path.write_text(text.replace(edit.find, edit.replace, 1))
 
 
 def _prepare_repo_overlay(
@@ -197,7 +312,12 @@ def _prepare_repo_overlay(
         overlay_rel_dir=oracle.overlay_rel_dir,
         mode=compat_mode,
     )
-    _stage_hidden_repo_overlay(oracle, repo_root)
+    _stage_hidden_repo_overlay(oracle, repo_root, mode=compat_mode)
+    _extend_sim_core_for_compat(
+        task,
+        repo_root=repo_root,
+        overlay_rel_dir=oracle.overlay_rel_dir,
+    )
 
     overlay_dir = repo_root / oracle.overlay_rel_dir
     overlay_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -206,7 +326,9 @@ def _prepare_repo_overlay(
     return work_dir, repo_root, overlay_dir
 
 
-def _stage_hidden_repo_overlay(oracle: OpenTitanDvsimOracle, repo_root: Path) -> None:
+def _stage_hidden_repo_overlay(oracle: OpenTitanDvsimOracle, repo_root: Path, *, mode: str) -> None:
+    if mode not in {"public", "gold"}:
+        return
     if oracle.repo_overlay_dir is None or not oracle.repo_overlay_dir.is_dir():
         return
     shutil.copytree(oracle.repo_overlay_dir, repo_root, dirs_exist_ok=True)
@@ -267,13 +389,113 @@ def _stage_public_compat_abi(
             if source_path.suffix not in _RTL_EXTENSIONS:
                 shutil.copy2(source_path, destination)
                 continue
-            if mode == "public":
+            if mode in {"public", "gold"}:
                 shutil.copy2(source_path, destination)
                 continue
             if mode == "stub":
                 destination.write_text(_render_compat_stub(source_path.read_text()))
                 continue
             raise ValueError(f"unsupported compat staging mode {mode!r}")
+
+
+def _extend_sim_core_for_compat(
+    task: StoredTask,
+    *,
+    repo_root: Path,
+    overlay_rel_dir: str,
+) -> None:
+    compat_dir = task.spec_dir / "compat"
+    compat_files = tuple(
+        sorted(path.name for path in compat_dir.iterdir() if path.is_file() and path.suffix in _RTL_EXTENSIONS)
+    ) if compat_dir.is_dir() else ()
+    if not compat_files:
+        return
+    ip_root = (repo_root / overlay_rel_dir).parent
+    sim_core_path = ip_root / "dv" / f"{task.task_id}_sim.core"
+    if not sim_core_path.is_file():
+        return
+    text = sim_core_path.read_text()
+    compat_entries = "\n".join(f"      - compat/{name}" for name in compat_files)
+    if compat_entries and compat_entries in text:
+        return
+    pattern = re.compile(r"(?P<prefix>\n\s*files:\n)(?P<body>(?:\s*-\s+[^\n]+\n)+)(?P<suffix>\s*file_type:)", re.MULTILINE)
+
+    def replace(match: re.Match[str]) -> str:
+        body = match.group("body")
+        extra = "".join(f"      - compat/{name}\n" for name in compat_files if f"compat/{name}" not in body)
+        return f"{match.group('prefix')}{body}{extra}{match.group('suffix')}"
+
+    updated, count = pattern.subn(replace, text, count=1)
+    if count != 1:
+        raise ValueError(f"unable to extend sim core with compat files: {sim_core_path}")
+    sim_core_path.write_text(updated)
+
+
+def _stage_gold_reference_wrapper(task: StoredTask, *, overlay_dir: Path) -> None:
+    compat_spec = _discover_compat_interface_spec(task)
+    if compat_spec is None:
+        return
+    internal = _public_interface_internal(task)
+    native_interface = dict(internal["native_interface"])
+    top_module = str(native_interface["top_module"])
+    golden_files = tuple(
+        sorted(
+            (
+                path
+                for path in overlay_dir.iterdir()
+                if path.is_file() and path.suffix in _RTL_EXTENSIONS
+            ),
+            key=lambda path: path.name,
+        )
+    )
+    top_source = _find_candidate_top_source(golden_files, top_module)
+    original_text = top_source.read_text()
+    candidate_text = _rewrite_first_module_name(
+        original_text,
+        old_name=top_module,
+        new_name=f"{top_module}_candidate",
+    )
+    candidate_text = _inject_compat_stub_instance(
+        candidate_text,
+        compat_spec=compat_spec,
+    )
+    wrapper_text = _render_gold_reference_wrapper(
+        source_text=original_text,
+        top_module=top_module,
+        native_ports=tuple(native_interface.get("ports", ())),
+        candidate_text=candidate_text,
+    )
+    top_source.write_text(wrapper_text)
+
+
+def _discover_compat_interface_spec(task: StoredTask) -> OpenTitanCompatInterfaceSpec | None:
+    compat_dir = task.spec_dir / "compat"
+    if not compat_dir.is_dir():
+        return None
+    compat_files = tuple(sorted(compat_dir.glob("*_compat_if.sv")))
+    if len(compat_files) != 1:
+        return None
+    source_text = compat_files[0].read_text()
+    interface_match = re.search(
+        r"\binterface\s+([A-Za-z_][A-Za-z0-9_$]*)\b",
+        source_text,
+    )
+    if interface_match is None:
+        return None
+    interface_name = interface_match.group(1)
+    signals = tuple(
+        match.group(1)
+        for match in re.finditer(
+            r"^\s*logic(?:\s+\[[^\]]+\])?\s+([A-Za-z_][A-Za-z0-9_$]*)\s*;",
+            source_text,
+            re.MULTILINE,
+        )
+    )
+    return OpenTitanCompatInterfaceSpec(
+        interface_name=interface_name,
+        instance_name=f"u_{interface_name}",
+        signals=signals,
+    )
 
 
 def _stage_candidate_overlay(
@@ -399,6 +621,53 @@ def _rewrite_first_module_name(text: str, *, old_name: str, new_name: str) -> st
     if count != 1:
         raise ValueError(f"unable to rewrite module name {old_name} -> {new_name}")
     return rewritten
+
+
+def _inject_compat_stub_instance(
+    source_text: str,
+    *,
+    compat_spec: OpenTitanCompatInterfaceSpec,
+) -> str:
+    match = re.search(r"endmodule\b", source_text)
+    if match is None:
+        raise ValueError("unable to inject compatibility interface into module without endmodule")
+    lines = [
+        f"  {compat_spec.interface_name} {compat_spec.instance_name}();",
+    ]
+    for signal in compat_spec.signals:
+        lines.append(f"  assign {compat_spec.instance_name}.{signal} = '0;")
+    insertion = "\n" + "\n".join(lines) + "\n\n"
+    return source_text[:match.start()] + insertion + source_text[match.start():]
+
+
+def _render_gold_reference_wrapper(
+    *,
+    source_text: str,
+    top_module: str,
+    native_ports: tuple[dict[str, object], ...],
+    candidate_text: str,
+) -> str:
+    preamble, header = _extract_module_preamble_and_header(source_text, top_module)
+    lines: list[str] = []
+    stripped_preamble = preamble.rstrip()
+    if stripped_preamble:
+        lines.append(stripped_preamble)
+        lines.append("")
+    lines.append(
+        "// Generated wrapper adapting the native OpenTitan gold RTL to the candidate-style deep-DV hierarchy."
+    )
+    lines.append(candidate_text.rstrip())
+    lines.append("")
+    lines.append(header.rstrip())
+    lines.append("")
+    lines.append(f"  {top_module}_candidate u_candidate (")
+    for index, port in enumerate(native_ports):
+        suffix = "," if index < len(native_ports) - 1 else ""
+        lines.append(f"    .{port['name']}({port['name']}){suffix}")
+    lines.append("  );")
+    lines.append("endmodule")
+    lines.append("")
+    return "\n".join(lines)
 
 
 def _render_candidate_wrapper(

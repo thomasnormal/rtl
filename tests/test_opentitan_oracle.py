@@ -8,10 +8,30 @@ import subprocess
 from rtl_training.opentitan_oracle import (
     build_opentitan_candidate_validation_plan,
     build_opentitan_gold_selftest_plan,
+    build_opentitan_mutant_plan,
     run_opentitan_dvsim_plan,
 )
 from rtl_training.shared_sources import SharedSourceBundle, SharedSourceRegistry
 from rtl_training.task_store import load_stored_task
+
+
+def _write_fake_uart_dv_files(repo_root: Path) -> None:
+    (repo_root / "hw" / "ip" / "uart" / "dv").mkdir(parents=True, exist_ok=True)
+    (repo_root / "hw" / "ip" / "uart" / "dv" / "uart_sim_cfg.hjson").write_text("name: uart\n")
+    (repo_root / "hw" / "ip" / "uart" / "dv" / "uart_sim.core").write_text(
+        "\n".join(
+            [
+                "CAPI=2:",
+                'name: "lowrisc:dv:uart_sim:0.1"',
+                "filesets:",
+                "  files_dv:",
+                "    files:",
+                "      - tb/tb.sv",
+                "    file_type: systemVerilogSource",
+                "",
+            ]
+        )
+    )
 
 
 def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: Path) -> None:
@@ -98,6 +118,18 @@ def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: 
                     "tool": "xcelium",
                     "golden_rtl_dir": "golden_rtl",
                     "overlay_rel_dir": "hw/ip/uart/rtl",
+                    "mutants": [
+                        {
+                            "name": "flip_uart_comment",
+                            "edits": [
+                                {
+                                    "path": "uart.sv",
+                                    "find": "// golden",
+                                    "replace": "// mutated",
+                                }
+                            ],
+                        }
+                    ],
                 },
                 "source": {
                     "source_root": str(repo_root.resolve()),
@@ -188,8 +220,7 @@ def test_build_opentitan_gold_selftest_plan_overlays_golden_rtl(tmp_path: Path) 
     (repo_root / "util" / "dvsim" / "dvsim.py").write_text("print('fake dvsim')\n")
     (repo_root / "hw" / "ip" / "uart" / "rtl").mkdir(parents=True)
     (repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").write_text("module uart; // live\nendmodule\n")
-    (repo_root / "hw" / "ip" / "uart" / "dv").mkdir(parents=True)
-    (repo_root / "hw" / "ip" / "uart" / "dv" / "uart_sim_cfg.hjson").write_text("name: uart\n")
+    _write_fake_uart_dv_files(repo_root)
 
     task_root = tmp_path / "task"
     registry_path = tmp_path / "registry" / "registry.json"
@@ -199,14 +230,20 @@ def test_build_opentitan_gold_selftest_plan_overlays_golden_rtl(tmp_path: Path) 
     plan = build_opentitan_gold_selftest_plan(task, work_root=tmp_path / "work")
 
     assert plan.repo_root.exists()
-    assert (plan.repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").read_text() == (
-        "module uart; // golden\nendmodule\n"
-    )
+    wrapper_text = (plan.repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").read_text()
+    assert "module uart_candidate; // golden" in wrapper_text
+    assert "uart_compat_if u_uart_compat_if();" in wrapper_text
+    assert "module uart;" in wrapper_text
+    assert "uart_candidate u_candidate (" in wrapper_text
     assert (plan.repo_root / "hw" / "ip" / "uart" / "dv" / "uart_sim_cfg.hjson").exists()
     assert (plan.repo_root / "hw" / "ip" / "uart" / "dv" / "compat" / "uart_compat_if.sv").exists()
     assert (
         plan.repo_root / "hw" / "ip" / "uart" / "dv" / "compat" / "uart_compat_bind.sv"
-    ).read_text().strip() == "module uart_compat_bind; endmodule : uart_compat_bind"
+    ).read_text().strip().startswith("module uart_compat_bind;")
+    sim_core_text = (plan.repo_root / "hw" / "ip" / "uart" / "dv" / "uart_sim.core").read_text()
+    assert "      - compat/uart_compat_if.sv" in sim_core_text
+    assert "      - compat/uart_compat_checker.sv" in sim_core_text
+    assert "      - compat/uart_compat_bind.sv" in sim_core_text
     assert plan.command[1] == "util/dvsim/dvsim.py"
     assert plan.command[2] == "hw/ip/uart/dv/uart_sim_cfg.hjson"
     assert plan.command[4] == "uart_smoke"
@@ -223,8 +260,7 @@ def test_run_opentitan_dvsim_plan_invokes_dvsim_from_overlaid_repo(
     (repo_root / "util" / "dvsim" / "dvsim.py").write_text("print('fake dvsim')\n")
     (repo_root / "hw" / "ip" / "uart" / "rtl").mkdir(parents=True)
     (repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").write_text("module uart; // live\nendmodule\n")
-    (repo_root / "hw" / "ip" / "uart" / "dv").mkdir(parents=True)
-    (repo_root / "hw" / "ip" / "uart" / "dv" / "uart_sim_cfg.hjson").write_text("name: uart\n")
+    _write_fake_uart_dv_files(repo_root)
 
     task_root = tmp_path / "task"
     registry_path = tmp_path / "registry" / "registry.json"
@@ -246,7 +282,9 @@ def test_run_opentitan_dvsim_plan_invokes_dvsim_from_overlaid_repo(
 
     assert result.passed is True
     assert Path(captured["cwd"]) == plan.repo_root
-    assert captured["overlay_text"] == "module uart; // golden\nendmodule\n"
+    assert isinstance(captured["overlay_text"], str)
+    assert "module uart_candidate; // golden" in captured["overlay_text"]
+    assert "uart_candidate u_candidate (" in captured["overlay_text"]
     command = captured["command"]
     assert isinstance(command, tuple)
     assert "--scratch-root" in command
@@ -274,8 +312,7 @@ def test_build_opentitan_candidate_validation_plan_wraps_projected_candidate(tmp
         ");\n"
         "endmodule\n"
     )
-    (repo_root / "hw" / "ip" / "uart" / "dv").mkdir(parents=True)
-    (repo_root / "hw" / "ip" / "uart" / "dv" / "uart_sim_cfg.hjson").write_text("name: uart\n")
+    _write_fake_uart_dv_files(repo_root)
 
     task_root = tmp_path / "task"
     registry_path = tmp_path / "registry" / "registry.json"
@@ -320,7 +357,7 @@ def test_build_opentitan_candidate_validation_plan_wraps_projected_candidate(tmp
     assert "module uart_candidate(" in renamed_candidate
 
 
-def test_build_opentitan_plan_applies_hidden_repo_overlay(tmp_path: Path) -> None:
+def test_build_opentitan_candidate_plan_applies_hidden_repo_overlay(tmp_path: Path) -> None:
     repo_root = tmp_path / "repo_src"
     (repo_root / "util" / "dvsim").mkdir(parents=True)
     (repo_root / "util" / "dvsim" / "dvsim.py").write_text("print('fake dvsim')\n")
@@ -328,8 +365,8 @@ def test_build_opentitan_plan_applies_hidden_repo_overlay(tmp_path: Path) -> Non
     (repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").write_text("module uart; endmodule\n")
     (repo_root / "hw" / "ip" / "uart" / "dv" / "tb").mkdir(parents=True)
     (repo_root / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv").write_text("module tb; // upstream\nendmodule\n")
-    (repo_root / "hw" / "ip" / "uart" / "dv").mkdir(parents=True, exist_ok=True)
-    (repo_root / "hw" / "ip" / "uart" / "dv" / "uart_sim_cfg.hjson").write_text("name: uart\n")
+    _write_fake_uart_dv_files(repo_root)
+    (repo_root / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv").write_text("module tb; // upstream\nendmodule\n")
 
     task_root = tmp_path / "task"
     registry_path = tmp_path / "registry" / "registry.json"
@@ -342,8 +379,50 @@ def test_build_opentitan_plan_applies_hidden_repo_overlay(tmp_path: Path) -> Non
     (task_root / "task.json").write_text(json.dumps(metadata, indent=2) + "\n")
 
     task = load_stored_task(task_root)
-    plan = build_opentitan_gold_selftest_plan(task, work_root=tmp_path / "work")
+    candidate_dir = tmp_path / "candidate"
+    candidate_dir.mkdir()
+    (candidate_dir / "uart.sv").write_text(
+        "module uart(\n"
+        "  input logic clk_i,\n"
+        "  input logic rst_ni,\n"
+        "  input uart_public_types_pkg::uart_tl_i_t tl_i,\n"
+        "  input uart_public_types_pkg::uart_alert_rx_i_t alert_rx_i,\n"
+        "  output uart_public_types_pkg::uart_tl_o_t tl_o,\n"
+        "  output uart_public_types_pkg::uart_alert_tx_o_t alert_tx_o\n"
+        ");\n"
+        "  uart_compat_if u_uart_compat_if();\n"
+        "endmodule\n"
+    )
+    plan = build_opentitan_candidate_validation_plan(
+        task,
+        candidate_dir=candidate_dir,
+        work_root=tmp_path / "work",
+    )
 
     assert (
         plan.repo_root / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv"
     ).read_text() == "module tb; // overlay\nendmodule\n"
+
+
+def test_build_opentitan_mutant_plan_applies_declared_mutation(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo_src"
+    (repo_root / "util" / "dvsim").mkdir(parents=True)
+    (repo_root / "util" / "dvsim" / "dvsim.py").write_text("print('fake dvsim')\n")
+    (repo_root / "hw" / "ip" / "uart" / "rtl").mkdir(parents=True)
+    (repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").write_text("module uart; // live\nendmodule\n")
+    _write_fake_uart_dv_files(repo_root)
+
+    task_root = tmp_path / "task"
+    registry_path = tmp_path / "registry" / "registry.json"
+    _write_fake_opentitan_task(task_root, repo_root, registry_path)
+    task = load_stored_task(task_root)
+
+    plan = build_opentitan_mutant_plan(
+        task,
+        mutant_name="flip_uart_comment",
+        work_root=tmp_path / "work",
+    )
+
+    wrapper_text = (plan.repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").read_text()
+    assert "module uart_candidate; // mutated" in wrapper_text
+    assert "uart_candidate u_candidate (" in wrapper_text

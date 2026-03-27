@@ -27,6 +27,38 @@
         "tool": "xcelium",
         "golden_rtl_dir": "golden_rtl",
         "overlay_rel_dir": "hw/ip/uart/rtl",
+        "mutants": [
+          {
+            "name": "tx_enable_tied_low",
+            "edits": [
+              {
+                "path": "uart.sv",
+                "find": "  assign cio_tx_en_o = 1'b1;\n",
+                "replace": "  assign cio_tx_en_o = 1'b0;\n"
+              }
+            ]
+          },
+          {
+            "name": "tx_done_interrupt_disabled",
+            "edits": [
+              {
+                "path": "uart_core.sv",
+                "find": "  assign event_tx_done = ~tx_fifo_rvalid & ~tx_uart_idle_q & tx_uart_idle;\n",
+                "replace": "  assign event_tx_done = 1'b0;\n"
+              }
+            ]
+          },
+          {
+            "name": "rx_data_zeroed",
+            "edits": [
+              {
+                "path": "uart_core.sv",
+                "find": "  assign hw2reg.rdata.d = uart_rdata;\n",
+                "replace": "  assign hw2reg.rdata.d = '0;\n"
+              }
+            ]
+          }
+        ],
         "assets": [
           {
             "source": "hw/ip/uart/rtl",
@@ -100,6 +132,20 @@
         "hw/ip/i2c/dv"
       ],
       "private_source_mode": "shared_bundle",
+      "raw_oracle": {
+        "kind": "opentitan_dvsim",
+        "cfg": "hw/ip/i2c/dv/i2c_sim_cfg.hjson",
+        "test": "i2c_host_smoke",
+        "tool": "xcelium",
+        "golden_rtl_dir": "golden_rtl",
+        "overlay_rel_dir": "hw/ip/i2c/rtl",
+        "assets": [
+          {
+            "source": "hw/ip/i2c/rtl",
+            "dest": "golden_rtl"
+          }
+        ]
+      },
       "interface": {
         "top_module": "i2c",
         "declared_module_name": "i2c",
@@ -168,6 +214,20 @@
         "hw/ip/spi_host/dv"
       ],
       "private_source_mode": "shared_bundle",
+      "raw_oracle": {
+        "kind": "opentitan_dvsim",
+        "cfg": "hw/ip/spi_host/dv/spi_host_sim_cfg.hjson",
+        "test": "spi_host_smoke",
+        "tool": "xcelium",
+        "golden_rtl_dir": "golden_rtl",
+        "overlay_rel_dir": "hw/ip/spi_host/rtl",
+        "assets": [
+          {
+            "source": "hw/ip/spi_host/rtl",
+            "dest": "golden_rtl"
+          }
+        ]
+      },
       "interface": {
         "top_module": "spi_host",
         "declared_module_name": "spi_host",

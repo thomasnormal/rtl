@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 from copy import deepcopy
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 import re
 from typing import Any, Mapping
@@ -453,11 +454,39 @@ def _prepare_opentitan_self_contained_contract(
     if normalized.get("notes") is not None:
         projected_interface["notes"] = list(normalized["notes"])
 
-    support_files: tuple[tuple[str, str], ...] = ()
-    if projection["support_files"]:
+    support_files_list: list[tuple[str, str]] = []
+    if projection["type_defs"]:
         package_name = str(projection["types_package"])
         filename = f"{package_name}.sv"
-        support_files = ((filename, _render_opentitan_public_types_package(package_name, projection)),)
+        support_files_list.append(
+            (filename, _render_opentitan_public_types_package(package_name, projection))
+        )
+
+    if any(
+        str(port["native_type"]) in {"tlul_pkg::tl_h2d_t", "tlul_pkg::tl_d2h_t"}
+        for port in projection["ports"]
+    ):
+        tlul_package_name = f"{task_id}_public_tlul_pkg"
+        projection["tlul_package"] = tlul_package_name
+        support_files_list.append(
+            (
+                f"{tlul_package_name}.sv",
+                _render_opentitan_public_tlul_package(tlul_package_name, projection),
+            )
+        )
+
+    reg_metadata = _load_opentitan_reg_metadata(task_id, source_root)
+    if reg_metadata is not None:
+        regs_package_name = f"{task_id}_public_regs_pkg"
+        projection["register_package"] = regs_package_name
+        support_files_list.append(
+            (
+                f"{regs_package_name}.sv",
+                _render_opentitan_public_regs_package(regs_package_name, reg_metadata),
+            )
+        )
+
+    projection["support_files"] = [filename for filename, _ in support_files_list]
 
     hidden_metadata = {
         "profile": _OPENTITAN_SELF_CONTAINED_PROFILE,
@@ -466,7 +495,7 @@ def _prepare_opentitan_self_contained_contract(
     }
     return PreparedPublicInterfaceContract(
         interface=projected_interface,
-        support_files=support_files,
+        support_files=tuple(support_files_list),
         hidden_metadata=hidden_metadata,
     )
 
@@ -544,7 +573,7 @@ def _project_opentitan_ports(
         )
     return projected_ports, {
         "types_package": types_package,
-        "support_files": [f"{types_package}.sv"] if type_defs else [],
+        "support_files": [],
         "ports": opaque_ports,
         "type_defs": type_defs,
     }
@@ -570,6 +599,325 @@ def _render_opentitan_public_types_package(package_name: str, projection: Mappin
     return "\n".join(lines)
 
 
+def _render_opentitan_public_tlul_package(package_name: str, projection: Mapping[str, Any]) -> str:
+    types_package = str(projection["types_package"])
+    h2d_port = next(
+        (port for port in projection["ports"] if str(port["native_type"]) == "tlul_pkg::tl_h2d_t"),
+        None,
+    )
+    d2h_port = next(
+        (port for port in projection["ports"] if str(port["native_type"]) == "tlul_pkg::tl_d2h_t"),
+        None,
+    )
+    lines = [
+        "// Generated TL-UL helper package for the self-contained public OpenTitan task ABI.",
+        f"package {package_name};",
+        f"  import {types_package}::*;",
+        "",
+        "  localparam logic [2:0] TL_A_PUTFULL    = 3'd0;",
+        "  localparam logic [2:0] TL_A_PUTPARTIAL = 3'd1;",
+        "  localparam logic [2:0] TL_A_GET        = 3'd4;",
+        "  localparam logic [2:0] TL_D_ACK        = 3'd0;",
+        "  localparam logic [2:0] TL_D_ACKDATA    = 3'd1;",
+        "",
+    ]
+    if h2d_port is not None:
+        h2d_type = str(h2d_port["public_type"])
+        prefix = _tlul_helper_prefix(str(h2d_port["name"]))
+        lines.extend(
+            [
+                f"  function automatic {h2d_type} {prefix}_idle();",
+                f"    {h2d_type} req;",
+                "    req = '0;",
+                "    req[23] = 1'b1;",
+                "    return req;",
+                "  endfunction",
+                "",
+                f"  function automatic {h2d_type} {prefix}_make_get32(",
+                "    input logic [31:0] addr,",
+                "    input logic [7:0] source",
+                "  );",
+                f"    {h2d_type} req;",
+                f"    req = {prefix}_idle();",
+                "    req[108]    = 1'b1;",
+                "    req[107:105]= TL_A_GET;",
+                "    req[101:100]= 2'd2;",
+                "    req[99:92]  = source;",
+                "    req[91:60]  = addr;",
+                "    req[59:56]  = 4'hf;",
+                "    return req;",
+                "  endfunction",
+                "",
+                f"  function automatic {h2d_type} {prefix}_make_put32(",
+                "    input logic [31:0] addr,",
+                "    input logic [31:0] data,",
+                "    input logic [3:0] mask,",
+                "    input logic [7:0] source",
+                "  );",
+                f"    {h2d_type} req;",
+                f"    req = {prefix}_idle();",
+                "    req[108]    = 1'b1;",
+                "    req[107:105]= TL_A_PUTFULL;",
+                "    req[101:100]= 2'd2;",
+                "    req[99:92]  = source;",
+                "    req[91:60]  = addr;",
+                "    req[59:56]  = mask;",
+                "    req[55:24]  = data;",
+                "    return req;",
+                "  endfunction",
+                "",
+            ]
+        )
+    if d2h_port is not None:
+        d2h_type = str(d2h_port["public_type"])
+        prefix = _tlul_helper_prefix(str(d2h_port["name"]))
+        lines.extend(
+            [
+                f"  function automatic logic {prefix}_valid(input {d2h_type} rsp);",
+                "    return rsp[65];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [2:0] {prefix}_opcode(input {d2h_type} rsp);",
+                "    return rsp[64:62];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [31:0] {prefix}_data(input {d2h_type} rsp);",
+                "    return rsp[48:17];",
+                "  endfunction",
+                "",
+                f"  function automatic logic {prefix}_error(input {d2h_type} rsp);",
+                "    return rsp[16];",
+                "  endfunction",
+                "",
+                f"  function automatic logic {prefix}_ready(input {d2h_type} rsp);",
+                "    return rsp[0];",
+                "  endfunction",
+                "",
+            ]
+        )
+    lines.append(f"endpackage : {package_name}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _tlul_helper_prefix(port_name: str) -> str:
+    if port_name == "tl_i":
+        return "tl"
+    if port_name == "tl_o":
+        return "tl_rsp"
+    return re.sub(r"[^A-Za-z0-9_]+", "_", port_name).strip("_") or "tl"
+
+
+def _render_opentitan_public_regs_package(package_name: str, reg_metadata: Mapping[str, Any]) -> str:
+    lines = [
+        "// Generated register and field constants for the self-contained public OpenTitan task ABI.",
+        f"package {package_name};",
+    ]
+    for entry in reg_metadata.get("entries", ()):
+        kind = str(entry["kind"])
+        prefix = _sv_const_name(str(entry["name"]))
+        if kind in {"window", "multireg"}:
+            lines.append(
+                f"  localparam logic [31:0] {prefix}_OFFSET = 32'h{int(entry['offset']) & 0xffffffff:08x};"
+            )
+        if kind == "window":
+            lines.append(f"  localparam int unsigned {prefix}_ITEMS = {int(entry['items'])};")
+            lines.append(
+                f"  localparam int unsigned {prefix}_SIZE_BYTES = {int(entry['size_in_bytes'])};"
+            )
+            lines.append(
+                f"  localparam int unsigned {prefix}_VALID_BITS = {int(entry['valid_bits'])};"
+            )
+            lines.append("")
+            continue
+        if kind == "multireg":
+            lines.append(f"  localparam int unsigned {prefix}_COUNT = {int(entry['count'])};")
+            lines.append(f"  localparam int unsigned {prefix}_STRIDE = {int(entry['stride'])};")
+            lines.append("")
+            for reg in entry.get("registers", ()):
+                lines.extend(_render_register_constants(reg))
+            continue
+        lines.extend(_render_register_constants(entry))
+    lines.append(f"endpackage : {package_name}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _render_register_constants(entry: Mapping[str, Any]) -> list[str]:
+    prefix = _sv_const_name(str(entry["name"]))
+    lines = [f"  localparam logic [31:0] {prefix}_OFFSET = 32'h{int(entry['offset']) & 0xffffffff:08x};"]
+    for field in entry.get("fields", ()):
+        field_prefix = f"{prefix}_{_sv_const_name(str(field['name']))}"
+        lsb = int(field["lsb"])
+        width = int(field["width"])
+        if width <= 0:
+            continue
+        mask = ((1 << width) - 1) << lsb
+        lines.append(f"  localparam int unsigned {field_prefix}_LSB = {lsb};")
+        lines.append(f"  localparam int unsigned {field_prefix}_WIDTH = {width};")
+        lines.append(f"  localparam logic [31:0] {field_prefix}_MASK = 32'h{mask & 0xffffffff:08x};")
+    lines.append("")
+    return lines
+
+
+def _sv_const_name(name: str) -> str:
+    sanitized = re.sub(r"[^A-Za-z0-9_]+", "_", name).strip("_").upper()
+    if not sanitized:
+        return "UNNAMED"
+    if sanitized[0].isdigit():
+        return f"_{sanitized}"
+    return sanitized
+
+
+@lru_cache(maxsize=None)
+def _load_opentitan_reg_metadata(task_id: str, source_root: Path | None) -> dict[str, Any] | None:
+    if source_root is None:
+        return None
+    resolved_root = source_root.expanduser().resolve()
+    hjson_path = resolved_root / "hw" / "ip" / task_id / "data" / f"{task_id}.hjson"
+    if not hjson_path.exists():
+        return None
+    try:
+        import hjson  # type: ignore
+    except Exception:
+        return None
+    try:
+        raw = hjson.loads(hjson_path.read_text(), use_decimal=True)
+    except Exception:
+        return None
+    if not isinstance(raw, Mapping):
+        return None
+    reg_entries = raw.get("registers")
+    if not isinstance(reg_entries, list):
+        return None
+
+    regwidth_bits = _safe_eval_int_expression(str(raw.get("regwidth", "32")))
+    word_bytes = max(1, (regwidth_bits + 7) // 8)
+    params = _load_opentitan_hjson_param_defaults(raw)
+
+    entries: list[dict[str, Any]] = []
+    current_offset = 0
+    for raw_entry in reg_entries:
+        if not isinstance(raw_entry, Mapping):
+            continue
+        if "skipto" in raw_entry:
+            current_offset = _safe_eval_int_expression(
+                _substitute_known_ints(str(raw_entry["skipto"]), params)
+            )
+            continue
+        if "reserved" in raw_entry:
+            current_offset += word_bytes * _safe_eval_int_expression(
+                _substitute_known_ints(str(raw_entry["reserved"]), params)
+            )
+            continue
+        if "sameaddr" in raw_entry:
+            sameaddr = raw_entry["sameaddr"]
+            if isinstance(sameaddr, list):
+                for sameaddr_reg in sameaddr:
+                    if isinstance(sameaddr_reg, Mapping):
+                        entries.append(
+                            _serialize_opentitan_register_entry(
+                                sameaddr_reg,
+                                offset=current_offset,
+                                params=params,
+                            )
+                        )
+                current_offset += word_bytes
+            continue
+        if "window" in raw_entry:
+            window = raw_entry["window"]
+            if not isinstance(window, Mapping):
+                continue
+            items = _safe_eval_int_expression(_substitute_known_ints(str(window.get("items", "1")), params))
+            valid_bits = _safe_eval_int_expression(
+                _substitute_known_ints(str(window.get("validbits", regwidth_bits)), params)
+            )
+            entries.append(
+                {
+                    "kind": "window",
+                    "name": str(window["name"]),
+                    "offset": current_offset,
+                    "items": items,
+                    "size_in_bytes": word_bytes * items,
+                    "valid_bits": valid_bits,
+                }
+            )
+            current_offset += word_bytes * items
+            continue
+        if "multireg" in raw_entry:
+            multireg = raw_entry["multireg"]
+            if not isinstance(multireg, Mapping):
+                continue
+            count = _safe_eval_int_expression(
+                _substitute_known_ints(str(multireg.get("count", "1")), params)
+            )
+            stride = word_bytes
+            fields = _serialize_opentitan_fields(multireg.get("fields"), params=params)
+            registers = [
+                {
+                    "kind": "register",
+                    "name": f"{multireg['name']}_{index}",
+                    "offset": current_offset + index * stride,
+                    "fields": fields,
+                }
+                for index in range(count)
+            ]
+            entries.append(
+                {
+                    "kind": "multireg",
+                    "name": str(multireg["name"]),
+                    "offset": current_offset,
+                    "count": count,
+                    "stride": stride,
+                    "registers": registers,
+                }
+            )
+            current_offset += count * stride
+            continue
+
+        entries.append(
+            _serialize_opentitan_register_entry(
+                raw_entry,
+                offset=current_offset,
+                params=params,
+            )
+        )
+        current_offset += word_bytes
+    return {"entries": entries}
+
+
+def _load_opentitan_hjson_param_defaults(raw: Mapping[str, Any]) -> dict[str, int]:
+    param_list = raw.get("param_list", ())
+    if not isinstance(param_list, list):
+        return {}
+    defaults: dict[str, int] = {}
+    for param in param_list:
+        if not isinstance(param, Mapping) or "name" not in param or "default" not in param:
+            continue
+        default_expr = str(param["default"]).strip()
+        if "'" in default_expr:
+            continue
+        try:
+            defaults[str(param["name"])] = _safe_eval_int_expression(default_expr)
+        except Exception:
+            continue
+    return defaults
+
+
+def _serialize_opentitan_register_entry(
+    entry: Mapping[str, Any],
+    *,
+    offset: int,
+    params: Mapping[str, int],
+) -> dict[str, Any]:
+    return {
+        "kind": "register",
+        "name": str(entry["name"]),
+        "offset": int(offset),
+        "fields": _serialize_opentitan_fields(entry.get("fields"), params=params),
+    }
+
+
 def _resolve_opentitan_implicit_parameters(task_id: str, source_root: Path | None) -> dict[str, int]:
     if source_root is None:
         return {}
@@ -581,6 +929,40 @@ def _resolve_opentitan_implicit_parameters(task_id: str, source_root: Path | Non
     for match in _REG_PKG_PARAM_RE.finditer(text):
         values[match.group("name")] = _safe_eval_int_expression(match.group("value"))
     return values
+
+
+def _serialize_opentitan_fields(
+    raw_fields: Any,
+    *,
+    params: Mapping[str, int],
+) -> list[dict[str, Any]]:
+    if not isinstance(raw_fields, list):
+        return []
+    fields: list[dict[str, Any]] = []
+    for raw_field in raw_fields:
+        if not isinstance(raw_field, Mapping) or "bits" not in raw_field or "name" not in raw_field:
+            continue
+        lsb, width = _parse_opentitan_bits(str(raw_field["bits"]), params=params)
+        fields.append(
+            {
+                "name": str(raw_field["name"]),
+                "lsb": lsb,
+                "width": width,
+            }
+        )
+    return fields
+
+
+def _parse_opentitan_bits(bits: str, *, params: Mapping[str, int]) -> tuple[int, int]:
+    substituted = _substitute_known_ints(bits.strip(), params)
+    if ":" not in substituted:
+        lsb = _safe_eval_int_expression(substituted)
+        return lsb, 1
+    hi_expr, lo_expr = substituted.split(":", 1)
+    hi = _safe_eval_int_expression(hi_expr)
+    lo = _safe_eval_int_expression(lo_expr)
+    lsb = min(hi, lo)
+    return lsb, abs(hi - lo) + 1
 
 
 def _normalize_parameter_value(value: str) -> str:

@@ -95,6 +95,26 @@ def test_prepare_opentitan_public_interface_projects_package_types_to_local_sv(t
         "  parameter int NumRegs = 13;\n"
         "endpackage\n"
     )
+    (source_root / "hw" / "ip" / "uart" / "data").mkdir(parents=True)
+    (source_root / "hw" / "ip" / "uart" / "data" / "uart.hjson").write_text(
+        "\n".join(
+            [
+                'name: "uart"',
+                "clocking: [{clock: 'clk_i', reset: 'rst_ni', primary: true}]",
+                "bus_interfaces: [{protocol: 'tlul', direction: 'device'}]",
+                "registers: [",
+                "  {",
+                "    name: 'CTRL',",
+                "    desc: 'ctrl register',",
+                "    swaccess: 'rw',",
+                "    hwaccess: 'hro',",
+                "    fields: [{bits: '3:0', name: 'TX'}]",
+                "  }",
+                "]",
+                "",
+            ]
+        )
+    )
 
     prepared = prepare_public_interface_contract(
         {
@@ -157,9 +177,22 @@ def test_prepare_opentitan_public_interface_projects_package_types_to_local_sv(t
     assert dict(prepared.support_files)["uart_public_types_pkg.sv"].find(
         "typedef logic [3:0] uart_alert_rx_i_t;"
     ) != -1
+    assert "function automatic uart_public_types_pkg::uart_tl_i_t tl_make_get32(" in dict(
+        prepared.support_files
+    )["uart_public_tlul_pkg.sv"]
+    assert "localparam logic [31:0] CTRL_OFFSET = 32'h00000000;" in dict(
+        prepared.support_files
+    )["uart_public_regs_pkg.sv"]
+    assert "localparam int unsigned CTRL_TX_LSB = 0;" in dict(prepared.support_files)[
+        "uart_public_regs_pkg.sv"
+    ]
     assert prepared.hidden_metadata["profile"] == "opentitan_self_contained_v1"
     assert prepared.hidden_metadata["native_interface"]["ports"][1]["width"] == "tlul_pkg::tl_h2d_t"
-    assert prepared.hidden_metadata["projection"]["support_files"] == ["uart_public_types_pkg.sv"]
+    assert prepared.hidden_metadata["projection"]["support_files"] == [
+        "uart_public_types_pkg.sv",
+        "uart_public_tlul_pkg.sv",
+        "uart_public_regs_pkg.sv",
+    ]
 
 
 def test_materialize_public_interface_sv_writes_support_package_when_requested(tmp_path: Path) -> None:

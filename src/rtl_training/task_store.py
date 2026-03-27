@@ -882,6 +882,7 @@ def store_curated_task_pack(
             name=dataset_name,
             source_root=source_root_path,
         )
+    material_source_root = shared_bundle.root if shared_bundle is not None else source_root_path
     written: list[Path] = []
     for task in manifest:
         task_id = str(task["task_id"])
@@ -912,7 +913,7 @@ def store_curated_task_pack(
                     candidate_top_module=candidate_top_module,
                     profile=str(interface_profile),
                     task_id=task_id,
-                    source_root=source_root_path,
+                    source_root=material_source_root,
                 )
                 interface = prepared_interface.interface
                 public_interface_support_files = prepared_interface.support_files
@@ -947,7 +948,10 @@ def store_curated_task_pack(
                 )
             private_source_mode = str(task.get("private_source_mode", "copy"))
             if private_source_mode == "copy":
-                private_sources = tuple(source_root_path / str(item) for item in raw_private_source_dirs)
+                assert material_source_root is not None
+                private_sources = tuple(
+                    material_source_root / str(item) for item in raw_private_source_dirs
+                )
             elif private_source_mode == "shared_bundle":
                 if shared_bundle is None:
                     raise ValueError(
@@ -965,8 +969,10 @@ def store_curated_task_pack(
                 )
             source_metadata["private_source_dirs"] = [str(item) for item in raw_private_source_dirs]
             source_metadata["private_source_mode"] = private_source_mode
-        if source_root_path is not None:
-            source_metadata["source_root"] = str(source_root_path)
+        if material_source_root is not None:
+            source_metadata["source_root"] = str(material_source_root)
+        if source_root_path is not None and material_source_root is not None and source_root_path != material_source_root:
+            source_metadata["source_checkout_root"] = str(source_root_path)
         raw_oracle_dir: Path | None = None
         raw_oracle_metadata: dict[str, Any] | None = None
         raw_oracle = task.get("raw_oracle")
@@ -1006,7 +1012,7 @@ def store_curated_task_pack(
                     )
                 source_base = str(raw_asset.get("source_base", "source_root"))
                 if source_base == "source_root":
-                    source_base_path = source_root_path
+                    source_base_path = material_source_root
                 elif source_base == "task_library_root":
                     source_base_path = specs_root
                 else:
