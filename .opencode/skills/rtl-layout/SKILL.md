@@ -7,11 +7,10 @@ description: Understand the staged RTL task workspace and the required output lo
 
 This repo stages OpenCode episodes in a small deterministic layout:
 
-- `task/top_module.txt`: authoritative public DUT top-module name
 - `task/spec/`: public spec directory (may contain `.txt`, `.md`, images, etc.)
 - `task/spec/interface/`: canonical public SV interface contract when available
 - `task/spec/micro_arch/`: optional public microarchitecture / deep-DV ABI
-- `task/task.json`: lightweight public task metadata and deliverable paths
+- `task/task.json`: lightweight public task metadata including the authoritative `top_module`
 - `submission/`: where the generator writes RTL
 - `candidate/`: where the verifier reads the candidate RTL
 - `result/`: where the agent writes its machine-readable outcome
@@ -20,7 +19,7 @@ This repo stages OpenCode episodes in a small deterministic layout:
 Rules:
 
 - Treat `task/` as read-only input.
-- Treat `task/top_module.txt` and `task/spec/interface/` as the authoritative public build contract.
+- Treat `task/task.json` field `top_module` and `task/spec/interface/` as the authoritative public build contract.
 - Write RTL deliverables (one or more `.sv`/`.v` files) to `submission/`.
 - Write the machine-readable outcome to `result/result.json`.
 - Large evidence files belong under `result/evidence/`.

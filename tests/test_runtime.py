@@ -29,12 +29,12 @@ def _create_minimal_opentitan_task(tmp_path: Path) -> Path:
     task_root = tmp_path / "task_store" / "opentitan_ip_docs" / "rv_timer"
     (task_root / "public" / "spec").mkdir(parents=True)
     (task_root / "public" / "spec" / "README.md").write_text("rv_timer spec\n")
-    (task_root / "public" / "top_module.txt").write_text("rv_timer\n")
     (task_root / "public" / "task.json").write_text(
         json.dumps(
             {
                 "dataset_name": "opentitan_ip_docs",
                 "task_id": "rv_timer",
+                "top_module": "rv_timer",
                 "deliverables": {
                     "rtl": "submission/",
                     "summary": "result/result.json",
@@ -52,7 +52,6 @@ def _create_minimal_opentitan_task(tmp_path: Path) -> Path:
                 "public": {
                     "directory": "public",
                     "spec": "public/spec/",
-                    "top_module": "public/top_module.txt",
                     "task": "public/task.json",
                 },
                 "oracle": {
@@ -62,44 +61,6 @@ def _create_minimal_opentitan_task(tmp_path: Path) -> Path:
                     "tool": "xcelium",
                     "golden_rtl_dir": "golden_rtl",
                     "overlay_rel_dir": "hw/ip/rv_timer/rtl",
-                },
-            },
-            indent=2,
-        )
-        + "\n"
-    )
-    return task_root
-
-
-def _create_pdf_only_task(tmp_path: Path) -> Path:
-    task_root = tmp_path / "task_store" / "riscv_hardware_specs" / "external_debug"
-    (task_root / "public" / "spec").mkdir(parents=True)
-    (task_root / "public" / "spec" / "debug.pdf").write_bytes(b"%PDF-1.4 fake")
-    (task_root / "public" / "top_module.txt").write_text("riscv_debug_module\n")
-    (task_root / "public" / "task.json").write_text(
-        json.dumps(
-            {
-                "dataset_name": "riscv_hardware_specs",
-                "task_id": "external_debug",
-                "deliverables": {
-                    "rtl": "submission/",
-                    "summary": "result/result.json",
-                },
-            },
-            indent=2,
-        )
-        + "\n"
-    )
-    (task_root / "task.json").write_text(
-        json.dumps(
-            {
-                "dataset_name": "riscv_hardware_specs",
-                "task_id": "external_debug",
-                "public": {
-                    "directory": "public",
-                    "spec": "public/spec/",
-                    "top_module": "public/top_module.txt",
-                    "task": "public/task.json",
                 },
             },
             indent=2,
@@ -147,38 +108,12 @@ def test_prepare_generator_episode_instructions_require_behavioral_spec_and_buil
     assert "source, size, param, and user fields" in instructions
     assert "complete public problem statement" in instructions
     assert "Do not assume access to upstream repo code" in instructions
-    assert "task/top_module.txt" in instructions
+    assert "task/task.json" in instructions
+    assert "field `top_module`" in instructions
     assert "`submission/` must be a self-contained deliverable set" in instructions
     assert "Do not use `` `include `` paths that reach into `task/`" in instructions
     assert "compile check only counts if it elaborates the DUT top module" in instructions
     assert "helper interface or package alone does not count" in instructions
-
-
-def test_prepare_generator_episode_preprocesses_pdf_only_specs(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
-    task_root = _create_pdf_only_task(tmp_path)
-    calls: list[Path] = []
-
-    def fake_preprocess(spec_dir, *, workspace_root, template_root):
-        del workspace_root, template_root
-        calls.append(Path(spec_dir))
-        doc_dir = Path(spec_dir) / "doc"
-        doc_dir.mkdir()
-        (doc_dir / "01_overview.md").write_text("# Converted\n")
-        return doc_dir
-
-    monkeypatch.setattr("rtl_training.runtime.preprocess_spec_pdfs", fake_preprocess)
-
-    episode = prepare_generator_episode(
-        task_root,
-        tmp_path / "episode",
-        template_root=ROOT,
-    )
-
-    assert calls == [episode.workspace.spec_dir]
-    assert (episode.workspace.spec_dir / "doc" / "01_overview.md").read_text() == "# Converted\n"
 
 
 def test_validate_generator_episode_dispatches_opentitan_oracle(
@@ -251,37 +186,6 @@ def test_prepare_verifier_episode_stages_candidate_dir(tmp_path: Path) -> None:
     assert mode & stat.S_IWUSR == 0
 
 
-def test_prepare_verifier_episode_preprocesses_pdf_only_specs(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
-    task_root = _create_pdf_only_task(tmp_path)
-    candidate_dir = tmp_path / "submission"
-    candidate_dir.mkdir()
-    (candidate_dir / "candidate.sv").write_text("module riscv_debug_module; endmodule\n")
-    calls: list[Path] = []
-
-    def fake_preprocess(spec_dir, *, workspace_root, template_root):
-        del workspace_root, template_root
-        calls.append(Path(spec_dir))
-        doc_dir = Path(spec_dir) / "doc"
-        doc_dir.mkdir()
-        (doc_dir / "01_overview.md").write_text("# Converted\n")
-        return doc_dir
-
-    monkeypatch.setattr("rtl_training.runtime.preprocess_spec_pdfs", fake_preprocess)
-
-    episode = prepare_verifier_episode(
-        task_root,
-        candidate_dir,
-        tmp_path / "verifier_episode",
-        template_root=ROOT,
-    )
-
-    assert calls == [episode.workspace.spec_dir]
-    assert (episode.workspace.spec_dir / "doc" / "01_overview.md").read_text() == "# Converted\n"
-
-
 def test_prepare_verifier_episode_instructions_call_for_native_sva_and_uvm(tmp_path: Path) -> None:
     task_root = _create_task(tmp_path)
     candidate_dir = tmp_path / "submission"
@@ -304,7 +208,8 @@ def test_prepare_verifier_episode_instructions_call_for_native_sva_and_uvm(tmp_p
     assert "source, size, param, and user" in instructions
     assert "complete public problem statement" in instructions
     assert "Do not assume access to upstream repo code" in instructions
-    assert "task/top_module.txt" in instructions
+    assert "task/task.json" in instructions
+    assert "field `top_module`" in instructions
 
 
 def test_verifier_prompt_mentions_xrun_sva_and_uvm() -> None:
@@ -322,7 +227,8 @@ def test_verifier_prompt_mentions_xrun_sva_and_uvm() -> None:
 
 def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     prompt = (ROOT / ".opencode" / "prompts" / "generator.md").read_text()
-    assert "task/top_module.txt" in prompt
+    assert "task/task.json" in prompt
+    assert "field `top_module`" in prompt
     assert "task/spec/doc/" in prompt
     assert "full functional behavior" in prompt
     assert "Interface and microarchitecture are necessary but not sufficient" in prompt
@@ -348,5 +254,6 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
 
 def test_verifier_prompt_forbids_yosys() -> None:
     prompt = (ROOT / ".opencode" / "prompts" / "verifier.md").read_text()
-    assert "task/top_module.txt" in prompt
+    assert "task/task.json" in prompt
+    assert "field `top_module`" in prompt
     assert "Do not use `yosys`" in prompt or "`yosys`" not in prompt

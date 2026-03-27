@@ -16,7 +16,6 @@ class StagedWorkspace:
     agent_name: str
     task_dir: Path
     spec_dir: Path
-    public_top_module_path: Path
     public_task_path: Path
     submission_dir: Path
     candidate_input_dir: Path | None
@@ -57,7 +56,7 @@ def stage_generator_workspace(
         [
             "# Generator Task",
             "",
-            "- Read `task/top_module.txt`, `task/task.json`, and the spec files under `task/spec/` before writing RTL.",
+            "- Read `task/task.json` and the spec files under `task/spec/` before writing RTL.",
             "- If `task/spec/README.md` exists, read it first. If `task/spec/doc/` exists, read the functional spec files there and derive a requirement checklist before coding.",
             "- If `task/spec/doc/registers.md`, `task/spec/doc/programmers_guide.md`, `task/spec/dv/README.md`, or `task/spec/data/*testplan*.hjson` exist, use them to identify software-visible side effects, documented register-map offsets, and high-risk behaviors that your local checks must cover.",
             "- Write the requirement checklist to `result/requirements.md` and use it to drive the implementation.",
@@ -65,17 +64,16 @@ def stage_generator_workspace(
             "- If `task/spec/interface/` contains task-local SV packages or typedef files, those are the public type definitions to use. Do not reach for upstream repository packages when the task-local interface collateral already defines the boundary.",
             "- If `task/spec/interface/` contains a generated bus helper package, use its accessors instead of hard-coded bit slicing and preserve semantically relevant request/response metadata such as source, size, param, and user fields.",
             "- The staged `task/` directory is the complete public problem statement. Do not assume access to upstream repo code, hidden packages, or hidden hierarchy outside this workspace.",
-            "- Treat `task/top_module.txt` as the authoritative source of the DUT top-module name.",
-            "- Treat `task/task.json` as lightweight machine-readable metadata for deliverables and task identity.",
+            "- Treat `task/task.json` as lightweight machine-readable metadata for task identity, the DUT top module, and deliverables.",
             "- If `task/spec/micro_arch/` exists, treat the SV files there as a mandatory microarchitecture ABI. The generated RTL must compile against that ABI and satisfy any required named interfaces or bind points it defines exactly.",
             "- Interface and microarchitecture are necessary but not sufficient. The candidate must implement the full functional behavior described by the spec, not just a stub that satisfies ports or shallow ABI checks.",
             "- Do not depend on upstream or OpenTitan repository packages just to satisfy the public task boundary. If the task leaks repo-specific package types, treat that as a task-definition problem rather than patching `submission/` with package scaffolding.",
-            "- Write candidate RTL files to `submission/`. The top module must match `task/top_module.txt` exactly.",
+            "- Write candidate RTL files to `submission/`. The top module must match `task/task.json` field `top_module` exactly.",
             "- You may produce one or more `.sv`/`.v` files under `submission/`.",
             "- `submission/` must be a self-contained deliverable set. Do not use `` `include `` paths that reach into `task/` from the submission RTL.",
             "- If you need task-local public typedefs or packages, mirror them into normal compilation-unit files under `submission/` and `import` them there rather than relying on workspace-relative include paths.",
             "- Before finishing, run at least one compile sanity check against the generated RTL and the public task collateral when the workspace contains enough SV/package context to do so. Use `xrun`/Xcelium for that check and record the command and outcome in `result/requirements.md`.",
-            "- The compile check only counts if it elaborates the DUT top module named in `task/top_module.txt`, or a smoke test that instantiates that DUT top. A helper interface or package alone does not count.",
+            "- The compile check only counts if it elaborates the DUT top module named in `task/task.json` field `top_module`, or a smoke test that instantiates that DUT top. A helper interface or package alone does not count.",
             "- If you use `xrun`, select the DUT top explicitly with `-top <dut>` or instantiate it in a tiny smoke bench.",
             "- If the task exposes a documented CSR/register map, do not stop at a happy-path smoke test. Add at least one executable check for documented side effects such as write-only registers, RW1C behavior, interrupt-clear behavior, or bad-access error handling before claiming `status: pass`.",
             "- Write a machine-readable summary to `result/result.json`.",
@@ -90,7 +88,6 @@ def stage_generator_workspace(
         agent_name=workspace.agent_name,
         task_dir=workspace.task_dir,
         spec_dir=workspace.spec_dir,
-        public_top_module_path=workspace.public_top_module_path,
         public_task_path=workspace.public_task_path,
         submission_dir=workspace.submission_dir,
         candidate_input_dir=None,
@@ -131,12 +128,11 @@ def stage_verifier_workspace(
         [
             "# Verifier Task",
             "",
-            "- Read `task/top_module.txt`, the spec files under `task/spec/`, `task/task.json`, and the candidate RTL files under `candidate/`.",
+            "- Read the spec files under `task/spec/`, `task/task.json`, and the candidate RTL files under `candidate/`.",
             "- Treat `task/spec/interface/` as the concrete SV form of the public top-level interface when it exists.",
             "- If `task/spec/interface/` contains a generated bus helper package, use its accessors instead of ad hoc bit slicing so your checks cover metadata fields such as source, size, param, and user as well as data and error.",
             "- The staged `task/` directory is the complete public problem statement. Do not assume access to upstream repo code, hidden packages, or hidden hierarchy outside this workspace.",
-            "- Treat `task/top_module.txt` as the authoritative source of the expected DUT top-module name.",
-            "- Treat `task/task.json` as lightweight machine-readable public metadata.",
+            "- Treat `task/task.json` as lightweight machine-readable public metadata, including the expected DUT top module in field `top_module`.",
             "- If `task/spec/micro_arch/` exists, treat the SV files there as the task's deep-DV microarchitecture ABI and use them when evaluating whether the candidate is compatible with deeper verification.",
             "- Treat the candidate RTL as immutable input. Do not edit files under `candidate/`.",
             "- Turn the spec into a concrete requirement checklist before judging the RTL.",
@@ -155,7 +151,6 @@ def stage_verifier_workspace(
         agent_name=workspace.agent_name,
         task_dir=workspace.task_dir,
         spec_dir=workspace.spec_dir,
-        public_top_module_path=workspace.public_top_module_path,
         public_task_path=workspace.public_task_path,
         submission_dir=workspace.submission_dir,
         candidate_input_dir=candidate_dir,
@@ -232,7 +227,6 @@ class _BaseWorkspace:
     agent_name: str
     task_dir: Path
     spec_dir: Path
-    public_top_module_path: Path
     public_task_path: Path
     submission_dir: Path
     result_dir: Path
@@ -263,7 +257,6 @@ def _stage_public_workspace(
         agent_name=agent_name,
         task_dir=task_dir,
         spec_dir=task_dir / "spec",
-        public_top_module_path=task_dir / task.public_top_module_path.name,
         public_task_path=task_dir / task.public_task_path.name,
         submission_dir=submission_dir,
         result_dir=result_dir,

@@ -95,7 +95,6 @@ class StoredTask:
     task_id: str
     spec_dir: Path
     public_dir: Path
-    public_top_module_path: Path
     public_top_module: str
     public_task_path: Path
     private_dir: Path | None
@@ -482,11 +481,13 @@ def _build_public_task_metadata(
     *,
     dataset_name: str,
     task_id: str,
+    top_module: str,
     tier: Tier | None,
 ) -> dict[str, Any]:
     metadata: dict[str, Any] = {
         "dataset_name": dataset_name,
         "task_id": task_id,
+        "top_module": top_module,
         "deliverables": {
             "rtl": "submission/",
             "summary": "result/result.json",
@@ -528,7 +529,6 @@ def _write_task_bundle(
     spec_dir = public_dir / "spec"
     spec_dir.mkdir(parents=True, exist_ok=True)
     public_task_path = public_dir / "task.json"
-    public_top_module_path = public_dir / "top_module.txt"
 
     if isinstance(spec_source, str):
         (spec_dir / "spec.txt").write_text(spec_source)
@@ -539,7 +539,6 @@ def _write_task_bundle(
         else:
             shutil.copy2(source_path, spec_dir / source_path.name)
 
-    public_top_module_path.write_text(f"{candidate_top_module}\n")
     if tier is not None:
         public_metadata.setdefault("tier", tier)
     if public_interface is not None:
@@ -561,7 +560,6 @@ def _write_task_bundle(
         "public": {
             "directory": "public",
             "spec": "public/spec/",
-            "top_module": str(public_top_module_path.relative_to(task_root)),
             "task": str(public_task_path.relative_to(task_root)),
         },
         "source": source_metadata,
@@ -655,16 +653,14 @@ def load_stored_task(task_root: str | Path) -> StoredTask:
         spec_dir = spec_resolved
     else:
         spec_dir = spec_resolved.parent
-    public_top_module_path = task_root_path / str(public["top_module"])
     return StoredTask(
         root=task_root_path,
         dataset_name=str(metadata["dataset_name"]),
         task_id=str(metadata["task_id"]),
         spec_dir=spec_dir,
         public_dir=task_root_path / str(public["directory"]),
-        public_top_module_path=public_top_module_path,
-        public_top_module=read_public_top_module(public_top_module_path),
         public_task_path=task_root_path / str(public["task"]),
+        public_top_module=read_public_top_module(task_root_path / str(public["task"])),
         private_dir=(
             task_root_path / str(dict(private)["directory"])
             if isinstance(private, dict) and "directory" in private
@@ -714,6 +710,7 @@ def store_rtllm_tasks(
         public_metadata = _build_public_task_metadata(
             dataset_name=dataset_name,
             task_id=task.task_id,
+            top_module=str(public_interface["top_module"]),
             tier=tier,
         )
         oracle = SimulationOracle(
@@ -776,6 +773,7 @@ def store_verilog_eval_tasks(
         public_metadata = _build_public_task_metadata(
             dataset_name=dataset_name,
             task_id=task.task_id,
+            top_module="TopModule",
             tier=tier,
         )
         oracle = SimulationOracle(
@@ -847,6 +845,7 @@ def store_generic_task(
     public_metadata = _build_public_task_metadata(
         dataset_name=dataset_name,
         task_id=task_id,
+        top_module=candidate_top_module,
         tier=tier,
     )
     normalized_public_interface = None
@@ -1191,6 +1190,7 @@ def store_cvdp_tasks(
             public_metadata = _build_public_task_metadata(
                 dataset_name=dataset_name,
                 task_id=task_id,
+                top_module=toplevel,
                 tier=task_tier,
             )
 
@@ -1366,6 +1366,7 @@ def store_chipbench_tasks(
             public_metadata = _build_public_task_metadata(
                 dataset_name=dataset_name,
                 task_id=task_id,
+                top_module="TopModule",
                 tier=subset_tier or tier,
             )
             oracle = SimulationOracle(
@@ -1477,6 +1478,7 @@ def store_realbench_tasks(
             public_metadata = _build_public_task_metadata(
                 dataset_name=dataset_name,
                 task_id=task_id,
+                top_module=module_name,
                 tier=tier,
             )
             oracle = SimulationOracle(
@@ -1568,6 +1570,7 @@ def store_resbench_tasks(
                 public_metadata = _build_public_task_metadata(
                     dataset_name=dataset_name,
                     task_id=task_id,
+                    top_module=module_name,
                     tier=tier,
                 )
                 oracle = SimulationOracle(
@@ -1644,6 +1647,7 @@ def store_icrtl_tasks(
         public_metadata = _build_public_task_metadata(
             dataset_name=dataset_name,
             task_id=task_id,
+            top_module=top_module,
             tier="medium",
         )
         oracle_metadata: dict[str, Any] = {

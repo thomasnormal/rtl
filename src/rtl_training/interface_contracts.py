@@ -4,6 +4,7 @@ import ast
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import lru_cache
+import json
 from pathlib import Path
 import re
 from typing import Any, Mapping
@@ -84,10 +85,11 @@ class PublicInterfaceSpec:
     source_path: Path
 
 
-def read_public_top_module(source_path: str | Path) -> str:
-    top_module = Path(source_path).read_text().strip()
+def read_public_top_module(public_task_path: str | Path) -> str:
+    payload = json.loads(Path(public_task_path).read_text())
+    top_module = str(payload.get("top_module", "")).strip()
     if not _SV_TOP_MODULE_NAME_RE.fullmatch(top_module):
-        raise ValueError(f"invalid public top module name in {source_path}: {top_module!r}")
+        raise ValueError(f"invalid public top module name in {public_task_path}: {top_module!r}")
     return top_module
 
 

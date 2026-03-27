@@ -40,7 +40,7 @@ def test_store_rtllm_tasks_separates_public_inputs_from_hidden_oracle(tmp_path: 
     public_metadata = json.loads(task.public_task_path.read_text())
     assert public_metadata["deliverables"]["rtl"] == "submission/"
     assert task.public_top_module == "adder_8bit"
-    assert read_public_top_module(task.public_top_module_path) == "adder_8bit"
+    assert read_public_top_module(task.public_task_path) == "adder_8bit"
 
 
 def test_store_rtllm_tasks_copies_hidden_support_files_and_selects_verified_top(tmp_path: Path) -> None:
@@ -96,7 +96,7 @@ def test_store_rtllm_tasks_extracts_public_interface_contract_from_structured_sp
     public_interface = discover_public_interface_spec((written[0] / "public" / "spec"))
 
     assert public_metadata["deliverables"]["rtl"] == "submission/"
-    assert read_public_top_module(written[0] / "public" / "top_module.txt") == "RAM"
+    assert read_public_top_module(written[0] / "public" / "task.json") == "RAM"
     assert public_interface is not None
     assert list(public_interface.ports) == [
         {"name": "clk", "direction": "input"},
@@ -158,7 +158,7 @@ def test_store_rtllm_tasks_uses_curated_interface_manifest_for_rtllm_v1_1(tmp_pa
     public_if = discover_public_interface_spec(written[0] / "public" / "spec")
     sv_contract = written[0] / "public" / "spec" / "interface" / "RAM_public_if.sv"
 
-    assert read_public_top_module(written[0] / "public" / "top_module.txt") == "RAM"
+    assert read_public_top_module(written[0] / "public" / "task.json") == "RAM"
     assert public_if is not None
     assert list(public_if.ports) == [
         {"name": "clk", "direction": "input"},
@@ -210,7 +210,7 @@ def test_store_rtllm_tasks_skips_known_invalid_anchor_tasks_by_default(tmp_path:
     )
     public_interface = discover_public_interface_spec(written[0] / "public" / "spec")
 
-    assert read_public_top_module(written[0] / "public" / "top_module.txt") == "div_16bit"
+    assert read_public_top_module(written[0] / "public" / "task.json") == "div_16bit"
     assert public_interface is not None
     assert list(public_interface.ports) == [
         {"name": "A", "direction": "input", "width": "[15:0]"},
@@ -427,6 +427,7 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
             "summary": "result/result.json",
         },
         "task_id": "uart",
+        "top_module": "uart",
         "tier": "medium",
     }
     assert uart_task.public_top_module == "uart"
@@ -568,6 +569,7 @@ def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path
             "summary": "result/result.json",
         },
         "task_id": "external_debug",
+        "top_module": "riscv_debug_module",
         "tier": "large",
     }
     assert debug_task.public_top_module == "riscv_debug_module"
@@ -599,8 +601,9 @@ def test_load_stored_task_backward_compat_old_spec_format(tmp_path: Path) -> Non
     public_dir = task_root / "public"
     public_dir.mkdir(parents=True)
     (public_dir / "spec.txt").write_text("old spec")
-    (public_dir / "top_module.txt").write_text("legacy_top\n")
-    (public_dir / "task.json").write_text(json.dumps({"dataset_name": "old", "task_id": "t1"}) + "\n")
+    (public_dir / "task.json").write_text(
+        json.dumps({"dataset_name": "old", "task_id": "t1", "top_module": "legacy_top"}) + "\n"
+    )
     (task_root / "task.json").write_text(
         json.dumps({
             "dataset_name": "old",
@@ -608,7 +611,6 @@ def test_load_stored_task_backward_compat_old_spec_format(tmp_path: Path) -> Non
             "public": {
                 "directory": "public",
                 "spec": "public/spec.txt",
-                "top_module": "public/top_module.txt",
                 "task": "public/task.json",
             },
             "source": {},

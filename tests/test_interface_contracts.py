@@ -123,10 +123,10 @@ def test_discover_public_interface_spec_reads_ports_from_materialized_sv(tmp_pat
 
 
 def test_read_public_top_module_validates_identifier(tmp_path: Path) -> None:
-    top_module_path = tmp_path / "top_module.txt"
-    top_module_path.write_text("rv_timer\n")
+    public_task_path = tmp_path / "task.json"
+    public_task_path.write_text('{"top_module": "rv_timer"}\n')
 
-    assert read_public_top_module(top_module_path) == "rv_timer"
+    assert read_public_top_module(public_task_path) == "rv_timer"
 
 
 def test_prepare_opentitan_public_interface_projects_package_types_to_local_sv(tmp_path: Path) -> None:

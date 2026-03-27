@@ -30,12 +30,12 @@ def _write_task(
     (task_root / "oracle" / "sim").mkdir(parents=True)
     (task_root / "oracle" / "support").mkdir(parents=True)
     (task_root / "public" / "spec.txt").write_text("spec\n")
-    (task_root / "public" / "top_module.txt").write_text(f"{candidate_top_module}\n")
     (task_root / "public" / "task.json").write_text(
         json.dumps(
             {
                 "dataset_name": "unit",
                 "task_id": "toy",
+                "top_module": candidate_top_module,
                 "deliverables": {
                     "rtl": "submission/",
                     "summary": "result/result.json",
@@ -55,7 +55,6 @@ def _write_task(
                 "public": {
                     "directory": "public",
                     "spec": "public/spec.txt",
-                    "top_module": "public/top_module.txt",
                     "task": "public/task.json",
                 },
                 "oracle": {

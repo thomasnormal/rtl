@@ -139,7 +139,7 @@ def test_write_micro_arch_bind_check_tb_uses_public_ports_and_bind_module(tmp_pa
     spec_dir = task_dir / "spec"
     micro_arch_dir = spec_dir / "micro_arch"
     micro_arch_dir.mkdir(parents=True)
-    (task_dir / "top_module.txt").write_text("rv_timer\n")
+    (task_dir / "task.json").write_text('{"top_module": "rv_timer"}\n')
     (micro_arch_dir / "README.md").write_text("micro arch\n")
     (micro_arch_dir / "rv_timer_micro_arch_if.sv").write_text(
         "interface rv_timer_micro_arch_if;\n"

@@ -124,7 +124,7 @@ def write_micro_arch_bind_check_tb(
     public_interface = discover_public_interface_spec(spec_dir)
     if public_interface is None:
         raise ValueError(f"public task {task_root} does not define a public interface contract")
-    top_module = read_public_top_module(task_root / "top_module.txt")
+    top_module = read_public_top_module(task_root / "task.json")
 
     bind_module_name, _ = bind_module
     output = Path(output_path)

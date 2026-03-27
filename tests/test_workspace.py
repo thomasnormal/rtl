@@ -29,8 +29,8 @@ def test_stage_generator_workspace_exposes_only_public_task_material(tmp_path: P
     )
 
     assert (workspace.spec_dir / "spec.txt").read_text() == "8-bit adder"
-    assert workspace.public_top_module_path.read_text().strip() == "adder_8bit"
     assert workspace.public_task_path.exists()
+    assert json.loads(workspace.public_task_path.read_text())["top_module"] == "adder_8bit"
     assert workspace.submission_dir == workspace.root / "submission"
     assert workspace.result_path == workspace.root / "result" / "result.json"
     assert not (workspace.root / "oracle").exists()
@@ -38,7 +38,8 @@ def test_stage_generator_workspace_exposes_only_public_task_material(tmp_path: P
     assert (workspace.root / "AGENTS.md").exists()
     instructions = workspace.instructions_path.read_text()
     assert "There is no oracle validator" in instructions
-    assert "task/top_module.txt" in instructions
+    assert "task/task.json" in instructions
+    assert "field `top_module`" in instructions
     assert "machine-readable metadata" in instructions
     assert "task/spec/interface/" in instructions
     assert "task/spec/doc/" in instructions
@@ -80,7 +81,8 @@ def test_stage_verifier_workspace_copies_candidate_dir_but_not_oracle(tmp_path: 
     assert (workspace.candidate_input_dir / "top.sv").read_text() == "module adder_8bit; endmodule\n"
     assert not (workspace.root / "oracle").exists()
     instructions = workspace.instructions_path.read_text()
-    assert "task/top_module.txt" in instructions
+    assert "task/task.json" in instructions
+    assert "field `top_module`" in instructions
     assert "machine-readable public metadata" in instructions
     assert "task/spec/interface/" in instructions
     assert "cocotb" in instructions

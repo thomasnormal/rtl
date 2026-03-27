@@ -37,7 +37,6 @@ def _write_fake_uart_dv_files(repo_root: Path) -> None:
 def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: Path) -> None:
     (task_root / "public" / "spec").mkdir(parents=True)
     (task_root / "public" / "spec" / "README.md").write_text("uart spec\n")
-    (task_root / "public" / "top_module.txt").write_text("uart\n")
     (task_root / "public" / "spec" / "interface").mkdir(parents=True)
     (task_root / "public" / "spec" / "micro_arch").mkdir(parents=True)
     (task_root / "public" / "spec" / "micro_arch" / "README.md").write_text("uart micro arch\n")
@@ -96,6 +95,7 @@ def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: 
             {
                 "dataset_name": "opentitan_ip_docs",
                 "task_id": "uart",
+                "top_module": "uart",
                 "deliverables": {
                     "rtl": "submission/",
                     "summary": "result/result.json",
@@ -131,7 +131,6 @@ def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: 
                 "public": {
                     "directory": "public",
                     "spec": "public/spec/",
-                    "top_module": "public/top_module.txt",
                     "task": "public/task.json",
                 },
                 "shared_private": {
