@@ -1,13 +1,13 @@
 ---
 name: yosys
-description: Use Yosys for cheap RTL parsing, hierarchy, and structural sanity checks.
+description: Legacy Yosys notes. This repo uses xrun/Xcelium instead.
 ---
 
 # Yosys
 
-Use `yosys` for syntax, hierarchy, and structural sanity checks before expensive simulation or formal runs.
+Do not use `yosys` in this repo's generator or verifier flows. Use `xrun`/Xcelium for syntax, compile, elaboration, and smoke checks instead.
 
-Common patterns:
+If you are debugging outside the main training flows and need a quick open-source parser locally, these are the old patterns:
 
 ```bash
 yosys -p 'read_verilog -sv dut.sv; hierarchy -check -top TopModule; proc; check'
@@ -19,8 +19,5 @@ yosys -p 'read_verilog -sv *.sv; hierarchy -auto-top; proc; check'
 
 Guidance:
 
-- Start with `read_verilog -sv`, `hierarchy -check`, `proc`, and `check`.
-- Use the public task metadata to pick the expected top module when known.
-- Yosys is often the cheapest way to catch missing ports, undeclared nets, and width issues.
-- Treat Yosys as a fallback for small standalone RTL. For OpenTitan-style tasks, package-heavy SystemVerilog, interfaces, compat SV, or UVM-style collateral, do not use Yosys as the required compile check; use `xrun`/Xcelium instead.
-- Keep the script explicit in the command line so the run is reproducible.
+- Prefer `xrun` in this repository, even for small standalone RTL.
+- If you use these commands for local debugging, keep the script explicit in the command line so the run is reproducible.

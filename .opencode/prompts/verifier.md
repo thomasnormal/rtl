@@ -17,7 +17,6 @@ Process:
    - `sv-verification`
    - `rtl-layout`
    - `xrun`
-   - `yosys`
    - `sby`
    - `eqy`
 3. Translate the spec into a requirement matrix before deciding anything.
@@ -29,7 +28,7 @@ Process:
      - pass/fail/unresolved status
 4. Start with the cheapest strong checks.
    - Confirm the top module name, ports, widths, clocks, resets, and parameters.
-   - Run structural sanity checks first with `yosys` and/or `xrun` compile-only.
+   - Run structural sanity checks first with `xrun` compile-only or `xrun -elaborate`.
    - If the candidate does not even elaborate against the public interface, that is strong negative evidence.
 5. Write executable verification collateral under `result/evidence/`.
    - Do not stop at reading the RTL.

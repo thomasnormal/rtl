@@ -39,9 +39,7 @@ DEFAULT_GENERATOR_PROMPT = (
     "inside submission RTL. If you need task-local public typedefs or packages, mirror them into "
     "normal compilation-unit files under `submission/` and `import` them there. "
     "Before finishing, run at least one compile sanity check when the workspace has enough context "
-    "to do so. For OpenTitan-style tasks, package-heavy SystemVerilog, interfaces, compat SV, or "
-    "UVM-style collateral, the required compile sanity check is `xrun`/Xcelium; `yosys` does not "
-    "satisfy this requirement there and is only a fallback for small standalone RTL. The compile "
+    "to do so. Use `xrun`/Xcelium for that compile sanity check. The compile "
     "check only counts if it elaborates the DUT top module named in task/task.json, or a smoke test "
     "that instantiates that DUT top; a helper interface or package alone does not count. If you use "
     "`xrun`, select the DUT top explicitly with `-top <dut>` or instantiate it in a tiny smoke bench. "
@@ -59,7 +57,8 @@ DEFAULT_VERIFIER_PROMPT = (
     "(prefer native SystemVerilog assertions, bind files, and self-checking SV testbenches under "
     "`xrun`, use cocotb when a Python reference model or scoreboard is clearer, and escalate to "
     "native UVM under `xrun -uvm` when the interface complexity justifies it), then return a final "
-    "verdict of `good` or `bad` in result/result.json. The candidate RTL under candidate/ is "
+    "verdict of `good` or `bad` in result/result.json. Do not use `yosys`; use `xrun`/Xcelium for "
+    "all compile, elaboration, SVA, and smoke-test checks. The candidate RTL under candidate/ is "
     "immutable input: do not edit files under candidate/."
 )
 

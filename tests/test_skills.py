@@ -14,8 +14,7 @@ def test_xrun_skill_prefers_xcelium_for_package_heavy_tasks() -> None:
     assert "helper interface or package alone does not count" in skill
 
 
-def test_yosys_skill_mentions_fallback_role() -> None:
+def test_yosys_skill_marks_repo_flow_as_xrun_only() -> None:
     skill = (ROOT / ".opencode" / "skills" / "yosys" / "SKILL.md").read_text()
-    assert "fallback" in skill
-    assert "small standalone RTL" in skill
-    assert "do not use Yosys as the required compile check" in skill
+    assert "Do not use `yosys` in this repo" in skill
+    assert "Use `xrun`/Xcelium" in skill

@@ -48,9 +48,7 @@ def test_prepare_generator_episode_instructions_require_behavioral_spec_and_buil
     assert "requirement checklist" in instructions
     assert "Interface and compatibility are necessary but not sufficient" in instructions
     assert "compile sanity check" in instructions
-    assert "required compile/elaboration check is `xrun`/Xcelium" in instructions
-    assert "`yosys` does not satisfy" in instructions
-    assert "`yosys` only as a fallback" in instructions
+    assert "Use `xrun`/Xcelium for that check" in instructions
     assert "task-local SV packages or typedef files" in instructions
     assert "`submission/` must be a self-contained deliverable set" in instructions
     assert "Do not use `` `include `` paths that reach into `task/`" in instructions
@@ -116,12 +114,16 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     assert "Interface and compatibility are necessary but not sufficient" in prompt
     assert "requirement checklist" in prompt
     assert "compile sanity check" in prompt
-    assert "required compile sanity check is `xrun`/Xcelium" in prompt
-    assert "`yosys` does not satisfy this requirement" in prompt
+    assert "Use `xrun`/Xcelium for this check" in prompt
     assert "Do not rely on upstream/OpenTitan package imports" in prompt
     assert "task-local SV packages or typedef files" in prompt
-    assert "`yosys` only as a fallback" in prompt
+    assert "Use `xrun`/Xcelium for compile and elaboration checks" in prompt
     assert "`submission/` as a self-contained deliverable set" in prompt
     assert "Do not `include` files from `task/` inside submission RTL" in prompt
     assert "compile check only counts if it elaborates the DUT top module" in prompt
     assert "If the compile check fails, `status` must not be `pass`" in prompt
+
+
+def test_verifier_prompt_forbids_yosys() -> None:
+    prompt = (ROOT / ".opencode" / "prompts" / "verifier.md").read_text()
+    assert "Do not use `yosys`" in prompt or "`yosys`" not in prompt

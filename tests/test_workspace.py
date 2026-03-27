@@ -42,8 +42,7 @@ def test_stage_generator_workspace_exposes_only_public_task_material(tmp_path: P
     assert "task/spec/doc/" in instructions
     assert "requirement checklist" in instructions
     assert "Interface and compatibility are necessary but not sufficient" in instructions
-    assert "required compile/elaboration check is `xrun`/Xcelium" in instructions
-    assert "`yosys` does not satisfy the compile-check requirement" in instructions
+    assert "Use `xrun`/Xcelium for that check" in instructions
     assert "Do not depend on upstream or OpenTitan repository packages" in instructions
     assert "task-local SV packages or typedef files" in instructions
     assert "`submission/` must be a self-contained deliverable set" in instructions
@@ -78,6 +77,7 @@ def test_stage_verifier_workspace_copies_candidate_dir_but_not_oracle(tmp_path: 
     assert "machine-readable public contract" in instructions
     assert "task/spec/interface/" in instructions
     assert "cocotb" in instructions
+    assert "Do not use `yosys`" in instructions
 
 
 def test_stage_verifier_workspace_accepts_single_file(tmp_path: Path) -> None:
