@@ -16,9 +16,11 @@ That keeps deterministic validation available to the training framework without 
 - `configs/datasets.json`: dataset manifest and acquisition order.
 - `configs/rtllm_v1_1_interfaces.json`: curated manual interface contract for all RTLLM v1.1 tasks.
 - `configs/opentitan_ip_docs_tasks.json`: curated manual OpenTitan medium-tier task manifest.
+- `configs/riscv_hardware_specs_tasks.json`: curated manual spec-only RISC-V hardware-spec task manifest.
 - `configs/verifier_smoke.json`: a first-pass verifier-training config.
 - `src/rtl_training/`: task-store, OpenCode runtime, hidden-oracle validation, and RL helpers.
 - `task_library/opentitan_ip_docs/`: manually ingested OpenTitan spec bundles for `adc_ctrl`, `aon_timer`, `uart`, `i2c`, `spi_host`, `pattgen`, `dma`, `rv_timer`, and `sysrst_ctrl`, copied from the local checkout with their original doc layout.
+- `task_library/riscv_hardware_specs/`: the first checked-in spec-only public corpus, currently with official RISC-V External Debug and Advanced Interrupt Architecture PDFs.
 - `opencode.json` and `.opencode/`: checked-in OpenCode prompts and hardware-tool skills.
 - `tests/`: regression tests for public/oracle separation, OpenCode workspaces, and reward/config logic.
 - `docs/`: project plan, dataset notes, and an engineering log.
@@ -64,11 +66,23 @@ store_opentitan_ip_docs_tasks(
 PY
 ```
 
-For the OpenTitan pack, the public task contains the copied upstream docs, but the public SV boundary is projected into task-local package-free artifacts under `public/spec/interface/` (for example `uart_public_if.sv` plus `uart_public_types_pkg.sv`). The hidden task metadata retains the repo-native port types so the oracle can generate wrappers/adapters without forcing the generator to import upstream OpenTitan packages.
+For the OpenTitan pack, the public task contains the copied upstream docs, but the public SV boundary is projected into task-local package-free artifacts under `public/spec/interface/` (for example `uart_public_if.sv` plus `uart_public_types_pkg.sv`). When a task needs deeper verification hooks, it can also expose a self-contained public microarchitecture ABI under `public/spec/micro_arch/`. The hidden task metadata retains the repo-native port types so the oracle can generate wrappers/adapters without forcing the generator to import upstream OpenTitan packages. See `docs/task-format.md` for the intended public task shape.
+
+Materialize the first spec-only public pack:
+
+```bash
+python - <<'PY'
+from rtl_training.task_store import store_riscv_hardware_specs_tasks
+
+store_riscv_hardware_specs_tasks("data/task_store")
+PY
+```
+
+This pack carries public PDFs only. There is no hidden oracle or private source bundle; it exists to validate the public-only ingest path before adding larger spec corpora.
 
 The task metadata also points at a shared hidden source bundle under `data/shared_sources/registry.json` for upstream `rtl/` and `dv/` paths. Those private assets are not staged into agent workspaces.
 
-The UART task also carries a hidden copied golden RTL reference under `oracle/golden_rtl/`, plus a repo-native `dvsim` smoke oracle description in the task metadata. Gold selftests stage compat stubs so the upstream DV flow stays runnable, while candidate validation can stage the real public compat ABI and a hidden wrapper overlay.
+The UART task also carries a hidden copied golden RTL reference under `oracle/golden_rtl/`, plus a repo-native `dvsim` smoke oracle description in the task metadata. Gold selftests stage micro-arch stubs so the upstream DV flow stays runnable, while candidate validation can stage the real public micro-arch ABI and a hidden wrapper overlay.
 
 Run the OpenTitan UART gold selftest:
 
@@ -141,6 +155,18 @@ python -m rtl_training.verifier_benchmark \
 
 The verifier benchmark treats `candidate/` as immutable input. If the agent edits the staged RTL, the episode is marked incorrect even if it later emits a verdict.
 
+## Oracle Policy
+
+Not every task family has a hidden gold RTL.
+
+Use three oracle modes:
+
+- `reference_backed`: hidden reference RTL exists, so require reference/gold selftest plus mutant discrimination. OpenTitan is in this bucket.
+- `reference_free`: no hidden gold RTL, but a self-checking bench / assertions / formal oracle exists. Require oracle-harness validation plus mutant or bug-bank discrimination.
+- `public_only`: no hidden oracle yet. These tasks are not oracle-backed training/eval tasks yet.
+
+So "gold-pass" is not a universal requirement. It only applies to reference-backed oracle families.
+
 ## Isolation Boundary
 
 The generator and verifier can have full bash inside the staged workspace, but the hidden oracle stays outside that workspace. In practice the checked-in `opencode.json` leaves `bash` enabled while denying `external_directory`, so the agent can use the local hardware toolchain without seeing the trainer-owned oracle assets. Batch and verifier runs now stage episodes under `/tmp/rtl-episodes` by default, then move the finished workspace back under `runs/...` for inspection. Override that with `RTL_EPISODE_STAGING_ROOT=/path/to/staging`, and stale temporary workspaces older than 24 hours are cleaned automatically before new episodes start.
@@ -168,7 +194,8 @@ Use the datasets in three layers instead of trying to find one magical corpus:
 
 1. `anchor_seed`: RTLLM and VerilogEval for spec + hidden simulation oracle.
 2. `verification_side`: AssertEval for assertion/formal evidence generation.
-3. `scale_corpus`: RTL-Repo for broader repository-level RTL exposure, but not as your main reward source.
+3. `spec_only_corpus`: official public specs without hidden oracles, starting with the checked-in RISC-V hardware-spec pack.
+4. `scale_corpus`: RTL-Repo for broader repository-level RTL exposure, but not as your main reward source.
 
 The project plan in `docs/project-plan.md` assumes you will upgrade a small subset of the seed tasks into truly trusted formal anchors before running serious RL.
 

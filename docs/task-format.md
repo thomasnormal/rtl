@@ -106,3 +106,39 @@ That means:
 
 If a deep oracle needs extra structure, it should be spelled out in
 `micro_arch/`, not inferred from a specific upstream implementation.
+
+## Hidden Oracle Validation Modes
+
+The public task format does not require a hidden reference RTL.
+
+Oracle validation depends on what hidden assets exist for that task family:
+
+- `reference_backed`
+  - The hidden oracle has a trusted reference implementation.
+  - Validation should include:
+    - reference/gold selftest
+    - mutant or bug-bank discrimination
+    - candidate validation against the hidden oracle
+  - OpenTitan belongs in this bucket.
+
+- `reference_free`
+  - The hidden oracle has no trusted reference RTL, only a self-checking bench,
+    assertions, formal properties, or another executable validator.
+  - Validation should include:
+    - oracle harness selfcheck where possible
+    - mutant or bug-bank discrimination against the executable oracle
+    - candidate validation against that oracle
+  - In this mode there is no universal "gold-pass" requirement because there is
+    no hidden gold RTL to pass.
+
+- `public_only`
+  - There is no hidden oracle yet, only a public task bundle.
+  - The task may still be useful for supervised pretraining, document
+    conversion, or later oracle construction, but it is not yet an oracle-backed
+    training/eval task.
+
+So the invariant is not "every oracle must have a gold-pass."
+The invariant is:
+
+- every oracle-backed task must have a reproducible validation story
+- and that story must match the hidden assets actually available for that task
