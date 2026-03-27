@@ -306,14 +306,14 @@ def _prepare_repo_overlay(
 
     repo_root = work_dir / "repo"
     _copy_repo_tree(oracle.source_root, repo_root)
-    _stage_public_compat_abi(
+    _stage_public_micro_arch_abi(
         task,
         repo_root=repo_root,
         overlay_rel_dir=oracle.overlay_rel_dir,
         mode=compat_mode,
     )
     _stage_hidden_repo_overlay(oracle, repo_root, mode=compat_mode)
-    _extend_sim_core_for_compat(
+    _extend_sim_core_for_micro_arch(
         task,
         repo_root=repo_root,
         overlay_rel_dir=oracle.overlay_rel_dir,
@@ -370,22 +370,32 @@ def _finalize_dvsim_plan(
     )
 
 
-def _stage_public_compat_abi(
+def _task_public_micro_arch_dir(task: StoredTask) -> Path | None:
+    micro_arch_dir = task.spec_dir / "micro_arch"
+    if micro_arch_dir.is_dir():
+        return micro_arch_dir
+    compat_dir = task.spec_dir / "compat"
+    if compat_dir.is_dir():
+        return compat_dir
+    return None
+
+
+def _stage_public_micro_arch_abi(
     task: StoredTask,
     *,
     repo_root: Path,
     overlay_rel_dir: str,
     mode: str,
 ) -> None:
-    compat_source_dir = task.spec_dir / "compat"
-    if not compat_source_dir.is_dir():
+    micro_arch_source_dir = _task_public_micro_arch_dir(task)
+    if micro_arch_source_dir is None:
         return
     ip_root = (repo_root / overlay_rel_dir).parent
-    compat_dest_dir = ip_root / "dv" / "compat"
-    compat_dest_dir.mkdir(parents=True, exist_ok=True)
-    for source_path in sorted(compat_source_dir.iterdir()):
+    micro_arch_dest_dir = ip_root / "dv" / "micro_arch"
+    micro_arch_dest_dir.mkdir(parents=True, exist_ok=True)
+    for source_path in sorted(micro_arch_source_dir.iterdir()):
         if source_path.is_file():
-            destination = compat_dest_dir / source_path.name
+            destination = micro_arch_dest_dir / source_path.name
             if source_path.suffix not in _RTL_EXTENSIONS:
                 shutil.copy2(source_path, destination)
                 continue
@@ -393,47 +403,51 @@ def _stage_public_compat_abi(
                 shutil.copy2(source_path, destination)
                 continue
             if mode == "stub":
-                destination.write_text(_render_compat_stub(source_path.read_text()))
+                destination.write_text(_render_micro_arch_stub(source_path.read_text()))
                 continue
-            raise ValueError(f"unsupported compat staging mode {mode!r}")
+            raise ValueError(f"unsupported micro_arch staging mode {mode!r}")
 
 
-def _extend_sim_core_for_compat(
+def _extend_sim_core_for_micro_arch(
     task: StoredTask,
     *,
     repo_root: Path,
     overlay_rel_dir: str,
 ) -> None:
-    compat_dir = task.spec_dir / "compat"
-    compat_files = tuple(
-        sorted(path.name for path in compat_dir.iterdir() if path.is_file() and path.suffix in _RTL_EXTENSIONS)
-    ) if compat_dir.is_dir() else ()
-    if not compat_files:
+    micro_arch_dir = _task_public_micro_arch_dir(task)
+    micro_arch_files = tuple(
+        sorted(path.name for path in micro_arch_dir.iterdir() if path.is_file() and path.suffix in _RTL_EXTENSIONS)
+    ) if micro_arch_dir is not None else ()
+    if not micro_arch_files:
         return
     ip_root = (repo_root / overlay_rel_dir).parent
     sim_core_path = ip_root / "dv" / f"{task.task_id}_sim.core"
     if not sim_core_path.is_file():
         return
     text = sim_core_path.read_text()
-    compat_entries = "\n".join(f"      - compat/{name}" for name in compat_files)
-    if compat_entries and compat_entries in text:
+    micro_arch_entries = "\n".join(f"      - micro_arch/{name}" for name in micro_arch_files)
+    if micro_arch_entries and micro_arch_entries in text:
         return
     pattern = re.compile(r"(?P<prefix>\n\s*files:\n)(?P<body>(?:\s*-\s+[^\n]+\n)+)(?P<suffix>\s*file_type:)", re.MULTILINE)
 
     def replace(match: re.Match[str]) -> str:
         body = match.group("body")
-        extra = "".join(f"      - compat/{name}\n" for name in compat_files if f"compat/{name}" not in body)
+        extra = "".join(
+            f"      - micro_arch/{name}\n"
+            for name in micro_arch_files
+            if f"micro_arch/{name}" not in body
+        )
         return f"{match.group('prefix')}{body}{extra}{match.group('suffix')}"
 
     updated, count = pattern.subn(replace, text, count=1)
     if count != 1:
-        raise ValueError(f"unable to extend sim core with compat files: {sim_core_path}")
+        raise ValueError(f"unable to extend sim core with micro_arch files: {sim_core_path}")
     sim_core_path.write_text(updated)
 
 
 def _stage_gold_reference_wrapper(task: StoredTask, *, overlay_dir: Path) -> None:
-    compat_spec = _discover_compat_interface_spec(task)
-    if compat_spec is None:
+    micro_arch_spec = _discover_micro_arch_interface_spec(task)
+    if micro_arch_spec is None:
         return
     internal = _public_interface_internal(task)
     native_interface = dict(internal["native_interface"])
@@ -455,9 +469,9 @@ def _stage_gold_reference_wrapper(task: StoredTask, *, overlay_dir: Path) -> Non
         old_name=top_module,
         new_name=f"{top_module}_candidate",
     )
-    candidate_text = _inject_compat_stub_instance(
+    candidate_text = _inject_micro_arch_stub_instance(
         candidate_text,
-        compat_spec=compat_spec,
+        micro_arch_spec=micro_arch_spec,
     )
     wrapper_text = _render_gold_reference_wrapper(
         source_text=original_text,
@@ -468,14 +482,16 @@ def _stage_gold_reference_wrapper(task: StoredTask, *, overlay_dir: Path) -> Non
     top_source.write_text(wrapper_text)
 
 
-def _discover_compat_interface_spec(task: StoredTask) -> OpenTitanCompatInterfaceSpec | None:
-    compat_dir = task.spec_dir / "compat"
-    if not compat_dir.is_dir():
+def _discover_micro_arch_interface_spec(task: StoredTask) -> OpenTitanCompatInterfaceSpec | None:
+    micro_arch_dir = _task_public_micro_arch_dir(task)
+    if micro_arch_dir is None:
         return None
-    compat_files = tuple(sorted(compat_dir.glob("*_compat_if.sv")))
-    if len(compat_files) != 1:
+    interface_files = tuple(sorted(micro_arch_dir.glob("*_micro_arch_if.sv")))
+    if not interface_files:
+        interface_files = tuple(sorted(micro_arch_dir.glob("*_compat_if.sv")))
+    if len(interface_files) != 1:
         return None
-    source_text = compat_files[0].read_text()
+    source_text = interface_files[0].read_text()
     interface_match = re.search(
         r"\binterface\s+([A-Za-z_][A-Za-z0-9_$]*)\b",
         source_text,
@@ -532,22 +548,25 @@ def _stage_candidate_overlay(
         shutil.copy2(source_path, overlay_dir / support_file)
         support_texts.append((support_file, source_path.read_text()))
 
-    compat_files = tuple(
+    micro_arch_dir = _task_public_micro_arch_dir(task)
+    micro_arch_files = tuple(
         sorted(
             path.name
-            for path in (task.spec_dir / "compat").iterdir()
+            for path in micro_arch_dir.iterdir()
             if path.is_file() and path.suffix in _RTL_EXTENSIONS
         )
-    ) if (task.spec_dir / "compat").is_dir() else ()
+    ) if micro_arch_dir is not None else ()
 
     removable_includes = {
         support_file for support_file in support_files
     } | {
         f"task/spec/interface/{support_file}" for support_file in support_files
     } | {
-        compat_file for compat_file in compat_files
+        micro_arch_file for micro_arch_file in micro_arch_files
     } | {
-        f"task/spec/compat/{compat_file}" for compat_file in compat_files
+        f"task/spec/micro_arch/{micro_arch_file}" for micro_arch_file in micro_arch_files
+    } | {
+        f"task/spec/compat/{micro_arch_file}" for micro_arch_file in micro_arch_files
     } | {
         candidate_file.name for candidate_file in candidate_files
     } | {
@@ -623,19 +642,19 @@ def _rewrite_first_module_name(text: str, *, old_name: str, new_name: str) -> st
     return rewritten
 
 
-def _inject_compat_stub_instance(
+def _inject_micro_arch_stub_instance(
     source_text: str,
     *,
-    compat_spec: OpenTitanCompatInterfaceSpec,
+    micro_arch_spec: OpenTitanCompatInterfaceSpec,
 ) -> str:
     match = re.search(r"endmodule\b", source_text)
     if match is None:
-        raise ValueError("unable to inject compatibility interface into module without endmodule")
+        raise ValueError("unable to inject microarchitecture interface into module without endmodule")
     lines = [
-        f"  {compat_spec.interface_name} {compat_spec.instance_name}();",
+        f"  {micro_arch_spec.interface_name} {micro_arch_spec.instance_name}();",
     ]
-    for signal in compat_spec.signals:
-        lines.append(f"  assign {compat_spec.instance_name}.{signal} = '0;")
+    for signal in micro_arch_spec.signals:
+        lines.append(f"  assign {micro_arch_spec.instance_name}.{signal} = '0;")
     insertion = "\n" + "\n".join(lines) + "\n\n"
     return source_text[:match.start()] + insertion + source_text[match.start():]
 
@@ -835,10 +854,10 @@ def _render_sv_signal_type(type_expr: str) -> str:
     return stripped
 
 
-def _render_compat_stub(source_text: str) -> str:
+def _render_micro_arch_stub(source_text: str) -> str:
     match = re.search(r"^\s*(module|interface|package)\s+([A-Za-z_][A-Za-z0-9_$]*)", source_text, re.MULTILINE)
     if match is None:
-        raise ValueError("unable to derive compat stub declaration")
+        raise ValueError("unable to derive micro_arch stub declaration")
     kind = match.group(1)
     name = match.group(2)
     if kind == "module":

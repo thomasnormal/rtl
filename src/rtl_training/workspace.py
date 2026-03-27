@@ -62,8 +62,8 @@ def stage_generator_workspace(
             "- Treat `task/spec/interface/` as the concrete SV form of the public top-level interface when it exists.",
             "- If `task/spec/interface/` contains task-local SV packages or typedef files, those are the public type definitions to use. Do not reach for upstream repository packages when the task-local interface collateral already defines the boundary.",
             "- Treat `task/task.json` as the authoritative machine-readable contract for the top module, interface hints, and deliverables.",
-            "- If `task/spec/compat/` exists, treat the SV files there as a mandatory compatibility ABI. The generated RTL must compile against that ABI and satisfy any required named interfaces or bind points it defines exactly.",
-            "- Interface and compatibility are necessary but not sufficient. The candidate must implement the full functional behavior described by the spec, not just a stub that satisfies ports or shallow compatibility checks.",
+            "- If `task/spec/micro_arch/` exists, treat the SV files there as a mandatory microarchitecture ABI. The generated RTL must compile against that ABI and satisfy any required named interfaces or bind points it defines exactly.",
+            "- Interface and microarchitecture are necessary but not sufficient. The candidate must implement the full functional behavior described by the spec, not just a stub that satisfies ports or shallow ABI checks.",
             "- Do not depend on upstream or OpenTitan repository packages just to satisfy the public task boundary. If the task leaks repo-specific package types, treat that as a task-definition problem rather than patching `submission/` with package scaffolding.",
             "- Write candidate RTL files to `submission/`. The top module must match `task/task.json`.",
             "- You may produce one or more `.sv`/`.v` files under `submission/`.",
@@ -127,7 +127,7 @@ def stage_verifier_workspace(
             "- Read the spec files under `task/spec/`, `task/task.json`, and the candidate RTL files under `candidate/`.",
             "- Treat `task/spec/interface/` as the concrete SV form of the public top-level interface when it exists.",
             "- Treat `task/task.json` as the authoritative machine-readable public contract for the expected top module and interface hints.",
-            "- If `task/spec/compat/` exists, treat the SV files there as the task's deep-DV compatibility ABI and use them when evaluating whether the candidate is compatible with deeper verification.",
+            "- If `task/spec/micro_arch/` exists, treat the SV files there as the task's deep-DV microarchitecture ABI and use them when evaluating whether the candidate is compatible with deeper verification.",
             "- Treat the candidate RTL as immutable input. Do not edit files under `candidate/`.",
             "- Turn the spec into a concrete requirement checklist before judging the RTL.",
             "- Use the available tools to gather evidence.",
@@ -190,8 +190,15 @@ def stage_converter_workspace(
     instructions_path.write_text(
         "# Converter Task\n\n"
         "- Convert the PDF in `input/source.pdf` to markdown.\n"
-        "- Write all output files to `output/`.\n"
-        "- See the converter agent prompt for detailed instructions.\n"
+        "- Render the PDF to page images and inspect it page by page.\n"
+        "- Write markdown files to `output/`, split by chapter or other high-level section.\n"
+        "- Use descriptive ordered names such as `01_overview.md`, `02_architecture.md`, and `03_timing.md`.\n"
+        "- Put extracted figure images under `output/figures/`.\n"
+        "- Reference extracted figures from markdown with paths like `![Figure 3-2](figures/figure-042.png)`.\n"
+        "- Use Python and PIL when you need to crop figure regions from a rendered page image.\n"
+        "- Be exhaustive. Do not skip any page content, even if it is repetitive, mostly visual, or mostly a caption/table.\n"
+        "- Every source page must be covered somewhere in the markdown output, but the files should follow document structure rather than page boundaries.\n"
+        "- See the converter agent prompt for the full conversion workflow.\n"
     )
 
     return ConverterWorkspace(

@@ -71,8 +71,8 @@
           },
           {
             "source_base": "task_library_root",
-            "source": "_hidden/uart/repo_overlay/hw/ip/uart/dv/compat/uart_compat_bind.sv",
-            "dest": "repo_overlay/hw/ip/uart/dv/compat/uart_compat_bind.sv"
+            "source": "_hidden/uart/repo_overlay/hw/ip/uart/dv/micro_arch/uart_micro_arch_bind.sv",
+            "dest": "repo_overlay/hw/ip/uart/dv/micro_arch/uart_micro_arch_bind.sv"
           }
         ]
       },

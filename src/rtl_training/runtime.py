@@ -18,8 +18,10 @@ from .workspace import (
 
 DEFAULT_CONVERTER_PROMPT = (
     "Read TASK.md and convert the PDF in input/source.pdf to markdown. "
-    "Render pages to images, read each image, and write the full transcription "
-    "to output/. Write output/manifest.json when done."
+    "Render the PDF to page images, inspect it page by page with the multimodal model, "
+    "extract figures into output/figures/ when needed, and write exhaustive markdown split by chapter "
+    "or other high-level section, with figures referenced using paths like ![Figure ...](figures/figure-042.png). "
+    "Write output/manifest.json when done."
 )
 
 DEFAULT_GENERATOR_PROMPT = (
@@ -29,11 +31,11 @@ DEFAULT_GENERATOR_PROMPT = (
     "Treat task/spec/interface/ as the concrete SV declaration of the public DUT boundary and "
     "use any task-local SV packages or typedef files there as the public type source instead of "
     "upstream repository packages. "
-    "task/task.json as the machine-readable contract, but interface and compatibility are necessary "
+    "task/task.json as the machine-readable contract, but interface and microarchitecture are necessary "
     "not sufficient: implement the full functional behavior from the spec, not a stub. "
     "Do not make the solution depend on importing upstream repository packages just to satisfy the "
     "public task boundary. "
-    "If task/spec/compat/ exists, treat it as a mandatory SV compatibility ABI and ensure the "
+    "If task/spec/micro_arch/ exists, treat it as a mandatory SV microarchitecture ABI and ensure the "
     "candidate RTL compiles against it exactly, including required named instances or bind points. "
     "Treat `submission/` as a self-contained deliverable set and do not `include` files from `task/` "
     "inside submission RTL. If you need task-local public typedefs or packages, mirror them into "
@@ -53,7 +55,7 @@ DEFAULT_VERIFIER_PROMPT = (
     "Treat it as an evidence-gathering verification episode, not just a code review: "
     "derive a requirement checklist from the spec, write executable checks "
     "(using task/spec/interface/ as the concrete SV form of the public DUT interface when it exists), "
-    "(and, if task/spec/compat/ exists, use the compatibility SV files as part of the deep-DV contract), "
+    "(and, if task/spec/micro_arch/ exists, use the microarchitecture SV files as part of the deep-DV contract), "
     "(prefer native SystemVerilog assertions, bind files, and self-checking SV testbenches under "
     "`xrun`, use cocotb when a Python reference model or scoreboard is clearer, and escalate to "
     "native UVM under `xrun -uvm` when the interface complexity justifies it), then return a final "

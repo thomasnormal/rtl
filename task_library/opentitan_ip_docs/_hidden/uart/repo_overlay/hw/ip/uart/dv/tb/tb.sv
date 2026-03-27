@@ -81,10 +81,10 @@ module tb;
   assign uart_rx = uart_if.uart_rx;
   assign uart_if.uart_tx = uart_tx;
 
-  assign uart_nf_if.rx_sync    = dut.u_candidate.u_uart_compat_if.rx_sync;
-  assign uart_nf_if.rx_sync_q1 = dut.u_candidate.u_uart_compat_if.rx_sync_q1;
-  assign uart_nf_if.rx_sync_q2 = dut.u_candidate.u_uart_compat_if.rx_sync_q2;
-  assign uart_nf_if.rx_enable  = dut.u_candidate.u_uart_compat_if.rx_enable;
+  assign uart_nf_if.rx_sync    = dut.u_candidate.u_uart_micro_arch_if.rx_sync;
+  assign uart_nf_if.rx_sync_q1 = dut.u_candidate.u_uart_micro_arch_if.rx_sync_q1;
+  assign uart_nf_if.rx_sync_q2 = dut.u_candidate.u_uart_micro_arch_if.rx_sync_q2;
+  assign uart_nf_if.rx_enable  = dut.u_candidate.u_uart_micro_arch_if.rx_enable;
 
   initial begin
     // drive clk and rst_n from clk_if

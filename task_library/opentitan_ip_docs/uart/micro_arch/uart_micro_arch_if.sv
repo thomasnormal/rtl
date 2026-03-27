@@ -1,4 +1,4 @@
-interface uart_compat_if;
+interface uart_micro_arch_if;
   logic rx_sync;
   logic rx_sync_q1;
   logic rx_sync_q2;

@@ -46,7 +46,7 @@ def test_prepare_generator_episode_instructions_require_behavioral_spec_and_buil
     instructions = episode.workspace.instructions_path.read_text()
     assert "task/spec/doc/" in instructions
     assert "requirement checklist" in instructions
-    assert "Interface and compatibility are necessary but not sufficient" in instructions
+    assert "Interface and microarchitecture are necessary but not sufficient" in instructions
     assert "compile sanity check" in instructions
     assert "Use `xrun`/Xcelium for that check" in instructions
     assert "task-local SV packages or typedef files" in instructions
@@ -111,7 +111,7 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     prompt = (ROOT / ".opencode" / "prompts" / "generator.md").read_text()
     assert "task/spec/doc/" in prompt
     assert "full functional behavior" in prompt
-    assert "Interface and compatibility are necessary but not sufficient" in prompt
+    assert "Interface and microarchitecture are necessary but not sufficient" in prompt
     assert "requirement checklist" in prompt
     assert "compile sanity check" in prompt
     assert "Use `xrun`/Xcelium for this check" in prompt

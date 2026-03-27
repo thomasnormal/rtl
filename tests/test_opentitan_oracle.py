@@ -38,7 +38,7 @@ def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: 
     (task_root / "public" / "spec").mkdir(parents=True)
     (task_root / "public" / "spec" / "README.md").write_text("uart spec\n")
     (task_root / "public" / "spec" / "interface").mkdir(parents=True)
-    (task_root / "public" / "spec" / "compat").mkdir(parents=True)
+    (task_root / "public" / "spec" / "micro_arch").mkdir(parents=True)
     (task_root / "public" / "spec" / "interface" / "uart_public_types_pkg.sv").write_text(
         "package uart_public_types_pkg;\n"
         "  typedef logic [108:0] uart_tl_i_t;\n"
@@ -47,15 +47,15 @@ def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: 
         "  typedef logic [1:0] uart_alert_tx_o_t;\n"
         "endpackage\n"
     )
-    (task_root / "public" / "spec" / "compat" / "uart_compat_if.sv").write_text(
-        "interface uart_compat_if; endinterface\n"
+    (task_root / "public" / "spec" / "micro_arch" / "uart_micro_arch_if.sv").write_text(
+        "interface uart_micro_arch_if; endinterface\n"
     )
-    (task_root / "public" / "spec" / "compat" / "uart_compat_checker.sv").write_text(
-        "module uart_compat_checker(uart_compat_if compat_if); endmodule\n"
+    (task_root / "public" / "spec" / "micro_arch" / "uart_micro_arch_checker.sv").write_text(
+        "module uart_micro_arch_checker(uart_micro_arch_if micro_arch_if); endmodule\n"
     )
-    (task_root / "public" / "spec" / "compat" / "uart_compat_bind.sv").write_text(
-        "module uart_compat_bind;\n"
-        "  bind uart uart_compat_checker u_uart_compat_checker(.compat_if(u_uart_compat_if));\n"
+    (task_root / "public" / "spec" / "micro_arch" / "uart_micro_arch_bind.sv").write_text(
+        "module uart_micro_arch_bind;\n"
+        "  bind uart uart_micro_arch_checker u_uart_micro_arch_checker(.micro_arch_if(u_uart_micro_arch_if));\n"
         "endmodule\n"
     )
     (task_root / "public" / "task.json").write_text(
@@ -232,18 +232,18 @@ def test_build_opentitan_gold_selftest_plan_overlays_golden_rtl(tmp_path: Path) 
     assert plan.repo_root.exists()
     wrapper_text = (plan.repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").read_text()
     assert "module uart_candidate; // golden" in wrapper_text
-    assert "uart_compat_if u_uart_compat_if();" in wrapper_text
+    assert "uart_micro_arch_if u_uart_micro_arch_if();" in wrapper_text
     assert "module uart;" in wrapper_text
     assert "uart_candidate u_candidate (" in wrapper_text
     assert (plan.repo_root / "hw" / "ip" / "uart" / "dv" / "uart_sim_cfg.hjson").exists()
-    assert (plan.repo_root / "hw" / "ip" / "uart" / "dv" / "compat" / "uart_compat_if.sv").exists()
+    assert (plan.repo_root / "hw" / "ip" / "uart" / "dv" / "micro_arch" / "uart_micro_arch_if.sv").exists()
     assert (
-        plan.repo_root / "hw" / "ip" / "uart" / "dv" / "compat" / "uart_compat_bind.sv"
-    ).read_text().strip().startswith("module uart_compat_bind;")
+        plan.repo_root / "hw" / "ip" / "uart" / "dv" / "micro_arch" / "uart_micro_arch_bind.sv"
+    ).read_text().strip().startswith("module uart_micro_arch_bind;")
     sim_core_text = (plan.repo_root / "hw" / "ip" / "uart" / "dv" / "uart_sim.core").read_text()
-    assert "      - compat/uart_compat_if.sv" in sim_core_text
-    assert "      - compat/uart_compat_checker.sv" in sim_core_text
-    assert "      - compat/uart_compat_bind.sv" in sim_core_text
+    assert "      - micro_arch/uart_micro_arch_if.sv" in sim_core_text
+    assert "      - micro_arch/uart_micro_arch_checker.sv" in sim_core_text
+    assert "      - micro_arch/uart_micro_arch_bind.sv" in sim_core_text
     assert plan.command[1] == "util/dvsim/dvsim.py"
     assert plan.command[2] == "hw/ip/uart/dv/uart_sim_cfg.hjson"
     assert plan.command[4] == "uart_smoke"
@@ -390,7 +390,7 @@ def test_build_opentitan_candidate_plan_applies_hidden_repo_overlay(tmp_path: Pa
         "  output uart_public_types_pkg::uart_tl_o_t tl_o,\n"
         "  output uart_public_types_pkg::uart_alert_tx_o_t alert_tx_o\n"
         ");\n"
-        "  uart_compat_if u_uart_compat_if();\n"
+        "  uart_micro_arch_if u_uart_micro_arch_if();\n"
         "endmodule\n"
     )
     plan = build_opentitan_candidate_validation_plan(

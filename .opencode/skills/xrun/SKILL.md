@@ -20,7 +20,7 @@ xrun -64bit -q -l xrun.log -xmlibdirname xcelium.d tb.sv dut.sv
 ```bash
 xrun -64bit -sv -q -l xrun.log -top uart \
   task/spec/interface/uart_public_types_pkg.sv \
-  task/spec/compat/uart_compat_if.sv \
+  task/spec/micro_arch/uart_micro_arch_if.sv \
   submission/uart.sv
 ```
 
@@ -36,8 +36,8 @@ Guidance:
 
 - Keep runs quiet and log to a file with `-l`.
 - Use a dedicated `-xmlibdirname` in a scratch directory if you will rerun often.
-- Prefer `xrun` for compile/elaboration sanity on package-heavy SystemVerilog, interfaces, compat SV, and UVM-style collateral. That matches the commercial-tool path better than a generic parser.
-- For OpenTitan-style tasks or any task with package-typed ports or compat files, `xrun` is the required compile check. A `yosys` parse is not sufficient there.
+- Prefer `xrun` for compile/elaboration sanity on package-heavy SystemVerilog, interfaces, microarchitecture SV, and UVM-style collateral. That matches the commercial-tool path better than a generic parser.
+- For OpenTitan-style tasks or any task with package-typed ports or microarchitecture files, `xrun` is the required compile check. A `yosys` parse is not sufficient there.
 - For a DUT compile check, explicitly select the DUT top with `-top <dut>` or compile a tiny smoke bench that instantiates it.
 - A helper interface or package alone does not count as a DUT compile/elaboration check.
 - Start with compile-only or elaborate-only sanity if the bench is incomplete.

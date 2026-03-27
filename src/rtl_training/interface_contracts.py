@@ -404,7 +404,7 @@ def _render_interface_readme(
     lines.extend(
         [
             "- These files describe the public boundary only. Hidden oracles and deep-DV",
-            "  compatibility ABIs live elsewhere.",
+            "  microarchitecture ABIs live elsewhere.",
         ]
     )
     if support_files:

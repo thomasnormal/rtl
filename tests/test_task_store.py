@@ -488,7 +488,7 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
     assert (uart_task.root / "oracle" / "golden_rtl" / "uart_core.sv").exists()
     assert (uart_task.root / "oracle" / "repo_overlay" / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv").exists()
     assert (
-        uart_task.root / "oracle" / "repo_overlay" / "hw" / "ip" / "uart" / "dv" / "compat" / "uart_compat_bind.sv"
+        uart_task.root / "oracle" / "repo_overlay" / "hw" / "ip" / "uart" / "dv" / "micro_arch" / "uart_micro_arch_bind.sv"
     ).exists()
     registry = SharedSourceRegistry.load(uart_task.shared_private_ref.registry_path)
     bundle = registry.by_id(uart_task.shared_private_ref.bundle_id)
