@@ -51,7 +51,7 @@ store_verilog_eval_tasks(
 PY
 ```
 
-`rtllm_v1_1` uses the checked-in manual interface manifest in `configs/rtllm_v1_1_interfaces.json` instead of inferred port extraction from the prose spec. When a task has public interface metadata, the task store also materializes `public/spec/interface/<top>_public_if.sv`, a generated SV interface with canonical `dut` and `tb` modports.
+`rtllm_v1_1` uses the checked-in manual interface manifest in `configs/rtllm_v1_1_interfaces.json` instead of inferred port extraction from the prose spec. When a task has a public interface contract, the task store also materializes `public/top_module.txt` plus `public/spec/interface/<top>_public_if.sv`, a generated SV interface with canonical `dut` and `tb` modports.
 
 Materialize the first curated OpenTitan medium-tier pack:
 
@@ -66,7 +66,7 @@ store_opentitan_ip_docs_tasks(
 PY
 ```
 
-For the OpenTitan pack, the public task contains the copied upstream docs, but the public SV boundary is projected into task-local package-free artifacts under `public/spec/interface/` (for example `uart_public_if.sv` plus `uart_public_types_pkg.sv`). When a task needs deeper verification hooks, it can also expose a self-contained public microarchitecture ABI under `public/spec/micro_arch/`. The hidden task metadata retains the repo-native port types so the oracle can generate wrappers/adapters without forcing the generator to import upstream OpenTitan packages. See `docs/task-format.md` for the intended public task shape.
+For the OpenTitan pack, the public task contains the copied upstream docs, but the public solver-facing contract is still self-contained: `public/top_module.txt` names the DUT top, and `public/spec/interface/` contains task-local package-free SV artifacts such as `uart_public_if.sv` and `uart_public_types_pkg.sv`. When a task needs deeper verification hooks, it can also expose a self-contained public microarchitecture ABI under `public/spec/micro_arch/`. The hidden task metadata retains the repo-native port types so the oracle can generate wrappers/adapters without forcing the generator to import upstream OpenTitan packages. See `docs/task-format.md` for the intended public task shape.
 
 Materialize the first spec-only public pack:
 

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from rtl_training.interface_contracts import discover_public_interface_spec, read_public_top_module
 from rtl_training.shared_sources import SharedSourceRegistry
 from rtl_training.task_store import (
     load_stored_task,
@@ -37,8 +38,9 @@ def test_store_rtllm_tasks_separates_public_inputs_from_hidden_oracle(tmp_path: 
     assert task.oracle.support_files == ()
 
     public_metadata = json.loads(task.public_task_path.read_text())
-    assert public_metadata["candidate_top_module"] == "adder_8bit"
-    assert public_metadata["spec"] == "spec/"
+    assert public_metadata["deliverables"]["rtl"] == "submission/"
+    assert task.public_top_module == "adder_8bit"
+    assert read_public_top_module(task.public_top_module_path) == "adder_8bit"
 
 
 def test_store_rtllm_tasks_copies_hidden_support_files_and_selects_verified_top(tmp_path: Path) -> None:
@@ -91,21 +93,22 @@ def test_store_rtllm_tasks_extracts_public_interface_contract_from_structured_sp
     output_root = tmp_path / "task_store"
     written = store_rtllm_tasks(source_root, output_root, dataset_name="rtllm_v2_0")
     public_metadata = json.loads((written[0] / "public" / "task.json").read_text())
+    public_interface = discover_public_interface_spec((written[0] / "public" / "spec"))
 
     assert public_metadata["deliverables"]["rtl"] == "submission/"
-    assert public_metadata["interface"]["top_module"] == "RAM"
-    assert public_metadata["interface"]["declared_module_name"] == "RAM"
-    assert public_metadata["interface"]["inputs"] == [
-        {"name": "clk", "description": "Clock signal."},
-        {"name": "write_en", "description": "Write enable."},
+    assert read_public_top_module(written[0] / "public" / "top_module.txt") == "RAM"
+    assert public_interface is not None
+    assert list(public_interface.ports) == [
+        {"name": "clk", "direction": "input"},
+        {"name": "write_en", "direction": "input"},
+        {"name": "read_data", "direction": "output"},
     ]
-    assert public_metadata["interface"]["outputs"] == [
-        {"name": "read_data", "description": "Read data output."},
-    ]
-    assert public_metadata["interface"]["parameters"] == [
-        {"name": "WIDTH", "value": "6"},
-        {"name": "DEPTH", "value": "8"},
-    ]
+    interface_sv = (written[0] / "public" / "spec" / "interface" / "RAM_public_if.sv").read_text()
+    assert "parameter WIDTH = 6" in interface_sv
+    assert "parameter DEPTH = 8" in interface_sv
+    assert "logic clk; // Clock signal." in interface_sv
+    assert "logic write_en; // Write enable." in interface_sv
+    assert "logic read_data; // Read data output." in interface_sv
 
 
 def test_store_rtllm_tasks_extracts_interface_from_fullwidth_colon_sections(tmp_path: Path) -> None:
@@ -134,16 +137,12 @@ def test_store_rtllm_tasks_extracts_interface_from_fullwidth_colon_sections(tmp_
 
     output_root = tmp_path / "task_store"
     written = store_rtllm_tasks(source_root, output_root, dataset_name="rtllm_v2_0")
-    public_metadata = json.loads((written[0] / "public" / "task.json").read_text())
+    public_if_text = (written[0] / "public" / "spec" / "interface" / "pulse_detect_public_if.sv").read_text()
 
-    assert public_metadata["interface"]["inputs"] == [
-        {"name": "clk", "description": "Clock signal."},
-        {"name": "rst_n", "description": "Reset signal."},
-        {"name": "data_in", "description": "One-bit input signal."},
-    ]
-    assert public_metadata["interface"]["outputs"] == [
-        {"name": "data_out", "description": "Pulse output."},
-    ]
+    assert "logic clk; // Clock signal." in public_if_text
+    assert "logic rst_n; // Reset signal." in public_if_text
+    assert "logic data_in; // One-bit input signal." in public_if_text
+    assert "logic data_out; // Pulse output." in public_if_text
 
 
 def test_store_rtllm_tasks_uses_curated_interface_manifest_for_rtllm_v1_1(tmp_path: Path) -> None:
@@ -156,15 +155,12 @@ def test_store_rtllm_tasks_uses_curated_interface_manifest_for_rtllm_v1_1(tmp_pa
 
     output_root = tmp_path / "task_store"
     written = store_rtllm_tasks(source_root, output_root, dataset_name="rtllm_v1_1")
-    public_metadata = json.loads((written[0] / "public" / "task.json").read_text())
+    public_if = discover_public_interface_spec(written[0] / "public" / "spec")
+    sv_contract = written[0] / "public" / "spec" / "interface" / "RAM_public_if.sv"
 
-    assert public_metadata["candidate_top_module"] == "RAM"
-    assert public_metadata["interface"]["top_module"] == "RAM"
-    assert public_metadata["interface"]["notes"] == [
-        "The oracle uses 8-bit read/write addresses and 6-bit data.",
-        "The published prose about DEPTH is inconsistent with the hidden oracle; follow this interface.",
-    ]
-    assert public_metadata["interface"]["ports"] == [
+    assert read_public_top_module(written[0] / "public" / "top_module.txt") == "RAM"
+    assert public_if is not None
+    assert list(public_if.ports) == [
         {"name": "clk", "direction": "input"},
         {"name": "rst_n", "direction": "input"},
         {"name": "write_en", "direction": "input"},
@@ -174,10 +170,10 @@ def test_store_rtllm_tasks_uses_curated_interface_manifest_for_rtllm_v1_1(tmp_pa
         {"name": "read_addr", "direction": "input", "width": "[7:0]"},
         {"name": "read_data", "direction": "output", "width": "[5:0]"},
     ]
-    sv_contract = written[0] / "public" / "spec" / "interface" / "RAM_public_if.sv"
     assert sv_contract.exists()
     assert "logic [7:0] write_addr;" in sv_contract.read_text()
     assert "modport dut (" in sv_contract.read_text()
+    assert "follow this interface" not in json.loads((written[0] / "public" / "task.json").read_text())
 
 
 def test_store_rtllm_tasks_requires_curated_manifest_for_rtllm_v1_1(tmp_path: Path) -> None:
@@ -212,10 +208,11 @@ def test_store_rtllm_tasks_skips_known_invalid_anchor_tasks_by_default(tmp_path:
         dataset_name="rtllm_v1_1",
         include_invalid=True,
     )
-    public_metadata = json.loads((written[0] / "public" / "task.json").read_text())
+    public_interface = discover_public_interface_spec(written[0] / "public" / "spec")
 
-    assert public_metadata["interface"]["top_module"] == "div_16bit"
-    assert public_metadata["interface"]["ports"] == [
+    assert read_public_top_module(written[0] / "public" / "top_module.txt") == "div_16bit"
+    assert public_interface is not None
+    assert list(public_interface.ports) == [
         {"name": "A", "direction": "input", "width": "[15:0]"},
         {"name": "B", "direction": "input", "width": "[7:0]"},
         {"name": "result", "direction": "output", "width": "[15:0]"},
@@ -280,8 +277,8 @@ def test_store_generic_task_with_text_spec(tmp_path: Path) -> None:
     assert task.oracle is None
     assert (task.spec_dir / "spec.txt").read_text() == "Design a 4-bit adder."
     public = json.loads(task.public_task_path.read_text())
-    assert public["spec"] == "spec/"
-    assert public["candidate_top_module"] == "adder_4bit"
+    assert public["deliverables"]["summary"] == "result/result.json"
+    assert task.public_top_module == "adder_4bit"
 
 
 def test_store_generic_task_with_directory_spec(tmp_path: Path) -> None:
@@ -423,19 +420,23 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
     assert not (uart_task.spec_dir / "spec.md").exists()
 
     public_metadata = json.loads(uart_task.public_task_path.read_text())
-    assert public_metadata["candidate_top_module"] == "uart"
-    assert public_metadata["interface"]["top_module"] == "uart"
-    assert public_metadata["interface"]["inputs"][0] == {
+    assert public_metadata == {
+        "dataset_name": "opentitan_ip_docs",
+        "deliverables": {
+            "rtl": "submission/",
+            "summary": "result/result.json",
+        },
+        "task_id": "uart",
+        "tier": "medium",
+    }
+    assert uart_task.public_top_module == "uart"
+    uart_public_if = discover_public_interface_spec(uart_task.spec_dir)
+    assert uart_public_if is not None
+    assert list(uart_public_if.ports)[0] == {
         "name": "clk_i",
         "direction": "input",
-        "width": "logic",
     }
-    assert public_metadata["interface"]["ports"][0] == {
-        "name": "clk_i",
-        "direction": "input",
-        "width": "logic",
-    }
-    assert public_metadata["interface"]["ports"][2] == {
+    assert list(uart_public_if.ports)[2] == {
         "name": "tl_i",
         "direction": "input",
         "width": "uart_public_types_pkg::uart_tl_i_t",
@@ -510,8 +511,9 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
     )
 
     adc_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "adc_ctrl")
-    adc_public_metadata = json.loads(adc_task.public_task_path.read_text())
-    assert adc_public_metadata["interface"]["ports"][6] == {
+    adc_public_if = discover_public_interface_spec(adc_task.spec_dir)
+    assert adc_public_if is not None
+    assert list(adc_public_if.ports)[6] == {
         "name": "adc_i",
         "direction": "input",
         "width": "adc_ctrl_public_types_pkg::adc_ctrl_adc_i_t",
@@ -559,8 +561,16 @@ def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path
     assert (debug_task.spec_dir / "riscv-debug-spec-v0.13.2.pdf").exists()
 
     debug_public_metadata = json.loads(debug_task.public_task_path.read_text())
-    assert debug_public_metadata["candidate_top_module"] == "riscv_debug_module"
-    assert debug_public_metadata["spec"] == "spec/"
+    assert debug_public_metadata == {
+        "dataset_name": "riscv_hardware_specs",
+        "deliverables": {
+            "rtl": "submission/",
+            "summary": "result/result.json",
+        },
+        "task_id": "external_debug",
+        "tier": "large",
+    }
+    assert debug_task.public_top_module == "riscv_debug_module"
 
     debug_task_metadata = json.loads((debug_task.root / "task.json").read_text())
     assert debug_task_metadata["source"]["origin"] == "curated_task_pack"
@@ -589,6 +599,7 @@ def test_load_stored_task_backward_compat_old_spec_format(tmp_path: Path) -> Non
     public_dir = task_root / "public"
     public_dir.mkdir(parents=True)
     (public_dir / "spec.txt").write_text("old spec")
+    (public_dir / "top_module.txt").write_text("legacy_top\n")
     (public_dir / "task.json").write_text(json.dumps({"dataset_name": "old", "task_id": "t1"}) + "\n")
     (task_root / "task.json").write_text(
         json.dumps({
@@ -597,6 +608,7 @@ def test_load_stored_task_backward_compat_old_spec_format(tmp_path: Path) -> Non
             "public": {
                 "directory": "public",
                 "spec": "public/spec.txt",
+                "top_module": "public/top_module.txt",
                 "task": "public/task.json",
             },
             "source": {},
@@ -608,4 +620,5 @@ def test_load_stored_task_backward_compat_old_spec_format(tmp_path: Path) -> Non
 
     # spec_dir should be the parent of the old spec file
     assert task.spec_dir == task_root / "public"
+    assert task.public_top_module == "legacy_top"
     assert (task.spec_dir / "spec.txt").read_text() == "old spec"

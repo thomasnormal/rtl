@@ -12,6 +12,7 @@ from typing import Any, Sequence
 
 from .datasets import Tier, discover_rtllm_tasks, discover_verilog_eval_tasks
 from .interface_contracts import (
+    read_public_top_module,
     materialize_public_interface_sv,
     normalize_public_interface_contract,
     prepare_public_interface_contract,
@@ -56,6 +57,7 @@ class SimulationOracle:
     reference_top_module: str
     pass_criteria: PassCriteria
     support_files: tuple[Path, ...] = ()
+    testbench_top_module: str | None = None
 
     @classmethod
     def from_dict(cls, task_root: Path, raw: dict[str, Any]) -> "SimulationOracle":
@@ -67,10 +69,11 @@ class SimulationOracle:
             reference_top_module=str(raw["reference_top_module"]),
             pass_criteria=PassCriteria.from_dict(dict(raw["pass_criteria"])),
             support_files=tuple(task_root / str(item) for item in raw.get("support_files", ())),
+            testbench_top_module=raw.get("testbench_top_module"),
         )
 
     def to_dict(self, task_root: Path) -> dict[str, Any]:
-        return {
+        d: dict[str, Any] = {
             "kind": "simulation",
             "testbench": str(self.testbench_path.relative_to(task_root)),
             "gold_rtl": str(self.gold_rtl_path.relative_to(task_root)),
@@ -80,6 +83,9 @@ class SimulationOracle:
             "pass_criteria": self.pass_criteria.to_dict(),
             "support_files": [str(path.relative_to(task_root)) for path in self.support_files],
         }
+        if self.testbench_top_module is not None:
+            d["testbench_top_module"] = self.testbench_top_module
+        return d
 
 
 @dataclass(frozen=True)
@@ -89,6 +95,8 @@ class StoredTask:
     task_id: str
     spec_dir: Path
     public_dir: Path
+    public_top_module_path: Path
+    public_top_module: str
     public_task_path: Path
     private_dir: Path | None
     shared_private_ref: "SharedPrivateSourceRef | None"
@@ -470,13 +478,34 @@ def _build_task_public_interface_contract(
     )
 
 
+def _build_public_task_metadata(
+    *,
+    dataset_name: str,
+    task_id: str,
+    tier: Tier | None,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "dataset_name": dataset_name,
+        "task_id": task_id,
+        "deliverables": {
+            "rtl": "submission/",
+            "summary": "result/result.json",
+        },
+    }
+    if tier is not None:
+        metadata["tier"] = tier
+    return metadata
+
+
 def _write_task_bundle(
     *,
     output_root: Path,
     dataset_name: str,
     task_id: str,
     spec_source: str | Path,
+    candidate_top_module: str,
     public_metadata: dict[str, Any],
+    public_interface: dict[str, Any] | None,
     oracle: SimulationOracle | None,
     source_metadata: dict[str, Any],
     private_sources: Sequence[str | Path] = (),
@@ -499,6 +528,7 @@ def _write_task_bundle(
     spec_dir = public_dir / "spec"
     spec_dir.mkdir(parents=True, exist_ok=True)
     public_task_path = public_dir / "task.json"
+    public_top_module_path = public_dir / "top_module.txt"
 
     if isinstance(spec_source, str):
         (spec_dir / "spec.txt").write_text(spec_source)
@@ -509,18 +539,17 @@ def _write_task_bundle(
         else:
             shutil.copy2(source_path, spec_dir / source_path.name)
 
+    public_top_module_path.write_text(f"{candidate_top_module}\n")
     if tier is not None:
         public_metadata.setdefault("tier", tier)
-    public_metadata["spec"] = "spec/"
-    interface = public_metadata.get("interface")
-    if isinstance(interface, dict):
-        public_metadata["interface"] = normalize_public_interface_contract(
-            interface,
-            candidate_top_module=str(public_metadata["candidate_top_module"]),
+    if public_interface is not None:
+        normalized_public_interface = normalize_public_interface_contract(
+            public_interface,
+            candidate_top_module=candidate_top_module,
         )
         materialize_public_interface_sv(
             spec_dir,
-            public_metadata["interface"],
+            normalized_public_interface,
             support_files=public_interface_support_files,
         )
     validate_public_micro_arch_dir(spec_dir)
@@ -532,6 +561,7 @@ def _write_task_bundle(
         "public": {
             "directory": "public",
             "spec": "public/spec/",
+            "top_module": str(public_top_module_path.relative_to(task_root)),
             "task": str(public_task_path.relative_to(task_root)),
         },
         "source": source_metadata,
@@ -625,12 +655,15 @@ def load_stored_task(task_root: str | Path) -> StoredTask:
         spec_dir = spec_resolved
     else:
         spec_dir = spec_resolved.parent
+    public_top_module_path = task_root_path / str(public["top_module"])
     return StoredTask(
         root=task_root_path,
         dataset_name=str(metadata["dataset_name"]),
         task_id=str(metadata["task_id"]),
         spec_dir=spec_dir,
         public_dir=task_root_path / str(public["directory"]),
+        public_top_module_path=public_top_module_path,
+        public_top_module=read_public_top_module(public_top_module_path),
         public_task_path=task_root_path / str(public["task"]),
         private_dir=(
             task_root_path / str(dict(private)["directory"])
@@ -678,16 +711,11 @@ def store_rtllm_tasks(
             spec_text=spec_text,
             candidate_top_module=task.task_id,
         )
-        public_metadata = {
-            "dataset_name": dataset_name,
-            "task_id": task.task_id,
-            "candidate_top_module": public_interface["top_module"],
-            "interface": public_interface,
-            "deliverables": {
-                "rtl": "submission/",
-                "summary": "result/result.json",
-            },
-        }
+        public_metadata = _build_public_task_metadata(
+            dataset_name=dataset_name,
+            task_id=task.task_id,
+            tier=tier,
+        )
         oracle = SimulationOracle(
             testbench_path=task.testbench_path,
             gold_rtl_path=task.gold_rtl_path,
@@ -717,7 +745,9 @@ def store_rtllm_tasks(
                 dataset_name=dataset_name,
                 task_id=task.task_id,
                 spec_source=spec_text,
+                candidate_top_module=str(public_interface["top_module"]),
                 public_metadata=public_metadata,
+                public_interface=public_interface,
                 oracle=oracle,
                 source_metadata=source_metadata,
                 tier=tier,
@@ -743,15 +773,11 @@ def store_verilog_eval_tasks(
     for task in tasks:
         assert task.gold_rtl_path is not None
         assert task.testbench_path is not None
-        public_metadata = {
-            "dataset_name": dataset_name,
-            "task_id": task.task_id,
-            "candidate_top_module": "TopModule",
-            "deliverables": {
-                "rtl": "submission/",
-                "summary": "result/result.json",
-            },
-        }
+        public_metadata = _build_public_task_metadata(
+            dataset_name=dataset_name,
+            task_id=task.task_id,
+            tier=tier,
+        )
         oracle = SimulationOracle(
             testbench_path=task.testbench_path,
             gold_rtl_path=task.gold_rtl_path,
@@ -778,7 +804,9 @@ def store_verilog_eval_tasks(
                 dataset_name=dataset_name,
                 task_id=task.task_id,
                 spec_source=task.spec_path.read_text(),
+                candidate_top_module="TopModule",
                 public_metadata=public_metadata,
+                public_interface=None,
                 oracle=oracle,
                 source_metadata=source_metadata,
                 tier=tier,
@@ -816,17 +844,14 @@ def store_generic_task(
     *spec_source* can be a plain-text string, a file path, or a directory
     path containing markdown, images, and other spec artifacts.
     """
-    public_metadata: dict[str, Any] = {
-        "dataset_name": dataset_name,
-        "task_id": task_id,
-        "candidate_top_module": candidate_top_module,
-        "deliverables": {
-            "rtl": "submission/",
-            "summary": "result/result.json",
-        },
-    }
+    public_metadata = _build_public_task_metadata(
+        dataset_name=dataset_name,
+        task_id=task_id,
+        tier=tier,
+    )
+    normalized_public_interface = None
     if interface is not None:
-        public_metadata["interface"] = normalize_public_interface_contract(
+        normalized_public_interface = normalize_public_interface_contract(
             interface,
             candidate_top_module=candidate_top_module,
         )
@@ -854,7 +879,9 @@ def store_generic_task(
         dataset_name=dataset_name,
         task_id=task_id,
         spec_source=spec_source,
+        candidate_top_module=candidate_top_module,
         public_metadata=public_metadata,
+        public_interface=normalized_public_interface,
         oracle=oracle,
         source_metadata=effective_source_metadata,
         private_sources=private_sources,
@@ -1161,15 +1188,11 @@ def store_cvdp_tasks(
             elif "medium" in categories:
                 task_tier = "small"  # CVDP medium is still small by our scale
 
-            public_metadata: dict[str, Any] = {
-                "dataset_name": dataset_name,
-                "task_id": task_id,
-                "candidate_top_module": toplevel,
-                "deliverables": {
-                    "rtl": "submission/",
-                    "summary": "result/result.json",
-                },
-            }
+            public_metadata = _build_public_task_metadata(
+                dataset_name=dataset_name,
+                task_id=task_id,
+                tier=task_tier,
+            )
 
             oracle_metadata: dict[str, Any] = {
                 "kind": "cocotb",
@@ -1192,11 +1215,485 @@ def store_cvdp_tasks(
                     dataset_name=dataset_name,
                     task_id=task_id,
                     spec_source=spec_text,
+                    candidate_top_module=toplevel,
                     public_metadata=public_metadata,
+                    public_interface=None,
                     oracle=None,
                     source_metadata=source_metadata,
                     tier=task_tier,
                     raw_oracle_dir=cocotb_dir,
+                    raw_oracle_metadata=oracle_metadata,
+                )
+            )
+
+    return tuple(written)
+
+
+def _discover_chipbench_gen_tasks(
+    root: Path,
+    *,
+    dataset_name: str,
+    category: str,
+) -> list[tuple[str, Path, Path, Path]]:
+    """Find (task_id, spec, ref, test) triples inside a ChipBench gen subset."""
+    prompt_suffix = "_prompt.txt"
+    tasks: list[tuple[str, Path, Path, Path]] = []
+    for prompt_path in sorted(root.glob(f"*{prompt_suffix}")):
+        stem = prompt_path.name[: -len(prompt_suffix)]
+        ref_path = _find_first_chipbench(root, stem, "_ref")
+        test_path = _find_first_chipbench(root, stem, "_test")
+        if ref_path is None or test_path is None:
+            continue
+        task_id = f"chipbench_{category}_{stem}"
+        tasks.append((task_id, prompt_path, ref_path, test_path))
+    return tasks
+
+
+def _deconflict_ref_helpers(ref_text: str, spec_text: str) -> tuple[str, str]:
+    """Handle helper module collisions in non-self-contained ChipBench tasks.
+
+    Returns ``(patched_ref, shared_helpers_sv)`` where:
+    - *patched_ref* has its internal helper definitions renamed to
+      ``__ref_<name>`` and instantiations updated to match.
+    - *shared_helpers_sv* contains the helper module code extracted from
+      the spec (provided to both ref and candidate) left with original names.
+      The ref's deconflicted copies avoid collisions with these originals.
+    """
+    import re as _re
+
+    # 1. Extract helper code blocks from the spec
+    blocks = _re.findall(
+        r"```(?:verilog|systemverilog|sv)?\n(.*?)```", spec_text, _re.DOTALL,
+    )
+    shared_helpers = "\n\n".join(blocks)
+
+    # 2. Find helper module definitions in ref (not RefModule itself)
+    modules_in_ref = _re.findall(r"(?<=\bmodule\s)(\w+)", ref_text)
+    helpers_in_ref = [m for m in modules_in_ref if m != "RefModule"]
+
+    # 3. Rename ref-internal helpers so they don't collide with the spec copies
+    for helper in helpers_in_ref:
+        ref_text = _re.sub(
+            rf"\b{_re.escape(helper)}\b", f"__ref_{helper}", ref_text,
+        )
+
+    # 4. Only keep spec helpers that are NOT already defined in the ref.
+    #    If the ref defines dual_port_RAM internally, we renamed it to
+    #    __ref_dual_port_RAM.  The candidate will provide its own copy,
+    #    so we don't need the spec's copy as a support file.
+    helpers_in_ref_set = set(helpers_in_ref)
+    filtered_blocks: list[str] = []
+    for block in blocks:
+        block_modules = set(_re.findall(r"(?<=\bmodule\s)\w+", block))
+        # Only include this block if none of its modules collide with ref
+        if not block_modules & helpers_in_ref_set:
+            filtered_blocks.append(block)
+    shared_helpers = "\n\n".join(filtered_blocks)
+
+    return ref_text, shared_helpers
+
+
+def _find_first_chipbench(directory: Path, stem: str, suffix: str) -> Path | None:
+    for ext in (".sv", ".v"):
+        candidate = directory / f"{stem}{suffix}{ext}"
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def store_chipbench_tasks(
+    source_root: str | Path,
+    output_root: str | Path,
+    *,
+    dataset_name: str = "chipbench",
+    tier: Tier | None = "small",
+) -> tuple[Path, ...]:
+    """Ingest Verilog generation tasks from the ChipBench benchmark.
+
+    ChipBench uses a VerilogEval-style harness: specs as ``*_prompt.txt``,
+    gold RTL as ``*_ref.sv`` (module ``RefModule``), and self-checking
+    testbenches as ``*_test.sv`` that compare ``TopModule`` vs ``RefModule``.
+    """
+    root = Path(source_root)
+    output = Path(output_root)
+    written: list[Path] = []
+
+    gen_root = root / "Verilog Gen"
+    # Some subsets (cpu_ip) use a different output format in the testbench.
+    # self_contain: prints "Mismatches: N in M samples"
+    # cpu_ip: prints "Total mismatched samples is N out of M samples."
+    #         or "No mismatched samples." when zero.
+    _standard_criteria = PassCriteria(
+        failure_markers=("TIMEOUT",),
+        zero_value_regex=r"Mismatches:\s*(\d+)\s+in\s+\d+\s+samples",
+        zero_value_group=1,
+    )
+    _cpu_criteria = PassCriteria(
+        success_markers=("No mismatched samples.",),
+        failure_markers=("TIMEOUT",),
+        zero_value_regex=r"Total mismatched samples is\s*(\d+)\s+out of\s+\d+\s+samples",
+        zero_value_group=1,
+    )
+    subsets: list[tuple[str, str, Tier | None, PassCriteria]] = [
+        ("dataset_self_contain", "sc", "small", _standard_criteria),
+        ("dataset_not_self_contain", "nsc", "small", _standard_criteria),
+        ("dataset_cpu_ip", "cpu", "medium", _cpu_criteria),
+    ]
+
+    for subdir, category, subset_tier, criteria in subsets:
+        subset_path = gen_root / subdir
+        if not subset_path.is_dir():
+            continue
+        tasks = _discover_chipbench_gen_tasks(
+            subset_path, dataset_name=dataset_name, category=category,
+        )
+        for task_id, spec_path, ref_path, test_path in tasks:
+            # For NSC tasks, deconflict helper module names in ref files
+            # and extract shared helpers from the spec.
+            effective_ref = ref_path
+            nsc_support: list[Path] = []
+            if category == "nsc":
+                patched, shared = _deconflict_ref_helpers(
+                    ref_path.read_text(), spec_path.read_text(),
+                )
+                effective_ref = ref_path.parent / f"_deconf_{ref_path.name}"
+                effective_ref.write_text(patched)
+                if shared.strip():
+                    helpers_path = ref_path.parent / f"_helpers_{ref_path.stem}.sv"
+                    helpers_path.write_text(shared)
+                    nsc_support.append(helpers_path)
+
+            public_metadata = _build_public_task_metadata(
+                dataset_name=dataset_name,
+                task_id=task_id,
+                tier=subset_tier or tier,
+            )
+            oracle = SimulationOracle(
+                testbench_path=test_path,
+                gold_rtl_path=effective_ref,
+                requires_reference_rtl=True,
+                candidate_top_module="TopModule",
+                reference_top_module="RefModule",
+                pass_criteria=criteria,
+                support_files=tuple(nsc_support),
+            )
+            source_metadata: dict[str, Any] = {
+                "origin": "chipbench",
+                "category": category,
+                "spec_file": spec_path.name,
+                "ref_file": ref_path.name,
+                "test_file": test_path.name,
+            }
+            written.append(
+                _write_task_bundle(
+                    output_root=output,
+                    dataset_name=dataset_name,
+                    task_id=task_id,
+                    spec_source=spec_path.read_text(),
+                    candidate_top_module="TopModule",
+                    public_metadata=public_metadata,
+                    public_interface=None,
+                    oracle=oracle,
+                    source_metadata=source_metadata,
+                    tier=subset_tier or tier,
+                )
+            )
+
+    return tuple(written)
+
+
+def store_realbench_tasks(
+    source_root: str | Path,
+    output_root: str | Path,
+    *,
+    dataset_name: str = "realbench",
+) -> tuple[Path, ...]:
+    """Ingest module-level tasks from the RealBench benchmark.
+
+    RealBench has three IP families (AES, SD card controller, E203 RISC-V).
+    Each module has a markdown spec, a reference module (``ref_{module}``),
+    a testbench comparing ref vs candidate, stimulus, and dependency files.
+    Specs must be decrypted before calling (``make decrypt`` in the repo).
+    """
+    root = Path(source_root)
+    output = Path(output_root)
+    written: list[Path] = []
+
+    ip_families: list[tuple[str, str, Tier]] = [
+        ("aes", "aes", "small"),
+        ("sdc", "sdc", "medium"),
+        ("e203_hbirdv2", "e203", "medium"),
+    ]
+
+    criteria = PassCriteria(
+        failure_markers=("TIMEOUT",),
+        zero_value_regex=r"Total mismatched samples is\s*(\d+)\s+out of\s+\d+\s+samples",
+        zero_value_group=1,
+    )
+
+    for ip_dir, ip_prefix, tier in ip_families:
+        ip_path = root / ip_dir
+        if not ip_path.is_dir():
+            continue
+        for module_dir in sorted(ip_path.iterdir()):
+            if not module_dir.is_dir():
+                continue
+            module_name = module_dir.name
+            verif_dir = module_dir / "verification"
+            spec_path = module_dir / f"{module_name}.md"
+            if not verif_dir.is_dir() or not spec_path.exists():
+                continue
+
+            tb_path = verif_dir / f"{module_name}_testbench.sv"
+            ref_path = verif_dir / f"{module_name}_ref.sv"
+            stim_path = verif_dir / f"{module_name}_stimulus_gen.sv"
+            if not tb_path.exists() or not ref_path.exists():
+                continue
+
+            # Collect support files (all .v/.sv in verif except tb/ref/top/stim)
+            skip_names = {tb_path.name, ref_path.name, stim_path.name,
+                          f"{module_name}_top.sv", "Makefile"}
+            support_files: list[Path] = [stim_path] if stim_path.exists() else []
+            local_names: set[str] = set(skip_names)
+            for f in sorted(verif_dir.iterdir()):
+                if f.name in skip_names:
+                    continue
+                if f.suffix in {".v", ".sv"} and f.is_file():
+                    support_files.append(f)
+                    local_names.add(f.name)
+
+            # No cross-task dep pooling: each task's verification dir should
+            # already contain all files needed (per the Makefile's ``*v``
+            # pattern).  Failures from missing transitive deps are
+            # benchmark defects that we accept rather than papering over.
+
+            # Detect testbench top module name (some use 'tb', some 'tb_<name>')
+            import re as _re
+            tb_text = tb_path.read_text()
+            tb_top_match = _re.search(r"^\s*module\s+(\w+)", tb_text, _re.MULTILINE)
+            tb_top = tb_top_match.group(1) if tb_top_match else None
+
+            task_id = f"realbench_{ip_prefix}_{module_name}"
+            public_metadata = _build_public_task_metadata(
+                dataset_name=dataset_name,
+                task_id=task_id,
+                tier=tier,
+            )
+            oracle = SimulationOracle(
+                testbench_path=tb_path,
+                gold_rtl_path=ref_path,
+                requires_reference_rtl=True,
+                candidate_top_module=module_name,
+                reference_top_module=f"ref_{module_name}",
+                pass_criteria=criteria,
+                support_files=tuple(support_files),
+                testbench_top_module=tb_top,
+            )
+            source_metadata: dict[str, Any] = {
+                "origin": "realbench",
+                "ip_family": ip_prefix,
+                "module": module_name,
+            }
+            written.append(
+                _write_task_bundle(
+                    output_root=output,
+                    dataset_name=dataset_name,
+                    task_id=task_id,
+                    spec_source=spec_path.parent,
+                    candidate_top_module=module_name,
+                    public_metadata=public_metadata,
+                    public_interface=None,
+                    oracle=oracle,
+                    source_metadata=source_metadata,
+                    tier=tier,
+                )
+            )
+
+    return tuple(written)
+
+
+def store_resbench_tasks(
+    json_path: str | Path,
+    output_root: str | Path,
+    *,
+    dataset_name: str = "resbench",
+) -> tuple[Path, ...]:
+    """Ingest tasks from the ResBench benchmark JSON.
+
+    ResBench provides 56 problems across 12 categories, each with a spec,
+    module header, and a self-checking testbench (no gold RTL).  The
+    testbench directly instantiates the DUT module by name.
+    """
+    import tempfile as _tempfile
+
+    data = json.loads(Path(json_path).read_text())
+    output = Path(output_root)
+    written: list[Path] = []
+
+    _category_tiers: dict[str, Tier] = {
+        "Combinational Logic": "micro",
+        "Bitwise and Logical Operations": "micro",
+        "Basic Arithmetic Operations": "micro",
+        "Mathematical Functions": "small",
+        "Polynomial Evaluation": "small",
+        "Finite State Machines": "small",
+        "Pipelining": "small",
+        "Machine Learning": "small",
+        "Financial Computing": "small",
+        "Encryption": "medium",
+        "Physics": "small",
+        "Climate": "small",
+    }
+
+    for category, problems in data.items():
+        for problem in problems:
+            module_name = str(problem["module"])
+            spec_text = str(problem["Problem"])
+            header = str(problem.get("Module header") or problem.get("Module Header", ""))
+            testbench_text = str(problem["Testbench"])
+            task_id = f"resbench_{module_name}"
+
+            # Build a combined spec with the problem description and module header
+            full_spec = f"{spec_text}\n\n### Module Header\n\n```verilog\n{header}\n```\n"
+
+            # Write testbench to temp file for the oracle
+            with _tempfile.TemporaryDirectory() as tmp:
+                tb_path = Path(tmp) / f"{module_name}_tb.v"
+                tb_path.write_text(testbench_text)
+                # Create a minimal gold stub (oracle only uses the testbench)
+                gold_path = Path(tmp) / f"{module_name}_gold.v"
+                gold_path.write_text(f"// ResBench gold stub - testbench is the oracle\n{header}\nendmodule\n")
+
+                tier = _category_tiers.get(category, "small")
+                public_metadata = _build_public_task_metadata(
+                    dataset_name=dataset_name,
+                    task_id=task_id,
+                    tier=tier,
+                )
+                oracle = SimulationOracle(
+                    testbench_path=tb_path,
+                    gold_rtl_path=gold_path,
+                    requires_reference_rtl=False,
+                    candidate_top_module=module_name,
+                    reference_top_module=module_name,
+                    pass_criteria=PassCriteria(
+                        success_markers=("All tests passed",),
+                        failure_markers=("Some tests failed",),
+                    ),
+                )
+                source_metadata: dict[str, Any] = {
+                    "origin": "resbench",
+                    "category": category,
+                    "module": module_name,
+                }
+                written.append(
+                    _write_task_bundle(
+                        output_root=output,
+                        dataset_name=dataset_name,
+                        task_id=task_id,
+                        spec_source=full_spec,
+                        candidate_top_module=module_name,
+                        public_metadata=public_metadata,
+                        public_interface=None,
+                        oracle=oracle,
+                        source_metadata=source_metadata,
+                        tier=tier,
+                    )
+                )
+
+    return tuple(written)
+
+
+def store_icrtl_tasks(
+    source_root: str | Path,
+    output_root: str | Path,
+    *,
+    dataset_name: str = "icrtl",
+) -> tuple[Path, ...]:
+    """Ingest tasks from the IC-RTL (EvolVE) benchmark.
+
+    IC-RTL has 6 industry-scale tasks (LBP, GEMM, CONV, HC, JAM, DT).
+    Each has a markdown spec, a self-checking testbench with data files,
+    and a reference solution.  The testbench references data via
+    ``./00_TB/`` paths, so the entire ``00_TB/`` directory is stored as
+    a raw oracle directory.
+    """
+    root = Path(source_root)
+    output = Path(output_root)
+    written: list[Path] = []
+
+    task_dirs: list[tuple[str, str, str]] = [
+        ("Q1_LBP", "lbp", "TOP"),
+        ("Q2_GEMM", "gemm", "TOP"),
+        ("Q3_CONV", "conv", "TOP"),
+        ("Q4_HC", "hc", "TOP"),
+        ("Q5_JAM", "jam", "TOP"),
+        ("Q6_DT", "dt", "TOP"),
+    ]
+
+    for dirname, short_name, top_module in task_dirs:
+        task_path = root / dirname
+        if not task_path.is_dir():
+            continue
+        spec_path = task_path / "referenced_spec" / "human.md"
+        tb_dir = task_path / "00_TB"
+        if not spec_path.exists() or not tb_dir.is_dir():
+            continue
+
+        task_id = f"icrtl_{short_name}"
+        public_metadata = _build_public_task_metadata(
+            dataset_name=dataset_name,
+            task_id=task_id,
+            tier="medium",
+        )
+        oracle_metadata: dict[str, Any] = {
+            "kind": "simulation",
+            "testbench": "oracle/00_TB/test.sv",
+            "gold_rtl": "oracle/gold_rtl.sv",
+            "requires_reference_rtl": False,
+            "candidate_top_module": top_module,
+            "reference_top_module": top_module,
+            "pass_criteria": {
+                "success_markers": ["All tests PASS!"],
+                "failure_markers": ["FAIL"],
+                "zero_value_regex": None,
+                "zero_value_group": 1,
+            },
+            "support_files": [],
+        }
+        source_metadata: dict[str, Any] = {
+            "origin": "icrtl",
+            "problem": dirname,
+            "top_module": top_module,
+        }
+
+        # Copy 00_TB as raw oracle dir, add ref solution as gold_rtl
+        with tempfile.TemporaryDirectory() as tmp:
+            oracle_dir = Path(tmp) / "oracle"
+            tb_dest = oracle_dir / "00_TB"
+            shutil.copytree(tb_dir, tb_dest)
+
+            ref_sol = task_path / "ref_solution"
+            if ref_sol.is_dir():
+                # Find the first .sv or .v file
+                for f in sorted(ref_sol.iterdir()):
+                    if f.suffix in {".sv", ".v"} and f.is_file():
+                        shutil.copy2(f, oracle_dir / "gold_rtl.sv")
+                        break
+
+            written.append(
+                _write_task_bundle(
+                    output_root=output,
+                    dataset_name=dataset_name,
+                    task_id=task_id,
+                    spec_source=spec_path.parent,
+                    candidate_top_module=top_module,
+                    public_metadata=public_metadata,
+                    public_interface=None,
+                    oracle=None,
+                    source_metadata=source_metadata,
+                    tier="medium",
+                    raw_oracle_dir=oracle_dir,
                     raw_oracle_metadata=oracle_metadata,
                 )
             )

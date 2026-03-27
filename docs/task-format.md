@@ -15,6 +15,7 @@ Agents only see:
 
 ```text
 task/
+  top_module.txt
   task.json
   spec/
     README.md
@@ -28,14 +29,22 @@ task/
 That staged `task/` directory is intended to be complete. A solver should not
 need access to hidden repo code or upstream implementation files.
 
+### `task/top_module.txt`
+
+This is the authoritative public DUT top-module name.
+
+It is intentionally a standalone file so the public contract does not bury
+the most important build target inside JSON bookkeeping.
+
 ### `task/task.json`
 
-This is the public machine-readable contract:
+This is lightweight public machine-readable metadata:
 
-- candidate top-module name
-- public parameters
-- public ports
+- dataset and task identity
 - deliverable locations
+
+The canonical external interface no longer lives here. It lives in
+`task/spec/interface/`.
 
 ### `task/spec/interface/`
 

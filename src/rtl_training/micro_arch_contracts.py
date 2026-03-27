@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import json
 from pathlib import Path
 import re
 from typing import Any, Mapping
+
+from .interface_contracts import discover_public_interface_spec, read_public_top_module
 
 
 _MICRO_ARCH_INTERFACE_PATTERNS = ("*_micro_arch_if.sv",)
@@ -112,21 +113,18 @@ def discover_micro_arch_bind_module(spec_dir: str | Path) -> tuple[str, Path] | 
 
 
 def write_micro_arch_bind_check_tb(
-    public_task_path: str | Path,
-    spec_dir: str | Path,
+    task_dir: str | Path,
     output_path: str | Path,
 ) -> Path | None:
+    task_root = Path(task_dir)
+    spec_dir = task_root / "spec"
     bind_module = discover_micro_arch_bind_module(spec_dir)
     if bind_module is None:
         return None
-    task_payload = json.loads(Path(public_task_path).read_text())
-    interface = task_payload.get("interface")
-    if not isinstance(interface, Mapping):
-        raise ValueError(f"public task {public_task_path} does not define an interface contract")
-    top_module = str(interface.get("top_module") or task_payload["candidate_top_module"])
-    ports = interface.get("ports")
-    if not isinstance(ports, list):
-        raise ValueError(f"public task {public_task_path} interface ports must be a list")
+    public_interface = discover_public_interface_spec(spec_dir)
+    if public_interface is None:
+        raise ValueError(f"public task {task_root} does not define a public interface contract")
+    top_module = read_public_top_module(task_root / "top_module.txt")
 
     bind_module_name, _ = bind_module
     output = Path(output_path)
@@ -134,7 +132,7 @@ def write_micro_arch_bind_check_tb(
     output.write_text(
         _render_micro_arch_bind_check_tb(
             top_module=top_module,
-            ports=ports,
+            ports=list(public_interface.ports),
             bind_module_name=bind_module_name,
         )
     )

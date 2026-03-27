@@ -37,8 +37,10 @@ def _write_fake_uart_dv_files(repo_root: Path) -> None:
 def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: Path) -> None:
     (task_root / "public" / "spec").mkdir(parents=True)
     (task_root / "public" / "spec" / "README.md").write_text("uart spec\n")
+    (task_root / "public" / "top_module.txt").write_text("uart\n")
     (task_root / "public" / "spec" / "interface").mkdir(parents=True)
     (task_root / "public" / "spec" / "micro_arch").mkdir(parents=True)
+    (task_root / "public" / "spec" / "micro_arch" / "README.md").write_text("uart micro arch\n")
     (task_root / "public" / "spec" / "interface" / "uart_public_types_pkg.sv").write_text(
         "package uart_public_types_pkg;\n"
         "  typedef logic [108:0] uart_tl_i_t;\n"
@@ -47,11 +49,42 @@ def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: 
         "  typedef logic [1:0] uart_alert_tx_o_t;\n"
         "endpackage\n"
     )
+    (task_root / "public" / "spec" / "interface" / "uart_public_if.sv").write_text(
+        "`include \"uart_public_types_pkg.sv\"\n"
+        "interface uart_public_if;\n"
+        "  logic clk_i;\n"
+        "  logic rst_ni;\n"
+        "  uart_public_types_pkg::uart_tl_i_t tl_i;\n"
+        "  uart_public_types_pkg::uart_alert_rx_i_t alert_rx_i;\n"
+        "  uart_public_types_pkg::uart_tl_o_t tl_o;\n"
+        "  uart_public_types_pkg::uart_alert_tx_o_t alert_tx_o;\n"
+        "  modport dut (\n"
+        "    input clk_i,\n"
+        "    input rst_ni,\n"
+        "    input tl_i,\n"
+        "    input alert_rx_i,\n"
+        "    output tl_o,\n"
+        "    output alert_tx_o\n"
+        "  );\n"
+        "  modport tb (\n"
+        "    output clk_i,\n"
+        "    output rst_ni,\n"
+        "    output tl_i,\n"
+        "    output alert_rx_i,\n"
+        "    input tl_o,\n"
+        "    input alert_tx_o\n"
+        "  );\n"
+        "endinterface\n"
+    )
     (task_root / "public" / "spec" / "micro_arch" / "uart_micro_arch_if.sv").write_text(
-        "interface uart_micro_arch_if; endinterface\n"
+        "interface uart_micro_arch_if;\n"
+        "  logic rx_sync;\n"
+        "  modport dut (output rx_sync);\n"
+        "  modport mon (input rx_sync);\n"
+        "endinterface\n"
     )
     (task_root / "public" / "spec" / "micro_arch" / "uart_micro_arch_checker.sv").write_text(
-        "module uart_micro_arch_checker(uart_micro_arch_if micro_arch_if); endmodule\n"
+        "module uart_micro_arch_checker(uart_micro_arch_if.mon micro_arch_if); endmodule\n"
     )
     (task_root / "public" / "spec" / "micro_arch" / "uart_micro_arch_bind.sv").write_text(
         "module uart_micro_arch_bind;\n"
@@ -63,16 +96,10 @@ def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: 
             {
                 "dataset_name": "opentitan_ip_docs",
                 "task_id": "uart",
-                "candidate_top_module": "uart",
-                "interface": {
-                    "top_module": "uart",
-                    "declared_module_name": "uart",
-                    "ports": [],
-                    "inputs": [],
-                    "outputs": [],
-                    "parameters": [],
+                "deliverables": {
+                    "rtl": "submission/",
+                    "summary": "result/result.json",
                 },
-                "spec": "spec/",
             },
             indent=2,
         )
@@ -104,6 +131,7 @@ def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: 
                 "public": {
                     "directory": "public",
                     "spec": "public/spec/",
+                    "top_module": "public/top_module.txt",
                     "task": "public/task.json",
                 },
                 "shared_private": {

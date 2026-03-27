@@ -6,6 +6,7 @@ from pathlib import Path
 from .opentitan_oracle import OpenTitanDvsimRunResult, validate_opentitan_candidate
 from .opencode_runtime import OpenCodeRunRequest
 from .oracle import SimulationRunResult, validate_candidate, validate_candidate_cocotb
+from .spec_preprocess import preprocess_spec_pdfs
 from .task_store import StoredTask, load_stored_task
 from .workspace import (
     ConverterWorkspace,
@@ -27,6 +28,7 @@ DEFAULT_CONVERTER_PROMPT = (
 
 DEFAULT_GENERATOR_PROMPT = (
     "Read TASK.md and complete the generator task. "
+    "Read task/top_module.txt first; it is the authoritative top-module name. "
     "Before writing RTL, read the behavioral spec under task/spec/, especially task/spec/README.md "
     "and task/spec/doc/ when present, and turn it into a requirement checklist saved under result/. "
     "If task/spec/doc/registers.md, task/spec/doc/programmers_guide.md, task/spec/dv/README.md, or "
@@ -39,7 +41,7 @@ DEFAULT_GENERATOR_PROMPT = (
     "request/response metadata such as source, size, param, and user fields. "
     "Treat the staged task directory as the complete public problem statement and do not assume "
     "access to upstream repo code, hidden packages, or hidden hierarchy outside the workspace. "
-    "task/task.json as the machine-readable contract, but interface and microarchitecture are necessary "
+    "Treat task/task.json as lightweight machine-readable metadata, but interface and microarchitecture are necessary "
     "not sufficient: implement the full functional behavior from the spec, not a stub. "
     "Do not make the solution depend on importing upstream repository packages just to satisfy the "
     "public task boundary. "
@@ -50,7 +52,7 @@ DEFAULT_GENERATOR_PROMPT = (
     "normal compilation-unit files under `submission/` and `import` them there. "
     "Before finishing, run at least one compile sanity check when the workspace has enough context "
     "to do so. Use `xrun`/Xcelium for that compile sanity check. The compile "
-    "check only counts if it elaborates the DUT top module named in task/task.json, or a smoke test "
+    "check only counts if it elaborates the DUT top module named in task/top_module.txt, or a smoke test "
     "that instantiates that DUT top; a helper interface or package alone does not count. If you use "
     "`xrun`, select the DUT top explicitly with `-top <dut>` or instantiate it in a tiny smoke bench. "
     "If the task exposes a documented CSR/register map, do not stop at a happy-path smoke test. Add "
@@ -63,6 +65,7 @@ DEFAULT_GENERATOR_PROMPT = (
 
 DEFAULT_VERIFIER_PROMPT = (
     "Read TASK.md and complete the verifier task. "
+    "Read task/top_module.txt first; it is the authoritative expected DUT top-module name. "
     "Treat it as an evidence-gathering verification episode, not just a code review: "
     "derive a requirement checklist from the spec, write executable checks "
     "(using task/spec/interface/ as the concrete SV form of the public DUT interface when it exists), "
@@ -130,10 +133,17 @@ def prepare_generator_episode(
     *,
     template_root: str | Path | None = None,
     model: str | None = None,
+    preprocess_spec_pdfs_first: bool = True,
     prompt: str = DEFAULT_GENERATOR_PROMPT,
 ) -> GeneratorEpisode:
     task = load_stored_task(task_root)
     workspace = stage_generator_workspace(task, workspace_root, template_root=template_root)
+    if preprocess_spec_pdfs_first:
+        preprocess_spec_pdfs(
+            workspace.spec_dir,
+            workspace_root=workspace.root,
+            template_root=template_root,
+        )
     request = OpenCodeRunRequest(
         workspace_root=workspace.root,
         agent="generator",
@@ -150,6 +160,7 @@ def prepare_verifier_episode(
     *,
     template_root: str | Path | None = None,
     model: str | None = None,
+    preprocess_spec_pdfs_first: bool = True,
     prompt: str = DEFAULT_VERIFIER_PROMPT,
 ) -> VerifierEpisode:
     task = load_stored_task(task_root)
@@ -159,6 +170,12 @@ def prepare_verifier_episode(
         workspace_root,
         template_root=template_root,
     )
+    if preprocess_spec_pdfs_first:
+        preprocess_spec_pdfs(
+            workspace.spec_dir,
+            workspace_root=workspace.root,
+            template_root=template_root,
+        )
     request = OpenCodeRunRequest(
         workspace_root=workspace.root,
         agent="verifier",

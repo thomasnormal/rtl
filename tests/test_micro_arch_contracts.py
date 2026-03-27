@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 import pytest
@@ -136,9 +135,11 @@ def test_discover_micro_arch_bind_module_reads_module_name(tmp_path: Path) -> No
 
 
 def test_write_micro_arch_bind_check_tb_uses_public_ports_and_bind_module(tmp_path: Path) -> None:
-    spec_dir = tmp_path / "spec"
+    task_dir = tmp_path / "task"
+    spec_dir = task_dir / "spec"
     micro_arch_dir = spec_dir / "micro_arch"
     micro_arch_dir.mkdir(parents=True)
+    (task_dir / "top_module.txt").write_text("rv_timer\n")
     (micro_arch_dir / "README.md").write_text("micro arch\n")
     (micro_arch_dir / "rv_timer_micro_arch_if.sv").write_text(
         "interface rv_timer_micro_arch_if;\n"
@@ -151,31 +152,28 @@ def test_write_micro_arch_bind_check_tb_uses_public_ports_and_bind_module(tmp_pa
         "module rv_timer_micro_arch_bind;\n"
         "endmodule\n"
     )
-    public_task_path = tmp_path / "task.json"
-    public_task_path.write_text(
-        json.dumps(
-            {
-                "candidate_top_module": "rv_timer",
-                "interface": {
-                    "top_module": "rv_timer",
-                    "ports": [
-                        {"name": "clk_i", "direction": "input", "width": "logic"},
-                        {
-                            "name": "tl_i",
-                            "direction": "input",
-                            "width": "rv_timer_public_types_pkg::rv_timer_tl_i_t",
-                        },
-                        {"name": "intr_o", "direction": "output", "width": "logic"},
-                    ],
-                },
-            },
-            indent=2,
-        )
-        + "\n"
+    interface_dir = spec_dir / "interface"
+    interface_dir.mkdir(parents=True)
+    (interface_dir / "rv_timer_public_if.sv").write_text(
+        "interface rv_timer_public_if;\n"
+        "  logic clk_i;\n"
+        "  rv_timer_public_types_pkg::rv_timer_tl_i_t tl_i;\n"
+        "  logic intr_o;\n"
+        "  modport dut (\n"
+        "    input clk_i,\n"
+        "    input tl_i,\n"
+        "    output intr_o\n"
+        "  );\n"
+        "  modport tb (\n"
+        "    output clk_i,\n"
+        "    output tl_i,\n"
+        "    input intr_o\n"
+        "  );\n"
+        "endinterface\n"
     )
     tb_path = tmp_path / "tb_bind_check.sv"
 
-    written = write_micro_arch_bind_check_tb(public_task_path, spec_dir, tb_path)
+    written = write_micro_arch_bind_check_tb(task_dir, tb_path)
 
     assert written == tb_path
     content = tb_path.read_text()

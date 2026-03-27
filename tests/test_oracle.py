@@ -30,13 +30,16 @@ def _write_task(
     (task_root / "oracle" / "sim").mkdir(parents=True)
     (task_root / "oracle" / "support").mkdir(parents=True)
     (task_root / "public" / "spec.txt").write_text("spec\n")
+    (task_root / "public" / "top_module.txt").write_text(f"{candidate_top_module}\n")
     (task_root / "public" / "task.json").write_text(
         json.dumps(
             {
                 "dataset_name": "unit",
                 "task_id": "toy",
-                "candidate_top_module": candidate_top_module,
-                "spec": "spec.txt",
+                "deliverables": {
+                    "rtl": "submission/",
+                    "summary": "result/result.json",
+                },
             },
             indent=2,
         )
@@ -52,6 +55,7 @@ def _write_task(
                 "public": {
                     "directory": "public",
                     "spec": "public/spec.txt",
+                    "top_module": "public/top_module.txt",
                     "task": "public/task.json",
                 },
                 "oracle": {
@@ -99,7 +103,10 @@ def test_build_candidate_validation_plan_uses_hidden_reference_when_needed(tmp_p
     assert task.oracle is not None
     assert tuple(path.name for path in plan.source_files) == ("testbench.sv", "gold_rtl.sv", "candidate.sv")
     assert all(path.is_absolute() for path in plan.source_files)
-    assert all(path.parent == plan.work_dir for path in plan.source_files)
+    # Testbench and gold_rtl are in work_dir; candidates are in work_dir/candidate_src
+    assert plan.source_files[0].parent == plan.work_dir
+    assert plan.source_files[1].parent == plan.work_dir
+    assert plan.source_files[2].parent == plan.work_dir / "candidate_src"
 
 
 def test_build_gold_selftest_plan_rewrites_reference_top_name(tmp_path: Path) -> None:

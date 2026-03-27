@@ -1,9 +1,11 @@
 from pathlib import Path
 
 from rtl_training.interface_contracts import (
+    discover_public_interface_spec,
     materialize_public_interface_sv,
     normalize_public_interface_contract,
     prepare_public_interface_contract,
+    read_public_top_module,
 )
 
 
@@ -83,6 +85,48 @@ def test_materialize_public_interface_sv_writes_sv_interface_and_readme(tmp_path
     assert "modport dut (" in content
     assert "input clk" in content
     assert "output read_data" in content
+
+
+def test_discover_public_interface_spec_reads_ports_from_materialized_sv(tmp_path: Path) -> None:
+    interface = normalize_public_interface_contract(
+        {
+            "top_module": "rv_timer",
+            "declared_module_name": "rv_timer",
+            "ports": [
+                {"name": "clk_i", "direction": "input"},
+                {
+                    "name": "tl_i",
+                    "direction": "input",
+                    "width": "rv_timer_public_types_pkg::rv_timer_tl_i_t",
+                },
+                {"name": "intr_timer_expired_0_0_o", "direction": "output"},
+            ],
+            "parameters": [],
+        },
+        candidate_top_module="rv_timer",
+    )
+    materialize_public_interface_sv(tmp_path, interface)
+
+    discovered = discover_public_interface_spec(tmp_path)
+
+    assert discovered is not None
+    assert discovered.interface_name == "rv_timer_public_if"
+    assert list(discovered.ports) == [
+        {"name": "clk_i", "direction": "input"},
+        {
+            "name": "tl_i",
+            "direction": "input",
+            "width": "rv_timer_public_types_pkg::rv_timer_tl_i_t",
+        },
+        {"name": "intr_timer_expired_0_0_o", "direction": "output"},
+    ]
+
+
+def test_read_public_top_module_validates_identifier(tmp_path: Path) -> None:
+    top_module_path = tmp_path / "top_module.txt"
+    top_module_path.write_text("rv_timer\n")
+
+    assert read_public_top_module(top_module_path) == "rv_timer"
 
 
 def test_prepare_opentitan_public_interface_projects_package_types_to_local_sv(tmp_path: Path) -> None:

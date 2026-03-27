@@ -10,6 +10,7 @@ from typing import Any, Mapping
 
 
 _PORT_DIRECTIONS = frozenset({"input", "output", "inout"})
+_SV_IDENT_DECL_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
 _SV_IDENT_RE = re.compile(r"(?<!')\b[A-Za-z_][A-Za-z0-9_$]*\b")
 _SV_KEYWORDS = frozenset(
     {
@@ -36,6 +37,8 @@ _REPLICATION_RE = re.compile(r"^\{\s*(\d+)\s*\{\s*([^{}]+?)\s*\}\s*\}$")
 _REG_PKG_PARAM_RE = re.compile(
     r"\bparameter\s+(?:int(?:\s+unsigned)?\s+)?(?P<name>NumAlerts|NumRegs)\s*=\s*(?P<value>[^;]+);"
 )
+_PUBLIC_INTERFACE_PATTERNS = ("*_public_if.sv",)
+_SV_TOP_MODULE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
 
 _OPENTITAN_SELF_CONTAINED_PROFILE = "opentitan_self_contained_v1"
 _OPENTITAN_OPAQUE_TYPE_WIDTHS = {
@@ -72,6 +75,72 @@ class PreparedPublicInterfaceContract:
     interface: dict[str, Any]
     support_files: tuple[tuple[str, str], ...] = ()
     hidden_metadata: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class PublicInterfaceSpec:
+    interface_name: str
+    ports: tuple[dict[str, str], ...]
+    source_path: Path
+
+
+def read_public_top_module(source_path: str | Path) -> str:
+    top_module = Path(source_path).read_text().strip()
+    if not _SV_TOP_MODULE_NAME_RE.fullmatch(top_module):
+        raise ValueError(f"invalid public top module name in {source_path}: {top_module!r}")
+    return top_module
+
+
+def discover_public_interface_spec(spec_dir: str | Path) -> PublicInterfaceSpec | None:
+    interface_dir = Path(spec_dir) / "interface"
+    if not interface_dir.is_dir():
+        return None
+    interface_files: list[Path] = []
+    for pattern in _PUBLIC_INTERFACE_PATTERNS:
+        interface_files.extend(sorted(interface_dir.glob(pattern)))
+    unique_files = tuple(dict.fromkeys(interface_files))
+    if len(unique_files) != 1:
+        return None
+    return parse_public_interface_spec(unique_files[0])
+
+
+def parse_public_interface_spec(source_path: str | Path) -> PublicInterfaceSpec:
+    path = Path(source_path)
+    source_text = path.read_text()
+    interface_match = re.search(
+        r"^\s*interface\s+([A-Za-z_][A-Za-z0-9_$]*)\b",
+        source_text,
+        re.MULTILINE,
+    )
+    if interface_match is None:
+        raise ValueError(f"unable to find interface declaration in {path}")
+    declarations = _parse_public_signal_declarations(source_text)
+    if not declarations:
+        raise ValueError(f"public interface {path} does not declare any signals")
+    modports = _parse_public_modports(source_text)
+    dut_modport = modports.get("dut")
+    if dut_modport is None:
+        raise ValueError(f"public interface {path} must define a `dut` modport")
+    ports: list[dict[str, str]] = []
+    for signal_name, signal_type in declarations:
+        signal_direction = dut_modport.get(signal_name)
+        if signal_direction is None:
+            continue
+        port = {
+            "name": signal_name,
+            "direction": signal_direction,
+        }
+        normalized_width = _normalize_parsed_public_signal_type(signal_type)
+        if normalized_width is not None:
+            port["width"] = normalized_width
+        ports.append(port)
+    if not ports:
+        raise ValueError(f"public interface {path} `dut` modport does not reference any signals")
+    return PublicInterfaceSpec(
+        interface_name=interface_match.group(1),
+        ports=tuple(ports),
+        source_path=path,
+    )
 
 
 def normalize_public_interface_contract(
@@ -331,7 +400,7 @@ def _render_public_interface_sv(
     modports = interface.get("modports", [])
 
     lines: list[str] = [
-        "// Generated from task/task.json public interface metadata.",
+        "// Generated from the public task interface contract.",
         "// This is the machine-checkable SV form of the public DUT boundary.",
     ]
     if include_files:
@@ -397,7 +466,7 @@ def _render_interface_readme(
     lines = [
         "# Public SV Interface Contract",
         "",
-        "This directory is generated from `task/task.json` and provides the",
+        "This directory is generated from the public task interface contract and provides the",
         "public DUT boundary as SystemVerilog artifacts.",
         "",
         f"- `{sv_filename}` defines `{interface_name}` with canonical `dut` and `tb` modports.",
@@ -421,6 +490,71 @@ def _render_interface_readme(
         )
     lines.append("")
     return "\n".join(lines)
+
+
+def _parse_public_signal_declarations(source_text: str) -> tuple[tuple[str, str], ...]:
+    declarations: list[tuple[str, str]] = []
+    for raw_line in source_text.splitlines():
+        line = raw_line.split("//", 1)[0].strip()
+        if not line or line.startswith("`") or " modport " in f" {line} ":
+            continue
+        if line.startswith(("interface ", "endinterface", "package ", "endpackage")):
+            continue
+        if line.startswith("parameter "):
+            continue
+        if not line.endswith(";"):
+            continue
+        line = line[:-1].strip()
+        if not line:
+            continue
+        tokens = line.split()
+        if len(tokens) < 2:
+            continue
+        signal_name = tokens[-1]
+        if not _SV_IDENT_DECL_RE.fullmatch(signal_name):
+            continue
+        signal_type = " ".join(tokens[:-1]).strip()
+        if not signal_type:
+            continue
+        declarations.append((signal_name, signal_type))
+    return tuple(declarations)
+
+
+def _normalize_parsed_public_signal_type(signal_type: str) -> str | None:
+    normalized = signal_type.strip()
+    if normalized == "logic":
+        return None
+    if normalized.startswith("logic "):
+        return normalized[len("logic ") :].strip()
+    return normalized
+
+
+def _parse_public_modports(source_text: str) -> dict[str, dict[str, str]]:
+    modports: dict[str, dict[str, str]] = {}
+    modport_pattern = re.compile(
+        r"\bmodport\s+([A-Za-z_][A-Za-z0-9_$]*)\s*\((.*?)\)\s*;",
+        re.DOTALL,
+    )
+    for match in modport_pattern.finditer(source_text):
+        modport_name = match.group(1)
+        body = " ".join(match.group(2).replace("\n", " ").split())
+        direction_map: dict[str, str] = {}
+        for entry in re.finditer(
+            r"\b(input|output|inout)\b\s+([^()]+?)(?=(?:\binput\b|\boutput\b|\binout\b|$))",
+            body,
+        ):
+            direction = entry.group(1)
+            for raw_name in entry.group(2).split(","):
+                signal_name = raw_name.strip()
+                if not signal_name:
+                    continue
+                if not _SV_IDENT_DECL_RE.fullmatch(signal_name):
+                    raise ValueError(
+                        f"unsupported modport signal fragment {signal_name!r} in {modport_name}"
+                    )
+                direction_map[signal_name] = direction
+        modports[modport_name] = direction_map
+    return modports
 
 
 def _prepare_opentitan_self_contained_contract(
