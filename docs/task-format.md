@@ -39,6 +39,21 @@ This is lightweight public machine-readable metadata:
 The canonical external interface no longer lives here. It lives in
 `task/spec/interface/`.
 
+### `task/spec/dv/`
+
+This is optional **public verification collateral**. It is not the hidden
+oracle, but it can contain public verification-facing material that helps a
+solver understand what behaviors are considered important.
+
+Typical contents include:
+
+- `README.md`
+- public DV block diagrams under `dv/doc/`
+- public simulation configuration files such as `*_sim_cfg.hjson`
+
+The public DV directory should remain readable and useful without requiring
+access to the hidden oracle sources.
+
 ### `task/spec/interface/`
 
 This is the canonical public DUT boundary in SystemVerilog.
