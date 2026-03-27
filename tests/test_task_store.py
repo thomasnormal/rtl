@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from rtl_training.interface_contracts import discover_public_interface_spec, read_public_top_module
+from rtl_training.micro_arch_contracts import discover_micro_arch_interface_spec
 from rtl_training.shared_sources import SharedSourceRegistry
 from rtl_training.task_store import (
     load_stored_task,
@@ -499,7 +500,7 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
     assert (uart_task.root / "oracle" / "golden_rtl" / "uart_core.sv").exists()
     assert (uart_task.root / "oracle" / "repo_overlay" / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv").exists()
     assert (
-        uart_task.root / "oracle" / "repo_overlay" / "hw" / "ip" / "uart" / "dv" / "micro_arch" / "uart_micro_arch_bind.sv"
+        uart_task.root / "oracle" / "repo_overlay" / "hw" / "ip" / "uart" / "dv" / "compat" / "uart_compat_bind.sv"
     ).exists()
     registry = SharedSourceRegistry.load(uart_task.shared_private_ref.registry_path)
     bundle = registry.by_id(uart_task.shared_private_ref.bundle_id)
@@ -614,6 +615,39 @@ def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path
     assert aia_task_metadata["source"]["source_docs"] == [
         "https://docs.riscv.org/reference/hardware/aia/_attachments/riscv-interrupts.pdf",
     ]
+
+
+def test_store_opentitan_tasks_all_publish_micro_arch_contracts(tmp_path: Path) -> None:
+    source_root = Path("~/opentitan").expanduser().resolve()
+    written = store_opentitan_ip_docs_tasks(
+        tmp_path / "task_store",
+        source_root=source_root,
+    )
+
+    expected_tasks = {
+        "adc_ctrl",
+        "aon_timer",
+        "dma",
+        "i2c",
+        "pattgen",
+        "rv_timer",
+        "spi_host",
+        "sysrst_ctrl",
+        "uart",
+    }
+    assert {path.name for path in written} == expected_tasks
+
+    for task_name in sorted(expected_tasks):
+        task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / task_name)
+        micro_arch_dir = task.spec_dir / "micro_arch"
+        assert micro_arch_dir.is_dir(), task_name
+        assert (micro_arch_dir / "README.md").is_file(), task_name
+        spec = discover_micro_arch_interface_spec(task.spec_dir)
+        assert spec is not None, task_name
+        assert spec.interface_name == f"{task_name}_micro_arch_if"
+        assert spec.instance_name == f"u_{task_name}_micro_arch_if"
+        assert "dut" in spec.modports
+        assert {"tb", "mon"} & set(spec.modports)
 
 
 def test_load_stored_task_backward_compat_old_spec_format(tmp_path: Path) -> None:

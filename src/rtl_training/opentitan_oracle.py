@@ -471,22 +471,12 @@ def _stage_gold_reference_wrapper(task: StoredTask, *, overlay_dir: Path) -> Non
     )
     top_source = _find_candidate_top_source(golden_files, top_module)
     original_text = top_source.read_text()
-    candidate_text = _rewrite_first_module_name(
-        original_text,
-        old_name=top_module,
-        new_name=f"{top_module}_candidate",
+    top_source.write_text(
+        _inject_micro_arch_stub_instance(
+            original_text,
+            micro_arch_spec=micro_arch_spec,
+        )
     )
-    candidate_text = _inject_micro_arch_stub_instance(
-        candidate_text,
-        micro_arch_spec=micro_arch_spec,
-    )
-    wrapper_text = _render_gold_reference_wrapper(
-        source_text=original_text,
-        top_module=top_module,
-        native_ports=tuple(native_interface.get("ports", ())),
-        candidate_text=candidate_text,
-    )
-    top_source.write_text(wrapper_text)
 
 
 def _discover_micro_arch_interface_spec(task: StoredTask) -> MicroArchInterfaceSpec | None:
@@ -589,6 +579,7 @@ def _stage_candidate_overlay(
         projection_ports=tuple(projection.get("ports", ())),
         support_units=tuple(support_texts),
         candidate_units=tuple(candidate_units),
+        micro_arch_spec=_discover_micro_arch_interface_spec(task),
     )
     (overlay_dir / f"{top_module}.sv").write_text(wrapper_text)
 
@@ -636,36 +627,6 @@ def _inject_micro_arch_stub_instance(
     return source_text[:match.start()] + insertion + source_text[match.start():]
 
 
-def _render_gold_reference_wrapper(
-    *,
-    source_text: str,
-    top_module: str,
-    native_ports: tuple[dict[str, object], ...],
-    candidate_text: str,
-) -> str:
-    preamble, header = _extract_module_preamble_and_header(source_text, top_module)
-    lines: list[str] = []
-    stripped_preamble = preamble.rstrip()
-    if stripped_preamble:
-        lines.append(stripped_preamble)
-        lines.append("")
-    lines.append(
-        "// Generated wrapper adapting the native OpenTitan gold RTL to the candidate-style deep-DV hierarchy."
-    )
-    lines.append(candidate_text.rstrip())
-    lines.append("")
-    lines.append(header.rstrip())
-    lines.append("")
-    lines.append(f"  {top_module}_candidate u_candidate (")
-    for index, port in enumerate(native_ports):
-        suffix = "," if index < len(native_ports) - 1 else ""
-        lines.append(f"    .{port['name']}({port['name']}){suffix}")
-    lines.append("  );")
-    lines.append("endmodule")
-    lines.append("")
-    return "\n".join(lines)
-
-
 def _render_candidate_wrapper(
     *,
     source_text: str,
@@ -673,6 +634,7 @@ def _render_candidate_wrapper(
     projection_ports: tuple[dict[str, object], ...],
     support_units: tuple[tuple[str, str], ...],
     candidate_units: tuple[tuple[str, str], ...],
+    micro_arch_spec: MicroArchInterfaceSpec | None,
 ) -> str:
     preamble, header = _extract_module_preamble_and_header(source_text, top_module)
     lines: list[str] = []
@@ -735,11 +697,16 @@ def _render_candidate_wrapper(
     if projection_ports:
         lines.append("")
 
+    if micro_arch_spec is not None:
+        lines.append(f"  {micro_arch_spec.interface_name} {micro_arch_spec.instance_name}();")
+        lines.append("")
+
     lines.append(f"  {top_module}_candidate u_candidate (")
     for index, port in enumerate(projection_ports):
         suffix = "," if index < len(projection_ports) - 1 else ""
         lines.append(f"    .{port['name']}(candidate_{port['name']}){suffix}")
     lines.append("  );")
+    _append_micro_arch_aliases(lines, micro_arch_spec)
     lines.append("endmodule")
     lines.append("")
     return "\n".join(lines)
@@ -842,3 +809,25 @@ def _render_micro_arch_stub(source_text: str) -> str:
     if kind == "interface":
         return f"interface {name}; endinterface : {name}\n"
     return f"package {name}; endpackage : {name}\n"
+
+
+def _append_micro_arch_aliases(
+    lines: list[str],
+    micro_arch_spec: MicroArchInterfaceSpec | None,
+) -> None:
+    if micro_arch_spec is None:
+        return
+    candidate_instance = f"u_candidate.{micro_arch_spec.instance_name}"
+    if micro_arch_spec.dut_outputs:
+        for signal in micro_arch_spec.dut_outputs:
+            lines.append(
+                f"  assign {micro_arch_spec.instance_name}.{signal} = {candidate_instance}.{signal};"
+            )
+    if micro_arch_spec.dut_inputs:
+        for signal in micro_arch_spec.dut_inputs:
+            lines.append(
+                f"  assign {candidate_instance}.{signal} = {micro_arch_spec.instance_name}.{signal};"
+            )
+    if micro_arch_spec.dut_inouts:
+        raise NotImplementedError("micro_arch inout signals are not supported in OpenTitan wrappers")
+    lines.append("")

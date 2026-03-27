@@ -258,10 +258,9 @@ def test_build_opentitan_gold_selftest_plan_overlays_golden_rtl(tmp_path: Path) 
 
     assert plan.repo_root.exists()
     wrapper_text = (plan.repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").read_text()
-    assert "module uart_candidate; // golden" in wrapper_text
+    assert "module uart; // golden" in wrapper_text
     assert "uart_micro_arch_if u_uart_micro_arch_if();" in wrapper_text
-    assert "module uart;" in wrapper_text
-    assert "uart_candidate u_candidate (" in wrapper_text
+    assert "assign u_uart_micro_arch_if.rx_sync = '0;" in wrapper_text
     assert (plan.repo_root / "hw" / "ip" / "uart" / "dv" / "uart_sim_cfg.hjson").exists()
     assert (plan.repo_root / "hw" / "ip" / "uart" / "dv" / "micro_arch" / "uart_micro_arch_if.sv").exists()
     assert (
@@ -310,8 +309,8 @@ def test_run_opentitan_dvsim_plan_invokes_dvsim_from_overlaid_repo(
     assert result.passed is True
     assert Path(captured["cwd"]) == plan.repo_root
     assert isinstance(captured["overlay_text"], str)
-    assert "module uart_candidate; // golden" in captured["overlay_text"]
-    assert "uart_candidate u_candidate (" in captured["overlay_text"]
+    assert "module uart; // golden" in captured["overlay_text"]
+    assert "uart_micro_arch_if u_uart_micro_arch_if();" in captured["overlay_text"]
     command = captured["command"]
     assert isinstance(command, tuple)
     assert "--scratch-root" in command
@@ -377,6 +376,8 @@ def test_build_opentitan_candidate_validation_plan_wraps_projected_candidate(tmp
     assert (
         "typedef prim_alert_pkg::alert_tx_t [NumAlerts-1:0] native_cast_alert_tx_o_t;" in wrapper_text
     )
+    assert "uart_micro_arch_if u_uart_micro_arch_if();" in wrapper_text
+    assert "assign u_uart_micro_arch_if.rx_sync = u_candidate.u_uart_micro_arch_if.rx_sync;" in wrapper_text
     assert "assign candidate_tl_i = public_cast_tl_i_t'(tl_i);" in wrapper_text
     assert "assign tl_o = native_cast_tl_o_t'(candidate_tl_o);" in wrapper_text
     assert "assign alert_tx_o = native_cast_alert_tx_o_t'(candidate_alert_tx_o);" in wrapper_text
@@ -451,5 +452,5 @@ def test_build_opentitan_mutant_plan_applies_declared_mutation(tmp_path: Path) -
     )
 
     wrapper_text = (plan.repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").read_text()
-    assert "module uart_candidate; // mutated" in wrapper_text
-    assert "uart_candidate u_candidate (" in wrapper_text
+    assert "module uart; // mutated" in wrapper_text
+    assert "uart_micro_arch_if u_uart_micro_arch_if();" in wrapper_text
