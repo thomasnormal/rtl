@@ -467,13 +467,27 @@
         "hw/ip/dma/data/dma.hjson",
         "hw/ip/dma/rtl/dma.sv"
       ],
-      "private_source_dirs": [
-        "hw/ip/dma/rtl",
-        "hw/ip/dma/dv"
-      ],
-      "private_source_mode": "shared_bundle",
-      "interface": {
-        "top_module": "dma",
+    "private_source_dirs": [
+      "hw/ip/dma/rtl",
+      "hw/ip/dma/dv"
+    ],
+    "private_source_mode": "shared_bundle",
+    "raw_oracle": {
+      "kind": "opentitan_dvsim",
+      "cfg": "hw/ip/dma/dv/dma_sim_cfg.hjson",
+      "test": "dma_generic_smoke",
+      "tool": "xcelium",
+      "golden_rtl_dir": "golden_rtl",
+      "overlay_rel_dir": "hw/ip/dma/rtl",
+      "assets": [
+        {
+          "source": "hw/ip/dma/rtl",
+          "dest": "golden_rtl"
+        }
+      ]
+    },
+    "interface": {
+      "top_module": "dma",
         "declared_module_name": "dma",
         "inputs": [
           {"name": "clk_i", "direction": "input", "width": "logic"},
@@ -584,13 +598,27 @@
         "hw/ip/sysrst_ctrl/data/sysrst_ctrl.hjson",
         "hw/ip/sysrst_ctrl/rtl/sysrst_ctrl.sv"
       ],
-      "private_source_dirs": [
-        "hw/ip/sysrst_ctrl/rtl",
-        "hw/ip/sysrst_ctrl/dv"
-      ],
-      "private_source_mode": "shared_bundle",
-      "interface": {
-        "top_module": "sysrst_ctrl",
+    "private_source_dirs": [
+      "hw/ip/sysrst_ctrl/rtl",
+      "hw/ip/sysrst_ctrl/dv"
+    ],
+    "private_source_mode": "shared_bundle",
+    "raw_oracle": {
+      "kind": "opentitan_dvsim",
+      "cfg": "hw/ip/sysrst_ctrl/dv/sysrst_ctrl_sim_cfg.hjson",
+      "test": "sysrst_ctrl_smoke",
+      "tool": "xcelium",
+      "golden_rtl_dir": "golden_rtl",
+      "overlay_rel_dir": "hw/ip/sysrst_ctrl/rtl",
+      "assets": [
+        {
+          "source": "hw/ip/sysrst_ctrl/rtl",
+          "dest": "golden_rtl"
+        }
+      ]
+    },
+    "interface": {
+      "top_module": "sysrst_ctrl",
         "declared_module_name": "sysrst_ctrl",
         "inputs": [
           {"name": "clk_i", "direction": "input", "width": "logic"},

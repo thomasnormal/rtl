@@ -545,6 +545,27 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
     ).read_text()
     assert "p_error_pulse_drives_alert" in rv_timer_micro_arch_checker
 
+    dma_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "dma")
+    dma_task_metadata = json.loads((dma_task.root / "task.json").read_text())
+    assert dma_task_metadata["oracle"]["kind"] == "opentitan_dvsim"
+    assert dma_task_metadata["oracle"]["cfg"] == "hw/ip/dma/dv/dma_sim_cfg.hjson"
+    assert dma_task_metadata["oracle"]["test"] == "dma_generic_smoke"
+    assert dma_task_metadata["oracle"]["golden_rtl_dir"] == "golden_rtl"
+    assert dma_task_metadata["oracle"]["overlay_rel_dir"] == "hw/ip/dma/rtl"
+    assert (dma_task.root / "oracle" / "golden_rtl" / "dma.sv").exists()
+
+    sysrst_ctrl_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "sysrst_ctrl")
+    sysrst_ctrl_task_metadata = json.loads((sysrst_ctrl_task.root / "task.json").read_text())
+    assert sysrst_ctrl_task_metadata["oracle"]["kind"] == "opentitan_dvsim"
+    assert (
+        sysrst_ctrl_task_metadata["oracle"]["cfg"]
+        == "hw/ip/sysrst_ctrl/dv/sysrst_ctrl_sim_cfg.hjson"
+    )
+    assert sysrst_ctrl_task_metadata["oracle"]["test"] == "sysrst_ctrl_smoke"
+    assert sysrst_ctrl_task_metadata["oracle"]["golden_rtl_dir"] == "golden_rtl"
+    assert sysrst_ctrl_task_metadata["oracle"]["overlay_rel_dir"] == "hw/ip/sysrst_ctrl/rtl"
+    assert (sysrst_ctrl_task.root / "oracle" / "golden_rtl" / "sysrst_ctrl.sv").exists()
+
 
 def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path: Path) -> None:
     written = store_riscv_hardware_specs_tasks(tmp_path / "task_store")
