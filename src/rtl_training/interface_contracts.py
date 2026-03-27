@@ -590,13 +590,10 @@ def _render_opentitan_public_types_package(package_name: str, projection: Mappin
     for type_def in projection.get("type_defs", []):
         bit_width = int(type_def["bit_width"])
         alias_name = str(type_def["alias_name"])
-        native_type = str(type_def["native_type"])
         if bit_width == 1:
-            lines.append(f"  typedef logic {alias_name}; // native: {native_type}")
+            lines.append(f"  typedef logic {alias_name};")
         else:
-            lines.append(
-                f"  typedef logic [{bit_width - 1}:0] {alias_name}; // native: {native_type}"
-            )
+            lines.append(f"  typedef logic [{bit_width - 1}:0] {alias_name};")
     lines.append(f"endpackage : {package_name}")
     lines.append("")
     return "\n".join(lines)
@@ -623,6 +620,54 @@ def _render_opentitan_public_tlul_package(package_name: str, projection: Mapping
         "  localparam logic [2:0] TL_D_ACK        = 3'd0;",
         "  localparam logic [2:0] TL_D_ACKDATA    = 3'd1;",
         "",
+        "  localparam int unsigned TL_A_VALID_BIT      = 108;",
+        "  localparam int unsigned TL_A_OPCODE_MSB     = 107;",
+        "  localparam int unsigned TL_A_OPCODE_LSB     = 105;",
+        "  localparam int unsigned TL_A_PARAM_MSB      = 104;",
+        "  localparam int unsigned TL_A_PARAM_LSB      = 102;",
+        "  localparam int unsigned TL_A_SIZE_MSB       = 101;",
+        "  localparam int unsigned TL_A_SIZE_LSB       = 100;",
+        "  localparam int unsigned TL_A_SOURCE_MSB     = 99;",
+        "  localparam int unsigned TL_A_SOURCE_LSB     = 92;",
+        "  localparam int unsigned TL_A_ADDRESS_MSB    = 91;",
+        "  localparam int unsigned TL_A_ADDRESS_LSB    = 60;",
+        "  localparam int unsigned TL_A_MASK_MSB       = 59;",
+        "  localparam int unsigned TL_A_MASK_LSB       = 56;",
+        "  localparam int unsigned TL_A_DATA_MSB       = 55;",
+        "  localparam int unsigned TL_A_DATA_LSB       = 24;",
+        "  localparam int unsigned TL_A_USER_MSB       = 23;",
+        "  localparam int unsigned TL_A_USER_LSB       = 1;",
+        "  localparam int unsigned TL_A_RSVD_MSB       = 23;",
+        "  localparam int unsigned TL_A_RSVD_LSB       = 19;",
+        "  localparam int unsigned TL_A_INSTR_TYPE_MSB = 18;",
+        "  localparam int unsigned TL_A_INSTR_TYPE_LSB = 15;",
+        "  localparam int unsigned TL_A_CMD_INTG_MSB   = 14;",
+        "  localparam int unsigned TL_A_CMD_INTG_LSB   = 8;",
+        "  localparam int unsigned TL_A_DATA_INTG_MSB  = 7;",
+        "  localparam int unsigned TL_A_DATA_INTG_LSB  = 1;",
+        "  localparam int unsigned TL_D_READY_BIT      = 0;",
+        "",
+        "  localparam int unsigned TL_D_VALID_BIT      = 65;",
+        "  localparam int unsigned TL_D_OPCODE_MSB     = 64;",
+        "  localparam int unsigned TL_D_OPCODE_LSB     = 62;",
+        "  localparam int unsigned TL_D_PARAM_MSB      = 61;",
+        "  localparam int unsigned TL_D_PARAM_LSB      = 59;",
+        "  localparam int unsigned TL_D_SIZE_MSB       = 58;",
+        "  localparam int unsigned TL_D_SIZE_LSB       = 57;",
+        "  localparam int unsigned TL_D_SOURCE_MSB     = 56;",
+        "  localparam int unsigned TL_D_SOURCE_LSB     = 49;",
+        "  localparam int unsigned TL_D_SINK_BIT       = 48;",
+        "  localparam int unsigned TL_D_DATA_MSB       = 47;",
+        "  localparam int unsigned TL_D_DATA_LSB       = 16;",
+        "  localparam int unsigned TL_D_USER_MSB       = 15;",
+        "  localparam int unsigned TL_D_USER_LSB       = 2;",
+        "  localparam int unsigned TL_D_RSP_INTG_MSB   = 15;",
+        "  localparam int unsigned TL_D_RSP_INTG_LSB   = 9;",
+        "  localparam int unsigned TL_D_DATA_INTG_MSB  = 8;",
+        "  localparam int unsigned TL_D_DATA_INTG_LSB  = 2;",
+        "  localparam int unsigned TL_D_ERROR_BIT      = 1;",
+        "  localparam int unsigned TL_A_READY_BIT      = 0;",
+        "",
     ]
     if h2d_port is not None:
         h2d_type = str(h2d_port["public_type"])
@@ -632,7 +677,7 @@ def _render_opentitan_public_tlul_package(package_name: str, projection: Mapping
                 f"  function automatic {h2d_type} {prefix}_idle();",
                 f"    {h2d_type} req;",
                 "    req = '0;",
-                "    req[23] = 1'b1;",
+                "    req[TL_D_READY_BIT] = 1'b1;",
                 "    return req;",
                 "  endfunction",
                 "",
@@ -642,12 +687,12 @@ def _render_opentitan_public_tlul_package(package_name: str, projection: Mapping
                 "  );",
                 f"    {h2d_type} req;",
                 f"    req = {prefix}_idle();",
-                "    req[108]    = 1'b1;",
-                "    req[107:105]= TL_A_GET;",
-                "    req[101:100]= 2'd2;",
-                "    req[99:92]  = source;",
-                "    req[91:60]  = addr;",
-                "    req[59:56]  = 4'hf;",
+                "    req[TL_A_VALID_BIT] = 1'b1;",
+                "    req[TL_A_OPCODE_MSB:TL_A_OPCODE_LSB] = TL_A_GET;",
+                "    req[TL_A_SIZE_MSB:TL_A_SIZE_LSB] = 2'd2;",
+                "    req[TL_A_SOURCE_MSB:TL_A_SOURCE_LSB] = source;",
+                "    req[TL_A_ADDRESS_MSB:TL_A_ADDRESS_LSB] = addr;",
+                "    req[TL_A_MASK_MSB:TL_A_MASK_LSB] = 4'hf;",
                 "    return req;",
                 "  endfunction",
                 "",
@@ -659,14 +704,100 @@ def _render_opentitan_public_tlul_package(package_name: str, projection: Mapping
                 "  );",
                 f"    {h2d_type} req;",
                 f"    req = {prefix}_idle();",
-                "    req[108]    = 1'b1;",
-                "    req[107:105]= TL_A_PUTFULL;",
-                "    req[101:100]= 2'd2;",
-                "    req[99:92]  = source;",
-                "    req[91:60]  = addr;",
-                "    req[59:56]  = mask;",
-                "    req[55:24]  = data;",
+                "    req[TL_A_VALID_BIT] = 1'b1;",
+                "    req[TL_A_OPCODE_MSB:TL_A_OPCODE_LSB] = TL_A_PUTFULL;",
+                "    req[TL_A_SIZE_MSB:TL_A_SIZE_LSB] = 2'd2;",
+                "    req[TL_A_SOURCE_MSB:TL_A_SOURCE_LSB] = source;",
+                "    req[TL_A_ADDRESS_MSB:TL_A_ADDRESS_LSB] = addr;",
+                "    req[TL_A_MASK_MSB:TL_A_MASK_LSB] = mask;",
+                "    req[TL_A_DATA_MSB:TL_A_DATA_LSB] = data;",
                 "    return req;",
+                "  endfunction",
+                "",
+                f"  function automatic {h2d_type} {prefix}_make_putpartial32(",
+                "    input logic [31:0] addr,",
+                "    input logic [31:0] data,",
+                "    input logic [3:0] mask,",
+                "    input logic [7:0] source",
+                "  );",
+                f"    {h2d_type} req;",
+                f"    req = {prefix}_idle();",
+                "    req[TL_A_VALID_BIT] = 1'b1;",
+                "    req[TL_A_OPCODE_MSB:TL_A_OPCODE_LSB] = TL_A_PUTPARTIAL;",
+                "    req[TL_A_SIZE_MSB:TL_A_SIZE_LSB] = 2'd2;",
+                "    req[TL_A_SOURCE_MSB:TL_A_SOURCE_LSB] = source;",
+                "    req[TL_A_ADDRESS_MSB:TL_A_ADDRESS_LSB] = addr;",
+                "    req[TL_A_MASK_MSB:TL_A_MASK_LSB] = mask;",
+                "    req[TL_A_DATA_MSB:TL_A_DATA_LSB] = data;",
+                "    return req;",
+                "  endfunction",
+                "",
+                f"  function automatic {h2d_type} {prefix}_with_param(",
+                f"    input {h2d_type} req,",
+                "    input logic [2:0] param",
+                "  );",
+                f"    {prefix}_with_param = req;",
+                f"    {prefix}_with_param[TL_A_PARAM_MSB:TL_A_PARAM_LSB] = param;",
+                "  endfunction",
+                "",
+                f"  function automatic {h2d_type} {prefix}_with_user(",
+                f"    input {h2d_type} req,",
+                "    input logic [3:0] instr_type,",
+                "    input logic [6:0] cmd_intg,",
+                "    input logic [6:0] data_intg",
+                "  );",
+                f"    {prefix}_with_user = req;",
+                f"    {prefix}_with_user[TL_A_INSTR_TYPE_MSB:TL_A_INSTR_TYPE_LSB] = instr_type;",
+                f"    {prefix}_with_user[TL_A_CMD_INTG_MSB:TL_A_CMD_INTG_LSB] = cmd_intg;",
+                f"    {prefix}_with_user[TL_A_DATA_INTG_MSB:TL_A_DATA_INTG_LSB] = data_intg;",
+                "  endfunction",
+                "",
+                f"  function automatic logic {prefix}_valid(input {h2d_type} req);",
+                "    return req[TL_A_VALID_BIT];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [2:0] {prefix}_opcode(input {h2d_type} req);",
+                "    return req[TL_A_OPCODE_MSB:TL_A_OPCODE_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [2:0] {prefix}_param(input {h2d_type} req);",
+                "    return req[TL_A_PARAM_MSB:TL_A_PARAM_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [1:0] {prefix}_size(input {h2d_type} req);",
+                "    return req[TL_A_SIZE_MSB:TL_A_SIZE_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [7:0] {prefix}_source(input {h2d_type} req);",
+                "    return req[TL_A_SOURCE_MSB:TL_A_SOURCE_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [31:0] {prefix}_address(input {h2d_type} req);",
+                "    return req[TL_A_ADDRESS_MSB:TL_A_ADDRESS_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [3:0] {prefix}_mask(input {h2d_type} req);",
+                "    return req[TL_A_MASK_MSB:TL_A_MASK_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [31:0] {prefix}_data(input {h2d_type} req);",
+                "    return req[TL_A_DATA_MSB:TL_A_DATA_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [3:0] {prefix}_instr_type(input {h2d_type} req);",
+                "    return req[TL_A_INSTR_TYPE_MSB:TL_A_INSTR_TYPE_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [6:0] {prefix}_cmd_intg(input {h2d_type} req);",
+                "    return req[TL_A_CMD_INTG_MSB:TL_A_CMD_INTG_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [6:0] {prefix}_data_intg(input {h2d_type} req);",
+                "    return req[TL_A_DATA_INTG_MSB:TL_A_DATA_INTG_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic {prefix}_d_ready(input {h2d_type} req);",
+                "    return req[TL_D_READY_BIT];",
                 "  endfunction",
                 "",
             ]
@@ -677,23 +808,47 @@ def _render_opentitan_public_tlul_package(package_name: str, projection: Mapping
         lines.extend(
             [
                 f"  function automatic logic {prefix}_valid(input {d2h_type} rsp);",
-                "    return rsp[65];",
+                "    return rsp[TL_D_VALID_BIT];",
                 "  endfunction",
                 "",
                 f"  function automatic logic [2:0] {prefix}_opcode(input {d2h_type} rsp);",
-                "    return rsp[64:62];",
+                "    return rsp[TL_D_OPCODE_MSB:TL_D_OPCODE_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [2:0] {prefix}_param(input {d2h_type} rsp);",
+                "    return rsp[TL_D_PARAM_MSB:TL_D_PARAM_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [1:0] {prefix}_size(input {d2h_type} rsp);",
+                "    return rsp[TL_D_SIZE_MSB:TL_D_SIZE_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [7:0] {prefix}_source(input {d2h_type} rsp);",
+                "    return rsp[TL_D_SOURCE_MSB:TL_D_SOURCE_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic {prefix}_sink(input {d2h_type} rsp);",
+                "    return rsp[TL_D_SINK_BIT];",
                 "  endfunction",
                 "",
                 f"  function automatic logic [31:0] {prefix}_data(input {d2h_type} rsp);",
-                "    return rsp[48:17];",
+                "    return rsp[TL_D_DATA_MSB:TL_D_DATA_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [6:0] {prefix}_rsp_intg(input {d2h_type} rsp);",
+                "    return rsp[TL_D_RSP_INTG_MSB:TL_D_RSP_INTG_LSB];",
+                "  endfunction",
+                "",
+                f"  function automatic logic [6:0] {prefix}_data_intg(input {d2h_type} rsp);",
+                "    return rsp[TL_D_DATA_INTG_MSB:TL_D_DATA_INTG_LSB];",
                 "  endfunction",
                 "",
                 f"  function automatic logic {prefix}_error(input {d2h_type} rsp);",
-                "    return rsp[16];",
+                "    return rsp[TL_D_ERROR_BIT];",
                 "  endfunction",
                 "",
                 f"  function automatic logic {prefix}_ready(input {d2h_type} rsp);",
-                "    return rsp[0];",
+                "    return rsp[TL_A_READY_BIT];",
                 "  endfunction",
                 "",
             ]
@@ -799,7 +954,13 @@ def _load_opentitan_reg_metadata(task_id: str, source_root: Path | None) -> dict
     params = _load_opentitan_hjson_param_defaults(raw)
 
     entries: list[dict[str, Any]] = []
-    current_offset = 0
+    explicit_register_names = _collect_opentitan_register_names(reg_entries)
+    synthesized_entries = _synthesize_opentitan_special_registers(
+        raw,
+        explicit_register_names=explicit_register_names,
+    )
+    entries.extend(synthesized_entries)
+    current_offset = word_bytes * len(synthesized_entries)
     for raw_entry in reg_entries:
         if not isinstance(raw_entry, Mapping):
             continue
@@ -887,6 +1048,59 @@ def _load_opentitan_reg_metadata(task_id: str, source_root: Path | None) -> dict
         )
         current_offset += word_bytes
     return {"entries": entries}
+
+
+def _collect_opentitan_register_names(reg_entries: list[Any]) -> set[str]:
+    names: set[str] = set()
+    for raw_entry in reg_entries:
+        if not isinstance(raw_entry, Mapping):
+            continue
+        if "name" in raw_entry:
+            names.add(str(raw_entry["name"]).upper())
+        if "multireg" in raw_entry and isinstance(raw_entry["multireg"], Mapping):
+            names.add(str(raw_entry["multireg"].get("name", "")).upper())
+        if "window" in raw_entry and isinstance(raw_entry["window"], Mapping):
+            names.add(str(raw_entry["window"].get("name", "")).upper())
+        if "sameaddr" in raw_entry and isinstance(raw_entry["sameaddr"], list):
+            for sameaddr_reg in raw_entry["sameaddr"]:
+                if isinstance(sameaddr_reg, Mapping) and "name" in sameaddr_reg:
+                    names.add(str(sameaddr_reg["name"]).upper())
+    return names
+
+
+def _synthesize_opentitan_special_registers(
+    raw: Mapping[str, Any],
+    *,
+    explicit_register_names: set[str],
+) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    alert_list = raw.get("alert_list")
+    if (
+        isinstance(alert_list, list)
+        and alert_list
+        and "ALERT_TEST" not in explicit_register_names
+    ):
+        alert_fields: list[dict[str, Any]] = []
+        for bit_index, raw_alert in enumerate(alert_list):
+            if not isinstance(raw_alert, Mapping) or "name" not in raw_alert:
+                continue
+            alert_fields.append(
+                {
+                    "name": str(raw_alert["name"]),
+                    "lsb": bit_index,
+                    "width": 1,
+                }
+            )
+        if alert_fields:
+            entries.append(
+                {
+                    "kind": "register",
+                    "name": "ALERT_TEST",
+                    "offset": 0,
+                    "fields": alert_fields,
+                }
+            )
+    return entries
 
 
 def _load_opentitan_hjson_param_defaults(raw: Mapping[str, Any]) -> dict[str, int]:

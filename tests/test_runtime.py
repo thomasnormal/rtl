@@ -1,7 +1,12 @@
+import json
 from pathlib import Path
 import stat
 
-from rtl_training.runtime import prepare_generator_episode, prepare_verifier_episode
+from rtl_training.runtime import (
+    prepare_generator_episode,
+    prepare_verifier_episode,
+    validate_generator_episode,
+)
 from rtl_training.task_store import store_rtllm_tasks
 from rtl_training.workspace import collect_candidate_files
 
@@ -18,6 +23,56 @@ def _create_task(tmp_path: Path) -> Path:
     (task_dir / "testbench.v").write_text("module testbench; endmodule\n")
     written = store_rtllm_tasks(source_root, tmp_path / "task_store", dataset_name="rtllm_v2_0")
     return written[0]
+
+
+def _create_minimal_opentitan_task(tmp_path: Path) -> Path:
+    task_root = tmp_path / "task_store" / "opentitan_ip_docs" / "rv_timer"
+    (task_root / "public" / "spec").mkdir(parents=True)
+    (task_root / "public" / "spec" / "README.md").write_text("rv_timer spec\n")
+    (task_root / "public" / "task.json").write_text(
+        json.dumps(
+            {
+                "dataset_name": "opentitan_ip_docs",
+                "task_id": "rv_timer",
+                "candidate_top_module": "rv_timer",
+                "interface": {
+                    "top_module": "rv_timer",
+                    "declared_module_name": "rv_timer",
+                    "ports": [],
+                    "inputs": [],
+                    "outputs": [],
+                    "parameters": [],
+                },
+                "spec": "spec/",
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+    (task_root / "task.json").write_text(
+        json.dumps(
+            {
+                "dataset_name": "opentitan_ip_docs",
+                "task_id": "rv_timer",
+                "public": {
+                    "directory": "public",
+                    "spec": "public/spec/",
+                    "task": "public/task.json",
+                },
+                "oracle": {
+                    "kind": "opentitan_dvsim",
+                    "cfg": "hw/ip/rv_timer/dv/rv_timer_sim_cfg.hjson",
+                    "test": "rv_timer_random",
+                    "tool": "xcelium",
+                    "golden_rtl_dir": "golden_rtl",
+                    "overlay_rel_dir": "hw/ip/rv_timer/rtl",
+                },
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+    return task_root
 
 
 def test_prepare_generator_episode_points_opencode_at_staged_workspace(tmp_path: Path) -> None:
@@ -47,13 +102,69 @@ def test_prepare_generator_episode_instructions_require_behavioral_spec_and_buil
     assert "task/spec/doc/" in instructions
     assert "requirement checklist" in instructions
     assert "Interface and microarchitecture are necessary but not sufficient" in instructions
+    assert "task/spec/doc/registers.md" in instructions
+    assert "task/spec/doc/programmers_guide.md" in instructions
     assert "compile sanity check" in instructions
     assert "Use `xrun`/Xcelium for that check" in instructions
+    assert "documented CSR/register map" in instructions
+    assert "write-only registers" in instructions
     assert "task-local SV packages or typedef files" in instructions
+    assert "generated bus helper package" in instructions
+    assert "source, size, param, and user fields" in instructions
+    assert "complete public problem statement" in instructions
+    assert "Do not assume access to upstream repo code" in instructions
     assert "`submission/` must be a self-contained deliverable set" in instructions
     assert "Do not use `` `include `` paths that reach into `task/`" in instructions
     assert "compile check only counts if it elaborates the DUT top module" in instructions
     assert "helper interface or package alone does not count" in instructions
+
+
+def test_validate_generator_episode_dispatches_opentitan_oracle(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    task_root = _create_minimal_opentitan_task(tmp_path)
+    episode = prepare_generator_episode(
+        task_root,
+        tmp_path / "episode",
+        template_root=ROOT,
+    )
+    candidate_path = episode.workspace.submission_dir / "rv_timer.sv"
+    candidate_path.write_text("module rv_timer; endmodule\n")
+
+    calls: list[tuple[Path, Path, int]] = []
+
+    def fake_validate_opentitan_candidate(task, *, candidate_dir, work_root, timeout_s):
+        calls.append((Path(candidate_dir), Path(work_root), timeout_s))
+        return type(
+            "FakeOpenTitanResult",
+            (),
+            {
+                "passed": True,
+                "plan": type("FakePlan", (), {"log_path": Path(work_root) / "dvsim.log"})(),
+            },
+        )()
+
+    monkeypatch.setattr(
+        "rtl_training.runtime.validate_opentitan_candidate",
+        fake_validate_opentitan_candidate,
+    )
+
+    result = validate_generator_episode(
+        episode,
+        work_root=tmp_path / "oracle_work",
+        preferred_simulator="xrun",
+        timeout_s=123,
+    )
+
+    assert result.passed is True
+    assert calls == [
+        (
+            episode.workspace.submission_dir,
+            (tmp_path / "oracle_work").resolve(),
+            123,
+        )
+    ]
 
 
 def test_prepare_verifier_episode_stages_candidate_dir(tmp_path: Path) -> None:
@@ -96,6 +207,10 @@ def test_prepare_verifier_episode_instructions_call_for_native_sva_and_uvm(tmp_p
     assert "cocotb" in instructions
     assert "`xrun`" in instructions
     assert "`xrun -uvm`" in instructions
+    assert "generated bus helper package" in instructions
+    assert "source, size, param, and user" in instructions
+    assert "complete public problem statement" in instructions
+    assert "Do not assume access to upstream repo code" in instructions
 
 
 def test_verifier_prompt_mentions_xrun_sva_and_uvm() -> None:
@@ -105,6 +220,10 @@ def test_verifier_prompt_mentions_xrun_sva_and_uvm() -> None:
     assert "@cocotb.test()" in prompt
     assert "For plain SystemVerilog and SVA simulation, prefer `xrun`" in prompt
     assert "For UVM environments that import `uvm_pkg`, prefer:" in prompt
+    assert "generated bus helper package" in prompt
+    assert "source / size / param / user fields" in prompt
+    assert "complete public problem statement" in prompt
+    assert "Do not assume access to upstream repo code" in prompt
 
 
 def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
@@ -113,10 +232,18 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     assert "full functional behavior" in prompt
     assert "Interface and microarchitecture are necessary but not sufficient" in prompt
     assert "requirement checklist" in prompt
+    assert "task/spec/doc/registers.md" in prompt
+    assert "task/spec/doc/programmers_guide.md" in prompt
     assert "compile sanity check" in prompt
     assert "Use `xrun`/Xcelium for this check" in prompt
+    assert "documented CSR/register map" in prompt
+    assert "write-only registers" in prompt
     assert "Do not rely on upstream/OpenTitan package imports" in prompt
     assert "task-local SV packages or typedef files" in prompt
+    assert "generated bus helper package" in prompt
+    assert "source, size, param, and user fields" in prompt
+    assert "complete public problem statement" in prompt
+    assert "Do not assume access to upstream repo code" in prompt
     assert "Use `xrun`/Xcelium for compile and elaboration checks" in prompt
     assert "`submission/` as a self-contained deliverable set" in prompt
     assert "Do not `include` files from `task/` inside submission RTL" in prompt

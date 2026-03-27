@@ -58,9 +58,12 @@ def stage_generator_workspace(
             "",
             "- Read `task/task.json` and the spec files under `task/spec/` before writing RTL.",
             "- If `task/spec/README.md` exists, read it first. If `task/spec/doc/` exists, read the functional spec files there and derive a requirement checklist before coding.",
+            "- If `task/spec/doc/registers.md`, `task/spec/doc/programmers_guide.md`, `task/spec/dv/README.md`, or `task/spec/data/*testplan*.hjson` exist, use them to identify software-visible side effects, documented register-map offsets, and high-risk behaviors that your local checks must cover.",
             "- Write the requirement checklist to `result/requirements.md` and use it to drive the implementation.",
             "- Treat `task/spec/interface/` as the concrete SV form of the public top-level interface when it exists.",
             "- If `task/spec/interface/` contains task-local SV packages or typedef files, those are the public type definitions to use. Do not reach for upstream repository packages when the task-local interface collateral already defines the boundary.",
+            "- If `task/spec/interface/` contains a generated bus helper package, use its accessors instead of hard-coded bit slicing and preserve semantically relevant request/response metadata such as source, size, param, and user fields.",
+            "- The staged `task/` directory is the complete public problem statement. Do not assume access to upstream repo code, hidden packages, or hidden hierarchy outside this workspace.",
             "- Treat `task/task.json` as the authoritative machine-readable contract for the top module, interface hints, and deliverables.",
             "- If `task/spec/micro_arch/` exists, treat the SV files there as a mandatory microarchitecture ABI. The generated RTL must compile against that ABI and satisfy any required named interfaces or bind points it defines exactly.",
             "- Interface and microarchitecture are necessary but not sufficient. The candidate must implement the full functional behavior described by the spec, not just a stub that satisfies ports or shallow ABI checks.",
@@ -72,6 +75,7 @@ def stage_generator_workspace(
             "- Before finishing, run at least one compile sanity check against the generated RTL and the public task collateral when the workspace contains enough SV/package context to do so. Use `xrun`/Xcelium for that check and record the command and outcome in `result/requirements.md`.",
             "- The compile check only counts if it elaborates the DUT top module named in `task/task.json`, or a smoke test that instantiates that DUT top. A helper interface or package alone does not count.",
             "- If you use `xrun`, select the DUT top explicitly with `-top <dut>` or instantiate it in a tiny smoke bench.",
+            "- If the task exposes a documented CSR/register map, do not stop at a happy-path smoke test. Add at least one executable check for documented side effects such as write-only registers, RW1C behavior, interrupt-clear behavior, or bad-access error handling before claiming `status: pass`.",
             "- Write a machine-readable summary to `result/result.json`.",
             "- If the compile check fails, `result/result.json` must not claim `status: pass`.",
             "- If the implementation is partial, minimal, or intentionally omits major spec behavior, `result/result.json` must not claim `status: pass`.",
@@ -126,6 +130,8 @@ def stage_verifier_workspace(
             "",
             "- Read the spec files under `task/spec/`, `task/task.json`, and the candidate RTL files under `candidate/`.",
             "- Treat `task/spec/interface/` as the concrete SV form of the public top-level interface when it exists.",
+            "- If `task/spec/interface/` contains a generated bus helper package, use its accessors instead of ad hoc bit slicing so your checks cover metadata fields such as source, size, param, and user as well as data and error.",
+            "- The staged `task/` directory is the complete public problem statement. Do not assume access to upstream repo code, hidden packages, or hidden hierarchy outside this workspace.",
             "- Treat `task/task.json` as the authoritative machine-readable public contract for the expected top module and interface hints.",
             "- If `task/spec/micro_arch/` exists, treat the SV files there as the task's deep-DV microarchitecture ABI and use them when evaluating whether the candidate is compatible with deeper verification.",
             "- Treat the candidate RTL as immutable input. Do not edit files under `candidate/`.",
@@ -159,6 +165,7 @@ class ConverterWorkspace:
     root: Path
     input_dir: Path
     pdf_path: Path
+    pages_dir: Path
     output_dir: Path
     instructions_path: Path
 
@@ -177,6 +184,8 @@ def stage_converter_workspace(
     input_dir.mkdir()
     staged_pdf = input_dir / "source.pdf"
     shutil.copy2(pdf_path, staged_pdf)
+    pages_dir = input_dir / "pages"
+    pages_dir.mkdir()
 
     output_dir = workspace_path / "output"
     output_dir.mkdir()
@@ -190,12 +199,13 @@ def stage_converter_workspace(
     instructions_path.write_text(
         "# Converter Task\n\n"
         "- Convert the PDF in `input/source.pdf` to markdown.\n"
-        "- Render the PDF to page images and inspect it page by page.\n"
+        "- Pre-rendered page images are available under `input/pages/`; inspect those images page by page.\n"
+        "- Use the `read` tool on every `input/pages/page-*.png` at least once before finishing. The control plane validates this.\n"
         "- Write markdown files to `output/`, split by chapter or other high-level section.\n"
         "- Use descriptive ordered names such as `01_overview.md`, `02_architecture.md`, and `03_timing.md`.\n"
         "- Put extracted figure images under `output/figures/`.\n"
         "- Reference extracted figures from markdown with paths like `![Figure 3-2](figures/figure-042.png)`.\n"
-        "- Use Python and PIL when you need to crop figure regions from a rendered page image.\n"
+        "- Use Python and PIL only when you need to crop figure regions from a pre-rendered page image.\n"
         "- Be exhaustive. Do not skip any page content, even if it is repetitive, mostly visual, or mostly a caption/table.\n"
         "- Every source page must be covered somewhere in the markdown output, but the files should follow document structure rather than page boundaries.\n"
         "- See the converter agent prompt for the full conversion workflow.\n"
@@ -205,6 +215,7 @@ def stage_converter_workspace(
         root=workspace_path,
         input_dir=input_dir,
         pdf_path=staged_pdf,
+        pages_dir=pages_dir,
         output_dir=output_dir,
         instructions_path=instructions_path,
     )

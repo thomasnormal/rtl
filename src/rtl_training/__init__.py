@@ -3,6 +3,7 @@
 __all__ = [
     "config",
     "datasets",
+    "micro_arch_contracts",
     "opencode_runtime",
     "oracle",
     "reward",

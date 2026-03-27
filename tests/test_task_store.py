@@ -8,6 +8,7 @@ from rtl_training.task_store import (
     load_stored_task,
     store_generic_task,
     store_opentitan_ip_docs_tasks,
+    store_riscv_hardware_specs_tasks,
     store_rtllm_tasks,
     store_verilog_eval_tasks,
 )
@@ -448,10 +449,14 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
     public_pkg_text = (uart_task.spec_dir / "interface" / "uart_public_types_pkg.sv").read_text()
     assert "typedef logic [108:0] uart_tl_i_t;" in public_pkg_text
     assert "typedef logic [65:0] uart_tl_o_t;" in public_pkg_text
+    assert "tlul_pkg::" not in public_pkg_text
+    assert "prim_alert_pkg::" not in public_pkg_text
     tlul_pkg_text = (uart_task.spec_dir / "interface" / "uart_public_tlul_pkg.sv").read_text()
     assert "function automatic uart_public_types_pkg::uart_tl_i_t tl_make_get32(" in tlul_pkg_text
     regs_pkg_text = (uart_task.spec_dir / "interface" / "uart_public_regs_pkg.sv").read_text()
-    assert "localparam logic [31:0] CTRL_OFFSET = 32'h00000000;" in regs_pkg_text
+    assert "localparam logic [31:0] ALERT_TEST_OFFSET = 32'h00000000;" in regs_pkg_text
+    assert "localparam int unsigned ALERT_TEST_FATAL_FAULT_LSB = 0;" in regs_pkg_text
+    assert "localparam logic [31:0] CTRL_OFFSET = 32'h00000004;" in regs_pkg_text
 
     task_metadata = json.loads((uart_task.root / "task.json").read_text())
     assert task_metadata["source"]["origin"] == "curated_task_pack"
@@ -527,6 +532,55 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
     rv_timer_task_metadata = json.loads((rv_timer_task.root / "task.json").read_text())
     assert rv_timer_task_metadata["oracle"]["test"] == "rv_timer_random"
     assert rv_timer_task_metadata["oracle"]["cfg"] == "hw/ip/rv_timer/dv/rv_timer_sim_cfg.hjson"
+    assert (rv_timer_task.spec_dir / "micro_arch" / "README.md").exists()
+    rv_timer_micro_arch_if = (rv_timer_task.spec_dir / "micro_arch" / "rv_timer_micro_arch_if.sv").read_text()
+    assert "modport dut (" in rv_timer_micro_arch_if
+    assert "modport tb (" in rv_timer_micro_arch_if
+    assert "tl_intg_error_pulse" in rv_timer_micro_arch_if
+    rv_timer_micro_arch_checker = (
+        rv_timer_task.spec_dir / "micro_arch" / "rv_timer_micro_arch_checker.sv"
+    ).read_text()
+    assert "p_error_pulse_drives_alert" in rv_timer_micro_arch_checker
+
+
+def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path: Path) -> None:
+    written = store_riscv_hardware_specs_tasks(tmp_path / "task_store")
+
+    assert sorted(path.name for path in written) == [
+        "advanced_interrupt_architecture",
+        "external_debug",
+    ]
+
+    debug_task = load_stored_task(tmp_path / "task_store" / "riscv_hardware_specs" / "external_debug")
+    assert debug_task.tier == "large"
+    assert debug_task.oracle is None
+    assert debug_task.private_dir is None
+    assert debug_task.shared_private_ref is None
+    assert (debug_task.spec_dir / "riscv-debug-spec-v0.13.2.pdf").exists()
+
+    debug_public_metadata = json.loads(debug_task.public_task_path.read_text())
+    assert debug_public_metadata["candidate_top_module"] == "riscv_debug_module"
+    assert debug_public_metadata["spec"] == "spec/"
+
+    debug_task_metadata = json.loads((debug_task.root / "task.json").read_text())
+    assert debug_task_metadata["source"]["origin"] == "curated_task_pack"
+    assert debug_task_metadata["source"]["spec_subdir"] == "external_debug"
+    assert debug_task_metadata["source"]["source_docs"] == [
+        "https://docs.riscv.org/reference/debug-trace-ras/debug/v0.13.2/_attachments/riscv-debug.pdf",
+    ]
+    assert "oracle" not in debug_task_metadata
+
+    aia_task = load_stored_task(
+        tmp_path / "task_store" / "riscv_hardware_specs" / "advanced_interrupt_architecture"
+    )
+    assert aia_task.tier == "large"
+    assert aia_task.oracle is None
+    assert (aia_task.spec_dir / "riscv-interrupts-aia-v1.0.pdf").exists()
+
+    aia_task_metadata = json.loads((aia_task.root / "task.json").read_text())
+    assert aia_task_metadata["source"]["source_docs"] == [
+        "https://docs.riscv.org/reference/hardware/aia/_attachments/riscv-interrupts.pdf",
+    ]
 
 
 def test_load_stored_task_backward_compat_old_spec_format(tmp_path: Path) -> None:

@@ -7,11 +7,14 @@ Process:
 1. Read `TASK.md`, `task/task.json`, and the spec files under `task/spec/` before writing RTL.
    - If `task/spec/README.md` exists, read it first.
    - If `task/spec/doc/` exists, read the functional spec files there and extract a concrete requirement checklist before coding.
+   - If `task/spec/doc/registers.md`, `task/spec/doc/programmers_guide.md`, `task/spec/dv/README.md`, or `task/spec/data/*testplan*.hjson` exist, use them to identify software-visible side effects, documented register-map offsets, and high-risk behaviors that your local checks must cover.
    - Write that requirement checklist to `result/requirements.md` and keep it synchronized with the implementation and checks you run.
    - Treat `task/spec/interface/` as the concrete SV declaration of the public top-level interface when it exists.
    - If `task/spec/interface/` contains task-local SV packages or typedef files, use those as the public type definitions instead of importing upstream repository packages.
+   - If `task/spec/interface/` contains a generated bus helper package, use its field helpers instead of hard-coded bit slicing, and preserve semantically relevant response metadata such as source, size, param, and user fields rather than only data and error bits.
    - Treat `task/task.json` as the authoritative machine-readable public contract for the top module, interface hints, and required deliverables.
    - If `task/spec/micro_arch/` exists, treat the SV files there as a mandatory microarchitecture ABI. Your RTL must compile against that ABI and satisfy any required named interfaces / bind points it defines exactly.
+   - The staged `task/` directory is the complete public problem statement. Do not assume access to upstream repo code, hidden packages, or hidden hierarchy outside the workspace.
 2. If you need tool guidance, load the relevant skill before first use:
    - `rtl-layout`
    - `xrun`
@@ -24,6 +27,7 @@ Process:
 5. Run at least one compile sanity check against the generated RTL and the public task collateral when the workspace contains enough package / interface context to do so. Use `xrun`/Xcelium for this check and record the command and outcome in `result/requirements.md`.
    - The compile check only counts if it elaborates the DUT top module named in `task/task.json`, or a smoke test that instantiates that DUT top. A helper interface or package alone does not count.
    - If you use `xrun`, select the DUT top explicitly with `-top <dut>` or instantiate it in a tiny smoke bench.
+   - If the task exposes a documented CSR/register map, do not stop at a happy-path smoke test. Add at least one executable check for documented side effects such as write-only registers, RW1C behavior, interrupt-clear behavior, or bad-access error handling before claiming `status: pass`.
 6. Write `result/result.json` with:
    - `status`
    - `output_file`
@@ -42,6 +46,7 @@ Important:
 - Use `xrun`/Xcelium for compile and elaboration checks rather than `yosys`.
 - Treat `submission/` as a self-contained deliverable set. Do not `include` files from `task/` inside submission RTL.
 - The compile check only counts if it elaborates the DUT top module from `task/task.json`; elaborating only a helper interface or package does not count.
+- For register-mapped tasks, your local evidence must include at least one check of documented CSR side effects or negative behavior, not just reset/read/write happy paths.
 - If the compile check fails, `status` must not be `pass`.
 - If the implementation is intentionally partial, minimal, or missing major spec behavior, `status` must not be `pass`.
 - Do not claim verification you did not perform yourself.

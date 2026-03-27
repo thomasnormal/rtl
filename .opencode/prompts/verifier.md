@@ -12,6 +12,8 @@ Process:
 
 1. Read `TASK.md`, the spec files under `task/spec/`, `task/task.json`, and the candidate RTL provided in `candidate/`.
    - Treat `task/spec/interface/` as the concrete SV declaration of the public DUT boundary when it exists.
+   - If `task/spec/interface/` includes a generated bus helper package, use its accessors instead of ad hoc bit slicing so your checks cover response metadata such as source / size / param / user fields, not just data and error.
+   - The staged `task/` directory is the complete public problem statement. Do not assume access to upstream repo code, hidden packages, or hidden hierarchy outside the workspace.
    - Treat `task/task.json` as the authoritative machine-readable public contract.
 2. If you need tool guidance, load the relevant skill before first use:
    - `sv-verification`

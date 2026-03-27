@@ -9,6 +9,11 @@ import shutil
 import subprocess
 import sys
 
+from .micro_arch_contracts import (
+    MicroArchInterfaceSpec,
+    discover_micro_arch_interface_spec,
+    find_micro_arch_dir,
+)
 from .task_store import StoredTask
 
 
@@ -122,13 +127,6 @@ class OpenTitanDvsimRunResult:
     stderr: str
 
 
-@dataclass(frozen=True)
-class OpenTitanCompatInterfaceSpec:
-    interface_name: str
-    instance_name: str
-    signals: tuple[str, ...]
-
-
 def build_opentitan_gold_selftest_plan(
     task: StoredTask,
     *,
@@ -224,6 +222,21 @@ def validate_opentitan_gold_reference(
     timeout_s: int = 1800,
 ) -> OpenTitanDvsimRunResult:
     plan = build_opentitan_gold_selftest_plan(task, work_root=work_root)
+    return run_opentitan_dvsim_plan(plan, timeout_s=timeout_s)
+
+
+def validate_opentitan_candidate(
+    task: StoredTask,
+    *,
+    candidate_dir: str | Path,
+    work_root: str | Path,
+    timeout_s: int = 1800,
+) -> OpenTitanDvsimRunResult:
+    plan = build_opentitan_candidate_validation_plan(
+        task,
+        candidate_dir=candidate_dir,
+        work_root=work_root,
+    )
     return run_opentitan_dvsim_plan(plan, timeout_s=timeout_s)
 
 
@@ -371,13 +384,7 @@ def _finalize_dvsim_plan(
 
 
 def _task_public_micro_arch_dir(task: StoredTask) -> Path | None:
-    micro_arch_dir = task.spec_dir / "micro_arch"
-    if micro_arch_dir.is_dir():
-        return micro_arch_dir
-    compat_dir = task.spec_dir / "compat"
-    if compat_dir.is_dir():
-        return compat_dir
-    return None
+    return find_micro_arch_dir(task.spec_dir)
 
 
 def _stage_public_micro_arch_abi(
@@ -482,36 +489,8 @@ def _stage_gold_reference_wrapper(task: StoredTask, *, overlay_dir: Path) -> Non
     top_source.write_text(wrapper_text)
 
 
-def _discover_micro_arch_interface_spec(task: StoredTask) -> OpenTitanCompatInterfaceSpec | None:
-    micro_arch_dir = _task_public_micro_arch_dir(task)
-    if micro_arch_dir is None:
-        return None
-    interface_files = tuple(sorted(micro_arch_dir.glob("*_micro_arch_if.sv")))
-    if not interface_files:
-        interface_files = tuple(sorted(micro_arch_dir.glob("*_compat_if.sv")))
-    if len(interface_files) != 1:
-        return None
-    source_text = interface_files[0].read_text()
-    interface_match = re.search(
-        r"\binterface\s+([A-Za-z_][A-Za-z0-9_$]*)\b",
-        source_text,
-    )
-    if interface_match is None:
-        return None
-    interface_name = interface_match.group(1)
-    signals = tuple(
-        match.group(1)
-        for match in re.finditer(
-            r"^\s*logic(?:\s+\[[^\]]+\])?\s+([A-Za-z_][A-Za-z0-9_$]*)\s*;",
-            source_text,
-            re.MULTILINE,
-        )
-    )
-    return OpenTitanCompatInterfaceSpec(
-        interface_name=interface_name,
-        instance_name=f"u_{interface_name}",
-        signals=signals,
-    )
+def _discover_micro_arch_interface_spec(task: StoredTask) -> MicroArchInterfaceSpec | None:
+    return discover_micro_arch_interface_spec(task.spec_dir)
 
 
 def _stage_candidate_overlay(
@@ -645,7 +624,7 @@ def _rewrite_first_module_name(text: str, *, old_name: str, new_name: str) -> st
 def _inject_micro_arch_stub_instance(
     source_text: str,
     *,
-    micro_arch_spec: OpenTitanCompatInterfaceSpec,
+    micro_arch_spec: MicroArchInterfaceSpec,
 ) -> str:
     match = re.search(r"endmodule\b", source_text)
     if match is None:

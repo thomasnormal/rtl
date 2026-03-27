@@ -16,6 +16,7 @@ from .interface_contracts import (
     normalize_public_interface_contract,
     prepare_public_interface_contract,
 )
+from .micro_arch_contracts import validate_public_micro_arch_dir
 from .shared_sources import SharedSourceRegistry, register_shared_source_bundle
 
 
@@ -152,12 +153,18 @@ _CURATED_TASK_PACK_MANIFESTS: dict[str, Path] = {
     "opentitan_ip_docs": Path(__file__).resolve().parents[2]
     / "configs"
     / "opentitan_ip_docs_tasks.json",
+    "riscv_hardware_specs": Path(__file__).resolve().parents[2]
+    / "configs"
+    / "riscv_hardware_specs_tasks.json",
 }
 
 _CURATED_TASK_PACK_SPECS: dict[str, Path] = {
     "opentitan_ip_docs": Path(__file__).resolve().parents[2]
     / "task_library"
     / "opentitan_ip_docs",
+    "riscv_hardware_specs": Path(__file__).resolve().parents[2]
+    / "task_library"
+    / "riscv_hardware_specs",
 }
 
 
@@ -516,6 +523,7 @@ def _write_task_bundle(
             public_metadata["interface"],
             support_files=public_interface_support_files,
         )
+    validate_public_micro_arch_dir(spec_dir)
     public_task_path.write_text(json.dumps(public_metadata, indent=2, sort_keys=True) + "\n")
 
     task_metadata: dict[str, Any] = {
@@ -1062,6 +1070,18 @@ def store_opentitan_ip_docs_tasks(
         dataset_name="opentitan_ip_docs",
         tier=tier,
         source_root=source_root,
+    )
+
+
+def store_riscv_hardware_specs_tasks(
+    output_root: str | Path,
+    *,
+    tier: Tier | None = None,
+) -> tuple[Path, ...]:
+    return store_curated_task_pack(
+        output_root,
+        dataset_name="riscv_hardware_specs",
+        tier=tier,
     )
 
 

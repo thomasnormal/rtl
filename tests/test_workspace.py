@@ -45,6 +45,10 @@ def test_stage_generator_workspace_exposes_only_public_task_material(tmp_path: P
     assert "Use `xrun`/Xcelium for that check" in instructions
     assert "Do not depend on upstream or OpenTitan repository packages" in instructions
     assert "task-local SV packages or typedef files" in instructions
+    assert "generated bus helper package" in instructions
+    assert "source, size, param, and user fields" in instructions
+    assert "complete public problem statement" in instructions
+    assert "Do not assume access to upstream repo code" in instructions
     assert "`submission/` must be a self-contained deliverable set" in instructions
     assert "Do not use `` `include `` paths that reach into `task/`" in instructions
     assert "compile check only counts if it elaborates the DUT top module" in instructions
@@ -78,6 +82,9 @@ def test_stage_verifier_workspace_copies_candidate_dir_but_not_oracle(tmp_path: 
     assert "task/spec/interface/" in instructions
     assert "cocotb" in instructions
     assert "Do not use `yosys`" in instructions
+    assert "generated bus helper package" in instructions
+    assert "complete public problem statement" in instructions
+    assert "Do not assume access to upstream repo code" in instructions
 
 
 def test_stage_verifier_workspace_accepts_single_file(tmp_path: Path) -> None:

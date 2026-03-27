@@ -102,6 +102,7 @@ def test_prepare_opentitan_public_interface_projects_package_types_to_local_sv(t
                 'name: "uart"',
                 "clocking: [{clock: 'clk_i', reset: 'rst_ni', primary: true}]",
                 "bus_interfaces: [{protocol: 'tlul', direction: 'device'}]",
+                "alert_list: [{name: 'fatal_fault', desc: 'fatal alert'}]",
                 "registers: [",
                 "  {",
                 "    name: 'CTRL',",
@@ -177,10 +178,33 @@ def test_prepare_opentitan_public_interface_projects_package_types_to_local_sv(t
     assert dict(prepared.support_files)["uart_public_types_pkg.sv"].find(
         "typedef logic [3:0] uart_alert_rx_i_t;"
     ) != -1
+    assert "tlul_pkg::" not in dict(prepared.support_files)["uart_public_types_pkg.sv"]
+    assert "prim_alert_pkg::" not in dict(prepared.support_files)["uart_public_types_pkg.sv"]
     assert "function automatic uart_public_types_pkg::uart_tl_i_t tl_make_get32(" in dict(
         prepared.support_files
     )["uart_public_tlul_pkg.sv"]
-    assert "localparam logic [31:0] CTRL_OFFSET = 32'h00000000;" in dict(
+    assert "function automatic uart_public_types_pkg::uart_tl_i_t tl_make_putpartial32(" in dict(
+        prepared.support_files
+    )["uart_public_tlul_pkg.sv"]
+    assert "function automatic uart_public_types_pkg::uart_tl_i_t tl_with_user(" in dict(
+        prepared.support_files
+    )["uart_public_tlul_pkg.sv"]
+    assert "function automatic logic [2:0] tl_param(input uart_public_types_pkg::uart_tl_i_t req);" in dict(
+        prepared.support_files
+    )["uart_public_tlul_pkg.sv"]
+    assert "function automatic logic [7:0] tl_rsp_source(input uart_public_types_pkg::uart_tl_o_t rsp);" in dict(
+        prepared.support_files
+    )["uart_public_tlul_pkg.sv"]
+    assert "function automatic logic [6:0] tl_rsp_rsp_intg(input uart_public_types_pkg::uart_tl_o_t rsp);" in dict(
+        prepared.support_files
+    )["uart_public_tlul_pkg.sv"]
+    assert "localparam logic [31:0] ALERT_TEST_OFFSET = 32'h00000000;" in dict(
+        prepared.support_files
+    )["uart_public_regs_pkg.sv"]
+    assert "localparam int unsigned ALERT_TEST_FATAL_FAULT_LSB = 0;" in dict(
+        prepared.support_files
+    )["uart_public_regs_pkg.sv"]
+    assert "localparam logic [31:0] CTRL_OFFSET = 32'h00000004;" in dict(
         prepared.support_files
     )["uart_public_regs_pkg.sv"]
     assert "localparam int unsigned CTRL_TX_LSB = 0;" in dict(prepared.support_files)[
