@@ -1,6 +1,7 @@
 {
   "dataset_name": "opentitan_ip_docs",
   "default_public_interface_profile": "opentitan_self_contained_v1",
+  "default_public_spec_profile": "opentitan_task_facing_v1",
   "tasks": [
     {
       "task_id": "adc_ctrl",

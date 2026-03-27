@@ -18,6 +18,7 @@ from .interface_contracts import (
     prepare_public_interface_contract,
 )
 from .micro_arch_contracts import validate_public_micro_arch_dir
+from .public_spec_profiles import apply_public_spec_profile
 from .shared_sources import SharedSourceRegistry, register_shared_source_bundle
 
 
@@ -58,6 +59,7 @@ class SimulationOracle:
     pass_criteria: PassCriteria
     support_files: tuple[Path, ...] = ()
     testbench_top_module: str | None = None
+    preferred_simulator: str | None = None
 
     @classmethod
     def from_dict(cls, task_root: Path, raw: dict[str, Any]) -> "SimulationOracle":
@@ -70,6 +72,7 @@ class SimulationOracle:
             pass_criteria=PassCriteria.from_dict(dict(raw["pass_criteria"])),
             support_files=tuple(task_root / str(item) for item in raw.get("support_files", ())),
             testbench_top_module=raw.get("testbench_top_module"),
+            preferred_simulator=raw.get("preferred_simulator"),
         )
 
     def to_dict(self, task_root: Path) -> dict[str, Any]:
@@ -85,6 +88,8 @@ class SimulationOracle:
         }
         if self.testbench_top_module is not None:
             d["testbench_top_module"] = self.testbench_top_module
+        if self.preferred_simulator is not None:
+            d["preferred_simulator"] = self.preferred_simulator
         return d
 
 
@@ -515,6 +520,7 @@ def _write_task_bundle(
     raw_oracle_dir: Path | None = None,
     raw_oracle_metadata: dict[str, Any] | None = None,
     public_interface_support_files: tuple[tuple[str, str], ...] = (),
+    public_spec_profile: str | None = None,
 ) -> Path:
     """Write a task bundle to *output_root/dataset_name/task_id/*.
 
@@ -550,6 +556,17 @@ def _write_task_bundle(
             spec_dir,
             normalized_public_interface,
             support_files=public_interface_support_files,
+        )
+    else:
+        normalized_public_interface = None
+    if public_spec_profile is not None:
+        apply_public_spec_profile(
+            spec_dir,
+            profile=public_spec_profile,
+            task_id=task_id,
+            top_module=candidate_top_module,
+            public_interface=normalized_public_interface,
+            oracle_metadata=raw_oracle_metadata,
         )
     validate_public_micro_arch_dir(spec_dir)
     public_task_path.write_text(json.dumps(public_metadata, indent=2, sort_keys=True) + "\n")
@@ -615,6 +632,8 @@ def _write_task_bundle(
             reference_top_module=oracle.reference_top_module,
             pass_criteria=oracle.pass_criteria,
             support_files=tuple(support_destinations),
+            testbench_top_module=oracle.testbench_top_module,
+            preferred_simulator=oracle.preferred_simulator,
         )
         task_metadata["oracle"] = stored_oracle.to_dict(task_root)
     elif raw_oracle_dir is not None:
@@ -834,6 +853,7 @@ def store_generic_task(
     raw_oracle_dir: str | Path | None = None,
     raw_oracle_metadata: dict[str, Any] | None = None,
     public_interface_support_files: tuple[tuple[str, str], ...] = (),
+    public_spec_profile: str | None = None,
 ) -> Path:
     """Ingest a hand-assembled task into the task store.
 
@@ -889,6 +909,7 @@ def store_generic_task(
         raw_oracle_dir=None if raw_oracle_dir is None else Path(raw_oracle_dir),
         raw_oracle_metadata=raw_oracle_metadata,
         public_interface_support_files=public_interface_support_files,
+        public_spec_profile=public_spec_profile,
     )
 
 
@@ -904,6 +925,9 @@ def store_curated_task_pack(
     default_interface_profile = manifest_document.get("default_public_interface_profile")
     if default_interface_profile is not None:
         default_interface_profile = str(default_interface_profile)
+    default_public_spec_profile = manifest_document.get("default_public_spec_profile")
+    if default_public_spec_profile is not None:
+        default_public_spec_profile = str(default_public_spec_profile)
     specs_root = _curated_task_pack_specs_root(dataset_name)
     source_root_path = Path(source_root).expanduser().resolve() if source_root is not None else None
     registry_root = Path(output_root).resolve().parent / "shared_sources"
@@ -959,6 +983,9 @@ def store_curated_task_pack(
                 f"missing curated spec directory for {dataset_name}/{task_id}: {spec_dir}"
             )
         task_tier = tier if tier is not None else task.get("tier")
+        public_spec_profile = task.get("public_spec_profile", default_public_spec_profile)
+        if public_spec_profile is not None:
+            public_spec_profile = str(public_spec_profile)
         source_docs = task.get("source_docs")
         if source_docs is not None:
             if not isinstance(source_docs, list):
@@ -1078,6 +1105,7 @@ def store_curated_task_pack(
                 raw_oracle_dir=raw_oracle_dir,
                 raw_oracle_metadata=raw_oracle_metadata,
                 public_interface_support_files=public_interface_support_files,
+                public_spec_profile=public_spec_profile,
             )
         )
         if tempdir_cm is not None:
@@ -1369,6 +1397,18 @@ def store_chipbench_tasks(
                 top_module="TopModule",
                 tier=subset_tier or tier,
             )
+            # ChipBench was developed with iverilog v12-branch.  We use
+            # verilator (handles most SV constructs + 2-state avoids Z
+            # comparison issues).  Fall back to xrun for tasks with coding
+            # patterns verilator rejects (BLKANDNBLK, BLKLOOPINIT).
+            _VERILATOR_BLOCKLIST = {
+                "Prob006_cpu_top",         # mixed blocking/nonblocking
+                "Prob023_gray_code_counter",  # mixed blocking/nonblocking
+                "Prob030_simple_implementation_RAM",  # loop init
+            }
+            stem = spec_path.name.replace("_prompt.txt", "")
+            sim = "xrun" if stem in _VERILATOR_BLOCKLIST else "verilator"
+
             oracle = SimulationOracle(
                 testbench_path=test_path,
                 gold_rtl_path=effective_ref,
@@ -1377,6 +1417,7 @@ def store_chipbench_tasks(
                 reference_top_module="RefModule",
                 pass_criteria=criteria,
                 support_files=tuple(nsc_support),
+                preferred_simulator=sim,
             )
             source_metadata: dict[str, Any] = {
                 "origin": "chipbench",
@@ -1426,8 +1467,10 @@ def store_realbench_tasks(
         ("e203_hbirdv2", "e203", "medium"),
     ]
 
+    # RealBench testbenches legitimately print "TIMEOUT" even on passing
+    # runs (the timeout fires after the test completes).  Do not use it
+    # as a failure marker.
     criteria = PassCriteria(
-        failure_markers=("TIMEOUT",),
         zero_value_regex=r"Total mismatched samples is\s*(\d+)\s+out of\s+\d+\s+samples",
         zero_value_group=1,
     )
@@ -1474,6 +1517,9 @@ def store_realbench_tasks(
             tb_top_match = _re.search(r"^\s*module\s+(\w+)", tb_text, _re.MULTILINE)
             tb_top = tb_top_match.group(1) if tb_top_match else None
 
+            # No testbench or stimulus patching — we run with verilator,
+            # the same simulator the benchmark was developed with.
+
             task_id = f"realbench_{ip_prefix}_{module_name}"
             public_metadata = _build_public_task_metadata(
                 dataset_name=dataset_name,
@@ -1481,6 +1527,9 @@ def store_realbench_tasks(
                 top_module=module_name,
                 tier=tier,
             )
+            # RealBench was developed and tested with Verilator.
+            sim = "verilator"
+
             oracle = SimulationOracle(
                 testbench_path=tb_path,
                 gold_rtl_path=ref_path,
@@ -1490,6 +1539,7 @@ def store_realbench_tasks(
                 pass_criteria=criteria,
                 support_files=tuple(support_files),
                 testbench_top_module=tb_top,
+                preferred_simulator=sim,
             )
             source_metadata: dict[str, Any] = {
                 "origin": "realbench",

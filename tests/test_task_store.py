@@ -15,7 +15,6 @@ from rtl_training.task_store import (
     store_verilog_eval_tasks,
 )
 
-
 def test_store_rtllm_tasks_separates_public_inputs_from_hidden_oracle(tmp_path: Path) -> None:
     source_root = tmp_path / "RTLLM"
     task_dir = source_root / "Arithmetic" / "Adder" / "adder_8bit"
@@ -415,9 +414,13 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
 
     uart_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "uart")
     assert uart_task.tier == "medium"
-    assert (uart_task.spec_dir / "README.md").read_text().startswith("# UART HWIP Technical Specification")
+    uart_readme = (uart_task.spec_dir / "README.md").read_text()
+    assert uart_readme.startswith("# UART Specification")
+    assert "OpenTitan" not in uart_readme
     assert (uart_task.spec_dir / "doc" / "theory_of_operation.md").exists()
     assert (uart_task.spec_dir / "dv" / "README.md").exists()
+    assert not any((uart_task.spec_dir / "dv").glob("*_sim_cfg.hjson"))
+    assert not any((uart_task.spec_dir / "data").glob("*testplan*.hjson"))
     assert not (uart_task.spec_dir / "spec.md").exists()
 
     public_metadata = json.loads(uart_task.public_task_path.read_text())
@@ -572,8 +575,8 @@ def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path
     written = store_riscv_hardware_specs_tasks(tmp_path / "task_store")
 
     assert sorted(path.name for path in written) == [
-        "advanced_interrupt_architecture",
         "external_debug",
+        "imsic_interrupt_file",
     ]
 
     debug_task = load_stored_task(tmp_path / "task_store" / "riscv_hardware_specs" / "external_debug")
@@ -595,6 +598,9 @@ def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path
         "tier": "large",
     }
     assert debug_task.public_top_module == "riscv_debug_module"
+    assert (debug_task.spec_dir / "doc" / "README.md").exists()
+    assert (debug_task.spec_dir / "doc" / "manifest.json").exists()
+    assert (debug_task.spec_dir / "doc" / "12_p089_p094.md").exists()
 
     debug_task_metadata = json.loads((debug_task.root / "task.json").read_text())
     assert debug_task_metadata["source"]["origin"] == "curated_task_pack"
@@ -604,15 +610,39 @@ def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path
     ]
     assert "oracle" not in debug_task_metadata
 
-    aia_task = load_stored_task(
-        tmp_path / "task_store" / "riscv_hardware_specs" / "advanced_interrupt_architecture"
+    imsic_task = load_stored_task(
+        tmp_path / "task_store" / "riscv_hardware_specs" / "imsic_interrupt_file"
     )
-    assert aia_task.tier == "large"
-    assert aia_task.oracle is None
-    assert (aia_task.spec_dir / "riscv-interrupts-aia-v1.0.pdf").exists()
+    assert imsic_task.tier == "medium"
+    assert imsic_task.oracle is None
+    assert (imsic_task.spec_dir / "riscv-interrupts-aia-v1.0.pdf").exists()
+    assert (imsic_task.spec_dir / "doc" / "README.md").exists()
+    assert (imsic_task.spec_dir / "doc" / "manifest.json").exists()
+    assert (imsic_task.spec_dir / "doc" / "04_p025_p032.md").exists()
+    assert (imsic_task.spec_dir / "doc" / "figures" / "02_p009_p016_figure-001.png").exists()
+    assert imsic_task.public_top_module == "riscv_imsic"
 
-    aia_task_metadata = json.loads((aia_task.root / "task.json").read_text())
-    assert aia_task_metadata["source"]["source_docs"] == [
+    imsic_public_metadata = json.loads(imsic_task.public_task_path.read_text())
+    assert imsic_public_metadata == {
+        "dataset_name": "riscv_hardware_specs",
+        "deliverables": {
+            "rtl": "submission/",
+            "summary": "result/result.json",
+        },
+        "task_id": "imsic_interrupt_file",
+        "top_module": "riscv_imsic",
+        "tier": "medium",
+    }
+    imsic_if = (imsic_task.spec_dir / "interface" / "riscv_imsic_public_if.sv").read_text()
+    assert "interface riscv_imsic_public_if;" in imsic_if
+    assert "logic [11:0] req_addr_i;" in imsic_if
+    assert "logic [31:0] rsp_rdata_o;" in imsic_if
+    assert "modport dut (" in imsic_if
+
+    imsic_task_metadata = json.loads((imsic_task.root / "task.json").read_text())
+    assert imsic_task_metadata["source"]["origin"] == "curated_task_pack"
+    assert imsic_task_metadata["source"]["spec_subdir"] == "imsic_interrupt_file"
+    assert imsic_task_metadata["source"]["source_docs"] == [
         "https://docs.riscv.org/reference/hardware/aia/_attachments/riscv-interrupts.pdf",
     ]
 
@@ -648,8 +678,6 @@ def test_store_opentitan_tasks_all_publish_micro_arch_contracts(tmp_path: Path) 
         assert spec.instance_name == f"u_{task_name}_micro_arch_if"
         assert "dut" in spec.modports
         assert {"tb", "mon"} & set(spec.modports)
-
-
 def test_load_stored_task_backward_compat_old_spec_format(tmp_path: Path) -> None:
     """Old format: spec points to a single file, not a directory."""
     task_root = tmp_path / "old_task"

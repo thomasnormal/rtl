@@ -15,27 +15,22 @@ _OPENTITAN_IPS = (
     "uart",
 )
 
-
-def _collect_relevant_opentitan_public_files(ip_root: Path) -> set[str]:
-    files: set[str] = set()
-    allowed_suffixes = {".md", ".svg", ".png", ".hjson", ".tpl", ".txt", ".rst", ".pdf"}
-
-    readme = ip_root / "README.md"
-    if readme.is_file():
-        files.add("README.md")
-
-    for subdir_name in ("doc", "data", "dv"):
-        subdir = ip_root / subdir_name
-        if not subdir.is_dir():
-            continue
-        for path in sorted(subdir.rglob("*")):
-            if path.is_file() and path.suffix in allowed_suffixes:
-                files.add(str(path.relative_to(ip_root)))
-
-    return files
+_FORBIDDEN_PUBLIC_PATTERNS = (
+    "OpenTitan",
+    "Comportable",
+    "reports.opentitan.org",
+    "dashboards.lowrisc.org",
+    "hw/ip/",
+    "hw/dv/",
+    "$REPO_TOP",
+    "cip_lib",
+    "dvsim.py",
+    "regtool.py",
+    "github.com/lowRISC/opentitan",
+)
 
 
-def test_store_opentitan_tasks_mirror_relevant_public_docs_from_upstream(tmp_path: Path) -> None:
+def test_store_opentitan_tasks_materialize_task_facing_public_docs(tmp_path: Path) -> None:
     source_root = Path("~/opentitan").expanduser().resolve()
     store_opentitan_ip_docs_tasks(
         tmp_path / "task_store",
@@ -44,11 +39,35 @@ def test_store_opentitan_tasks_mirror_relevant_public_docs_from_upstream(tmp_pat
 
     for task_name in _OPENTITAN_IPS:
         task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / task_name)
-        mirrored = {
-            str(path.relative_to(task.spec_dir))
-            for path in task.spec_dir.rglob("*")
-            if path.is_file()
-        }
-        expected = _collect_relevant_opentitan_public_files(source_root / "hw" / "ip" / task_name)
-        missing = sorted(expected - mirrored)
-        assert not missing, f"{task_name} missing public upstream docs: {missing}"
+        spec_dir = task.spec_dir
+
+        assert (spec_dir / "README.md").is_file(), task_name
+        assert (spec_dir / "doc" / "interfaces.md").is_file(), task_name
+        assert (spec_dir / "doc" / "registers.md").is_file(), task_name
+        assert (spec_dir / "doc" / "theory_of_operation.md").is_file(), task_name
+        assert (spec_dir / "dv" / "README.md").is_file(), task_name
+        assert (spec_dir / "interface").is_dir(), task_name
+        assert (spec_dir / "micro_arch").is_dir(), task_name
+
+        assert not any((spec_dir / "data").glob("*testplan*.hjson")), task_name
+        assert not any((spec_dir / "dv").glob("*_sim_cfg.hjson")), task_name
+        assert not (spec_dir / "doc" / "checklist.md").exists(), task_name
+
+
+def test_store_opentitan_tasks_strip_upstream_repo_noise_from_public_docs(tmp_path: Path) -> None:
+    source_root = Path("~/opentitan").expanduser().resolve()
+    store_opentitan_ip_docs_tasks(
+        tmp_path / "task_store",
+        source_root=source_root,
+    )
+
+    for task_name in _OPENTITAN_IPS:
+        task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / task_name)
+        for path in sorted(task.spec_dir.rglob("*")):
+            if not path.is_file():
+                continue
+            if path.suffix not in {".md", ".hjson"}:
+                continue
+            text = path.read_text()
+            for pattern in _FORBIDDEN_PUBLIC_PATTERNS:
+                assert pattern not in text, f"{task_name} leaked {pattern!r} in {path.relative_to(task.spec_dir)}"

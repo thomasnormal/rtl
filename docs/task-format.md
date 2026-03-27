@@ -28,6 +28,11 @@ task/
 That staged `task/` directory is intended to be complete. A solver should not
 need access to hidden repo code or upstream implementation files.
 
+For derived corpora, the public `spec/` tree should be **task-facing**, not a
+raw mirror of an upstream repo. Public docs should describe the behavior,
+boundary, registers, and verification ABI that matter for the task without
+dragging in unrelated repo paths, project governance text, or build commands.
+
 ### `task/task.json`
 
 This is lightweight public machine-readable metadata:
@@ -49,10 +54,11 @@ Typical contents include:
 
 - `README.md`
 - public DV block diagrams under `dv/doc/`
-- public simulation configuration files such as `*_sim_cfg.hjson`
+- public verification notes that explain what kinds of behaviors matter
 
 The public DV directory should remain readable and useful without requiring
 access to the hidden oracle sources.
+It should not be a raw upstream simulation recipe.
 
 ### `task/spec/interface/`
 
