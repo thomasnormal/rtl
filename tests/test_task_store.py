@@ -403,8 +403,12 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
     )
 
     assert sorted(path.name for path in written) == [
+        "adc_ctrl",
+        "aon_timer",
         "dma",
         "i2c",
+        "pattgen",
+        "rv_timer",
         "spi_host",
         "sysrst_ctrl",
         "uart",
@@ -499,6 +503,30 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
         bundle.root / "hw/ip/uart/rtl",
         bundle.root / "hw/ip/uart/dv",
     )
+
+    adc_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "adc_ctrl")
+    adc_public_metadata = json.loads(adc_task.public_task_path.read_text())
+    assert adc_public_metadata["interface"]["ports"][6] == {
+        "name": "adc_i",
+        "direction": "input",
+        "width": "adc_ctrl_public_types_pkg::adc_ctrl_adc_i_t",
+    }
+    adc_public_pkg_text = (adc_task.spec_dir / "interface" / "adc_ctrl_public_types_pkg.sv").read_text()
+    assert "typedef logic [2:0] adc_ctrl_adc_o_t;" in adc_public_pkg_text
+    assert "typedef logic [10:0] adc_ctrl_adc_i_t;" in adc_public_pkg_text
+    adc_task_metadata = json.loads((adc_task.root / "task.json").read_text())
+    assert adc_task_metadata["oracle"]["test"] == "adc_ctrl_smoke"
+
+    aon_timer_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "aon_timer")
+    assert json.loads((aon_timer_task.root / "task.json").read_text())["oracle"]["test"] == "aon_timer_smoke"
+
+    pattgen_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "pattgen")
+    assert json.loads((pattgen_task.root / "task.json").read_text())["oracle"]["test"] == "pattgen_smoke"
+
+    rv_timer_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "rv_timer")
+    rv_timer_task_metadata = json.loads((rv_timer_task.root / "task.json").read_text())
+    assert rv_timer_task_metadata["oracle"]["test"] == "rv_timer_random"
+    assert rv_timer_task_metadata["oracle"]["cfg"] == "hw/ip/rv_timer/dv/rv_timer_sim_cfg.hjson"
 
 
 def test_load_stored_task_backward_compat_old_spec_format(tmp_path: Path) -> None:

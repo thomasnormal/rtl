@@ -147,7 +147,7 @@
       "name": "opentitan_ip_docs",
       "role": "medium_spec_corpus",
       "status": "ready",
-      "example_count": 5,
+      "example_count": 9,
       "has_spec": true,
       "has_gold_rtl": true,
       "has_testbench": true,
@@ -160,7 +160,7 @@
       ],
       "license": "Apache-2.0",
       "access": "public",
-      "notes": "First curated pack is checked into the repo as manually ingested OpenTitan docs for uart, i2c, spi_host, dma, and sysrst_ctrl from the local checkout. The public task metadata is curated, the spec content is copied from upstream docs, and the materialized task store references a shared hidden source bundle for upstream rtl/dv paths needed by future oracle work. GPIO was not present in this checkout, so sysrst_ctrl is the fifth medium-tier task for now.",
+      "notes": "First curated pack is checked into the repo as manually ingested OpenTitan docs for adc_ctrl, aon_timer, uart, i2c, spi_host, pattgen, dma, rv_timer, and sysrst_ctrl from the local checkout. The public task metadata is curated, the spec content is copied from upstream docs, and the materialized task store references a shared hidden source bundle for upstream rtl/dv paths needed by future oracle work. GPIO was not present in this checkout, so sysrst_ctrl remains in the pack.",
       "default_tier": "medium"
     },
     {

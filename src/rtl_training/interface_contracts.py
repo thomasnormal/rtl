@@ -39,9 +39,12 @@ _REG_PKG_PARAM_RE = re.compile(
 
 _OPENTITAN_SELF_CONTAINED_PROFILE = "opentitan_self_contained_v1"
 _OPENTITAN_OPAQUE_TYPE_WIDTHS = {
+    "ast_pkg::adc_ast_req_t": 3,
+    "ast_pkg::adc_ast_rsp_t": 11,
     "dma_pkg::lsio_trigger_t": 11,
     "dma_pkg::sys_req_t": 184,
     "dma_pkg::sys_rsp_t": 40,
+    "lc_ctrl_pkg::lc_tx_t": 4,
     "prim_alert_pkg::alert_rx_t": 4,
     "prim_alert_pkg::alert_tx_t": 2,
     "prim_mubi_pkg::mubi4_t": 4,
