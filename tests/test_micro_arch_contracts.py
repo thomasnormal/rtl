@@ -96,6 +96,25 @@ def test_discover_micro_arch_interface_spec_finds_materialized_micro_arch_dir(tm
     assert spec.instance_name == "u_foo_micro_arch_if"
 
 
+def test_discover_micro_arch_interface_spec_ignores_compat_only_trees(tmp_path: Path) -> None:
+    spec_dir = tmp_path / "spec"
+    compat_dir = spec_dir / "compat"
+    compat_dir.mkdir(parents=True)
+    (compat_dir / "README.md").write_text("legacy compat\n")
+    (compat_dir / "foo_compat_if.sv").write_text(
+        "interface foo_compat_if;\n"
+        "  logic a;\n"
+        "  modport dut (output a);\n"
+        "  modport tb (input a);\n"
+        "endinterface\n"
+    )
+
+    spec = discover_micro_arch_interface_spec(spec_dir)
+
+    assert spec is None
+    assert validate_public_micro_arch_dir(spec_dir) is None
+
+
 def test_discover_micro_arch_bind_module_reads_module_name(tmp_path: Path) -> None:
     spec_dir = tmp_path / "spec"
     micro_arch_dir = spec_dir / "micro_arch"

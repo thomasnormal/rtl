@@ -7,8 +7,8 @@ import re
 from typing import Any, Mapping
 
 
-_MICRO_ARCH_INTERFACE_PATTERNS = ("*_micro_arch_if.sv", "*_compat_if.sv")
-_MICRO_ARCH_BIND_PATTERNS = ("*_micro_arch_bind.sv", "*_compat_bind.sv")
+_MICRO_ARCH_INTERFACE_PATTERNS = ("*_micro_arch_if.sv",)
+_MICRO_ARCH_BIND_PATTERNS = ("*_micro_arch_bind.sv",)
 _MODULE_DECL_RE = re.compile(r"\bmodule\s+([A-Za-z_][A-Za-z0-9_$]*)\b")
 
 
@@ -25,10 +25,9 @@ class MicroArchInterfaceSpec:
 
 
 def find_micro_arch_dir(spec_dir: Path) -> Path | None:
-    for dirname in ("micro_arch", "compat"):
-        candidate = spec_dir / dirname
-        if candidate.is_dir():
-            return candidate
+    candidate = spec_dir / "micro_arch"
+    if candidate.is_dir():
+        return candidate
     return None
 
 

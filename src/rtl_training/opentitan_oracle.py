@@ -545,8 +545,6 @@ def _stage_candidate_overlay(
     } | {
         f"task/spec/micro_arch/{micro_arch_file}" for micro_arch_file in micro_arch_files
     } | {
-        f"task/spec/compat/{micro_arch_file}" for micro_arch_file in micro_arch_files
-    } | {
         candidate_file.name for candidate_file in candidate_files
     } | {
         f"submission/{candidate_file.name}" for candidate_file in candidate_files
