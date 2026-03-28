@@ -12,6 +12,8 @@ def test_xrun_skill_prefers_xcelium_for_package_heavy_tasks() -> None:
     assert "required compile check" in skill
     assert "explicitly select the DUT top" in skill
     assert "helper interface or package alone does not count" in skill
+    assert "`vcdcat`" in skill
+    assert "waveform" in skill
 
 
 def test_yosys_skill_marks_repo_flow_as_xrun_only() -> None:

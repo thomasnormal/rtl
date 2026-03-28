@@ -101,6 +101,10 @@ def test_prepare_generator_episode_instructions_require_behavioral_spec_and_buil
     assert "task/spec/doc/programmers_guide.md" in instructions
     assert "compile sanity check" in instructions
     assert "Use `xrun`/Xcelium for that check" in instructions
+    assert "self-checking" in instructions
+    assert "result/evidence/" in instructions
+    assert "waveform" in instructions
+    assert "`vcdcat`" in instructions
     assert "documented CSR/register map" in instructions
     assert "write-only registers" in instructions
     assert "task-local SV packages or typedef files" in instructions
@@ -237,6 +241,10 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     assert "task/spec/doc/programmers_guide.md" in prompt
     assert "compile sanity check" in prompt
     assert "Use `xrun`/Xcelium for this check" in prompt
+    assert "self-checking" in prompt
+    assert "result/evidence/" in prompt
+    assert "waveform" in prompt
+    assert "`vcdcat`" in prompt
     assert "documented CSR/register map" in prompt
     assert "write-only registers" in prompt
     assert "Do not rely on upstream/OpenTitan package imports" in prompt

@@ -41,6 +41,9 @@ Guidance:
 - For a DUT compile check, explicitly select the DUT top with `-top <dut>` or compile a tiny smoke bench that instantiates it.
 - A helper interface or package alone does not count as a DUT compile/elaboration check.
 - Start with compile-only or elaborate-only sanity if the bench is incomplete.
+- If the behavior is timing-sensitive or sequential, write a temporary self-checking bench that dumps a focused VCD under `result/evidence/` and inspect it with `vcdcat`.
+- Use `vcdcat -l result/evidence/run.vcd` to list signals, then `vcdcat -x result/evidence/run.vcd top.sig1 top.sig2` for focused waveform review.
+- Treat waveform review as supporting evidence for a concrete hypothesis, not as a substitute for self-checking tests or assertions.
 - If you wrote SVAs, keep them in separate files or bind modules and compile them alongside the DUT.
 - If the environment imports `uvm_pkg`, use `-uvm` and keep the checking logic inside native SV/UVM components.
 - Do not enable wave dumps unless they are necessary; they create large files.

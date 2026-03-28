@@ -1,5 +1,9 @@
 # Engineering Log
 
+## 2026-03-28
+
+- The current generator failure mode on medium-tier tasks is no longer “missing public information,” but “analysis without executable evidence.” The generator prompt now explicitly requires the agent to write its own self-checking benches or directed tests under `result/evidence/`, dump focused waveforms when timing matters, and inspect them with `vcdcat` before claiming the RTL matches the spec.
+
 ## 2026-03-27
 
 - The right place to clean derived OpenTitan public docs is the checked-in task library, not a runtime normalization profile. The OpenTitan public docs are now curated directly under `task_library/opentitan_ip_docs/...`, and the temporary `public_spec_profile` codepath has been removed so task materialization just copies curated public docs plus generated SV ABI files.

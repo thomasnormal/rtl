@@ -46,6 +46,10 @@ def test_stage_generator_workspace_exposes_only_public_task_material(tmp_path: P
     assert "requirement checklist" in instructions
     assert "Interface and microarchitecture are necessary but not sufficient" in instructions
     assert "Use `xrun`/Xcelium for that check" in instructions
+    assert "self-checking" in instructions
+    assert "result/evidence/" in instructions
+    assert "waveform" in instructions
+    assert "`vcdcat`" in instructions
     assert "Do not depend on upstream or OpenTitan repository packages" in instructions
     assert "task-local SV packages or typedef files" in instructions
     assert "generated bus helper package" in instructions

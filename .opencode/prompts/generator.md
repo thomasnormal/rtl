@@ -21,19 +21,26 @@ Process:
    - `sby`
 3. Implement the full functional behavior from the spec. Interface and microarchitecture are necessary but not sufficient; do not return a stub that only satisfies ports, type shapes, or shallow ABI checks.
    - Do not make the solution depend on importing upstream repository packages just to satisfy the public task boundary.
+   - Do not spend the whole run in analysis. After the first requirement pass, start writing RTL and executable checks early so you can iterate with evidence.
 4. Write the candidate RTL to `submission/`. You may produce one or more `.sv`/`.v` files.
    - Treat `submission/` as a self-contained deliverable set. Do not `include` files from `task/` inside submission RTL.
    - If you need task-local public typedefs or packages, mirror them into normal compilation-unit files under `submission/` and `import` them there; do not rely on workspace-relative include paths.
-5. Run at least one compile sanity check against the generated RTL and the public task collateral when the workspace contains enough package / interface context to do so. Use `xrun`/Xcelium for this check and record the command and outcome in `result/requirements.md`.
+5. Write at least one executable check of your own under `result/evidence/` before finishing.
+   - Prefer a self-checking SystemVerilog smoke bench or directed test that instantiates the DUT top and checks concrete behaviors from the requirement checklist.
+   - For timing-sensitive, sequential, or protocol behavior, dump a waveform under `result/evidence/` and inspect it with `vcdcat` before claiming the implementation matches the spec.
+   - Use waveform review as supporting evidence, not as a substitute for self-checking tests or assertions.
+   - Record which requirements were covered by each generated test, bench, assertion, or waveform review in `result/requirements.md`.
+6. Run at least one compile sanity check against the generated RTL and the public task collateral when the workspace contains enough package / interface context to do so. Use `xrun`/Xcelium for this check and record the command and outcome in `result/requirements.md`.
    - The compile check only counts if it elaborates the DUT top module named in `task/task.json` field `top_module`, or a smoke test that instantiates that DUT top. A helper interface or package alone does not count.
    - If you use `xrun`, select the DUT top explicitly with `-top <dut>` or instantiate it in a tiny smoke bench.
    - If the task exposes a documented CSR/register map, do not stop at a happy-path smoke test. Add at least one executable check for documented side effects such as write-only registers, RW1C behavior, interrupt-clear behavior, or bad-access error handling before claiming `status: pass`.
-6. Write `result/result.json` with:
+   - When you need waveform evidence, generate the dump from your own temporary bench, keep it under `result/evidence/`, and inspect focused signals with `vcdcat -l` / `vcdcat -x`.
+7. Write `result/result.json` with:
    - `status`
    - `output_file`
    - `summary`
    - `assumptions`
-7. Clean up large temporary files before finishing.
+8. Clean up large temporary files before finishing.
 
 Important:
 
@@ -44,6 +51,9 @@ Important:
 - For medium and larger specs, prioritize the functional spec chapters under `task/spec/doc/` over the compact metadata in `task/task.json`.
 - Do not rely on upstream/OpenTitan package imports as part of the public solution contract. If the public task leaks repository-specific package types, treat that as a task-definition bug rather than something to patch around in `submission/`.
 - Use `xrun`/Xcelium for compile and elaboration checks rather than `yosys`.
+- Write at least one self-checking executable check under `result/evidence/`; a compile-only run is not enough evidence for non-trivial tasks.
+- For sequential or timing-sensitive logic, add waveform evidence under `result/evidence/` and inspect it with `vcdcat` instead of assuming the timing is right from code inspection alone.
+- Keep waveform review focused. Use `vcdcat -l <wave.vcd>` to list signals, then `vcdcat -x <wave.vcd> <signal>...` for the few signals that matter.
 - Treat `submission/` as a self-contained deliverable set. Do not `include` files from `task/` inside submission RTL.
 - The compile check only counts if it elaborates the DUT top module from `task/task.json` field `top_module`; elaborating only a helper interface or package does not count.
 - For register-mapped tasks, your local evidence must include at least one check of documented CSR side effects or negative behavior, not just reset/read/write happy paths.
