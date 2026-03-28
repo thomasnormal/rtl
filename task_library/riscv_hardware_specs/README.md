@@ -10,10 +10,11 @@ broader than the intended RTL boundary.
 
 Current bundle:
 
-- `external_debug/`: RISC-V External Debug Support, Version 0.13.2
+- `debug_abstract_command_frontend/`: normalized abstract-command frontend task carved from RISC-V External Debug Support, Version 0.13.2
 - `imsic_interrupt_file/`: single-interrupt-file IMSIC task carved from RISC-V Advanced Interrupt Architecture v1.0
 - `aplic_idc/`: single-hart APLIC IDC task carved from RISC-V Advanced Interrupt Architecture v1.0
 
 Raw source material retained for future task carving:
 
+- `external_debug/`: full checked-in External Debug PDF plus the full manual markdown transcription
 - `advanced_interrupt_architecture/`: full checked-in AIA PDF plus the full manual markdown transcription

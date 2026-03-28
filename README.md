@@ -20,7 +20,7 @@ That keeps deterministic validation available to the training framework without 
 - `configs/verifier_smoke.json`: a first-pass verifier-training config.
 - `src/rtl_training/`: task-store, OpenCode runtime, hidden-oracle validation, and RL helpers.
 - `task_library/opentitan_ip_docs/`: manually ingested OpenTitan spec bundles for `adc_ctrl`, `aon_timer`, `uart`, `i2c`, `spi_host`, `pattgen`, `dma`, `rv_timer`, and `sysrst_ctrl`, copied from the local checkout with their original doc layout.
-- `task_library/riscv_hardware_specs/`: the first checked-in spec-only public corpus, currently with an External Debug task plus bounded IMSIC and APLIC IDC tasks, and the raw checked-in AIA source transcription used to carve future sub-tasks.
+- `task_library/riscv_hardware_specs/`: the first checked-in spec-only public corpus, currently with a bounded debug abstract-command task plus bounded IMSIC and APLIC IDC tasks, alongside raw checked-in source transcriptions used to carve future sub-tasks.
 - `opencode.json` and `.opencode/`: checked-in OpenCode prompts and hardware-tool skills.
 - `tests/`: regression tests for public/oracle separation, OpenCode workspaces, and reward/config logic.
 - `docs/`: project plan, dataset notes, and an engineering log.
