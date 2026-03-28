@@ -11,6 +11,8 @@ import signal
 import subprocess
 import time
 
+from PIL import Image
+
 from .opencode_runtime import (
     OpenCodeRunResult,
     build_run_command,
@@ -22,6 +24,7 @@ from .runtime import prepare_converter_episode
 
 _OUTPUT_SETTLE_S = 3.0
 _TERMINATE_GRACE_S = 10.0
+_FULL_PAGE_DIMENSION_RATIO = 0.95
 _PAGE_IMAGE_RE = re.compile(r"^page-(\d+)\.png$")
 _READ_LOG_RE = re.compile(r"permission permission=read pattern=(\S+page-(\d+)\.png)")
 
@@ -151,6 +154,59 @@ def _assert_all_rendered_pages_read(*, workspace_root: Path, pages_dir: Path) ->
     raise RuntimeError(
         "converter agent did not read every pre-rendered page image with the read tool; "
         f"missing pages: {formatted}"
+    )
+
+
+def _figure_pngs(output_dir: Path) -> tuple[Path, ...]:
+    figures_dir = output_dir / "figures"
+    if not figures_dir.is_dir():
+        return ()
+    return tuple(sorted(p for p in figures_dir.rglob("*.png") if p.is_file()))
+
+
+def _page_image_sizes(pages_dir: Path) -> tuple[tuple[int, int], ...]:
+    sizes: list[tuple[int, int]] = []
+    for page in sorted(pages_dir.glob("page-*.png")):
+        with Image.open(page) as image:
+            sizes.append(image.size)
+    return tuple(sizes)
+
+
+def _looks_like_full_page(
+    figure_size: tuple[int, int],
+    page_size: tuple[int, int],
+) -> bool:
+    if figure_size == page_size:
+        return True
+    return (
+        figure_size[0] >= int(page_size[0] * _FULL_PAGE_DIMENSION_RATIO)
+        and figure_size[1] >= int(page_size[1] * _FULL_PAGE_DIMENSION_RATIO)
+    )
+
+
+def _suspicious_full_page_figures(
+    *,
+    output_dir: Path,
+    pages_dir: Path,
+) -> tuple[str, ...]:
+    page_sizes = _page_image_sizes(pages_dir)
+    suspicious: list[str] = []
+    for figure in _figure_pngs(output_dir):
+        with Image.open(figure) as image:
+            figure_size = image.size
+        if any(_looks_like_full_page(figure_size, page_size) for page_size in page_sizes):
+            suspicious.append(str(figure.relative_to(output_dir)))
+    return tuple(suspicious)
+
+
+def _assert_no_full_page_figure_copies(*, output_dir: Path, pages_dir: Path) -> None:
+    suspicious = _suspicious_full_page_figures(output_dir=output_dir, pages_dir=pages_dir)
+    if not suspicious:
+        return
+    formatted = ", ".join(suspicious)
+    raise RuntimeError(
+        "converter agent produced figure assets that look like full-page copies instead "
+        f"of cropped figures: {formatted}"
     )
 
 
@@ -403,6 +459,10 @@ def convert_pdf_to_spec_dir(
                 workspace_root=episode.workspace.root,
                 pages_dir=episode.workspace.pages_dir,
             )
+            _assert_no_full_page_figure_copies(
+                output_dir=agent_output,
+                pages_dir=episode.workspace.pages_dir,
+            )
             return _copy_agent_output(agent_output, out)
         raise RuntimeError(
             f"converter agent timed out after {timeout_s}s for {pdf}"
@@ -418,6 +478,10 @@ def convert_pdf_to_spec_dir(
         )
     _assert_all_rendered_pages_read(
         workspace_root=episode.workspace.root,
+        pages_dir=episode.workspace.pages_dir,
+    )
+    _assert_no_full_page_figure_copies(
+        output_dir=agent_output,
         pages_dir=episode.workspace.pages_dir,
     )
 

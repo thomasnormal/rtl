@@ -40,7 +40,7 @@ Process:
      - crop it with PIL using `(x1, y1, x2, y2)`
      - save it as something like `output/figures/figure-042.png`
    - Use loose crops rather than overly tight ones so captions and nearby labels are not accidentally dropped.
-   - If a page has one important full-page figure, it is acceptable to reuse the whole page image as the figure.
+   - Do not copy a full rendered page into `output/figures/`. Crop the actual figure region. If a page is mostly one large figure, crop to the figure plus its caption/labels rather than keeping the whole page margins.
 6. Reference extracted figures clearly in markdown.
    - Use alt text that names the figure or briefly explains it.
    - Preferred format: `![Figure 3-2: APB timing diagram](figures/figure-042.png)`

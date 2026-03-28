@@ -6,13 +6,16 @@ import sys
 import time
 
 import pytest
+from PIL import Image
 
 from rtl_training.opencode_runtime import OpenCodeRunResult
 from rtl_training.runtime import DEFAULT_CONVERTER_PROMPT
 from rtl_training.runtime import prepare_converter_episode
 from rtl_training.pdf_convert import (
     _assert_all_rendered_pages_read,
+    _assert_no_full_page_figure_copies,
     _missing_read_page_numbers,
+    _suspicious_full_page_figures,
     _terminate_process_tree,
     combine_chunk_output_dirs,
     convert_pdf_to_spec_dir,
@@ -62,6 +65,7 @@ def test_converter_prompt_documents_figure_contract() -> None:
     assert "page by page" in prompt
     assert "01_overview.md" in prompt
     assert "Exhaustiveness is mandatory" in prompt
+    assert "Do not copy a full rendered page into `output/figures/`" in prompt
     assert "Read TASK.md" in DEFAULT_CONVERTER_PROMPT
     assert "Use the read tool on each page image at least once" in DEFAULT_CONVERTER_PROMPT
 
@@ -74,7 +78,7 @@ def test_convert_pdf_to_spec_dir_copies_agent_output(tmp_path: Path, monkeypatch
     def fake_render(pdf_path, pages_dir, *, dpi=300):
         del pdf_path, dpi
         page = pages_dir / "page-1.png"
-        page.write_bytes(b"png")
+        Image.new("RGB", (100, 200), "white").save(page)
         return (page,)
 
     def fake_run_opencode(request, *, output_dir, pages_dir, timeout_s):
@@ -116,7 +120,7 @@ def test_convert_pdf_to_spec_dir_raises_on_agent_failure(tmp_path: Path, monkeyp
     def fake_render(pdf_path, pages_dir, *, dpi=300):
         del pdf_path, dpi
         page = pages_dir / "page-1.png"
-        page.write_bytes(b"png")
+        Image.new("RGB", (100, 200), "white").save(page)
         return (page,)
 
     def fake_run_opencode(request, *, output_dir, pages_dir, timeout_s):
@@ -145,7 +149,7 @@ def test_convert_pdf_to_spec_dir_rejects_success_without_markdown(
     def fake_render(pdf_path, pages_dir, *, dpi=300):
         del pdf_path, dpi
         page = pages_dir / "page-1.png"
-        page.write_bytes(b"png")
+        Image.new("RGB", (100, 200), "white").save(page)
         return (page,)
 
     def fake_run_opencode(request, *, output_dir, pages_dir, timeout_s):
@@ -175,7 +179,7 @@ def test_convert_pdf_to_spec_dir_salvages_existing_markdown_after_agent_failure(
     def fake_render(pdf_path, pages_dir, *, dpi=300):
         del pdf_path, dpi
         page = pages_dir / "page-1.png"
-        page.write_bytes(b"png")
+        Image.new("RGB", (100, 200), "white").save(page)
         return (page,)
 
     def fake_run_opencode(request, *, output_dir, pages_dir, timeout_s):
@@ -239,6 +243,38 @@ def test_assert_all_rendered_pages_read_rejects_missing_pages(tmp_path: Path) ->
 
     with pytest.raises(RuntimeError, match="missing pages: 2"):
         _assert_all_rendered_pages_read(workspace_root=tmp_path, pages_dir=pages_dir)
+
+
+def test_suspicious_full_page_figures_flags_page_sized_copies(tmp_path: Path) -> None:
+    pages_dir = tmp_path / "input" / "pages"
+    pages_dir.mkdir(parents=True)
+    page = pages_dir / "page-1.png"
+    Image.new("RGB", (100, 200), "white").save(page)
+
+    output_dir = tmp_path / "output"
+    figures_dir = output_dir / "figures"
+    figures_dir.mkdir(parents=True)
+    full_page = figures_dir / "figure-001.png"
+    small_crop = figures_dir / "figure-002.png"
+    Image.new("RGB", (100, 200), "white").save(full_page)
+    Image.new("RGB", (60, 80), "white").save(small_crop)
+
+    suspicious = _suspicious_full_page_figures(output_dir=output_dir, pages_dir=pages_dir)
+
+    assert suspicious == ("figures/figure-001.png",)
+
+
+def test_assert_no_full_page_figure_copies_rejects_page_sized_assets(tmp_path: Path) -> None:
+    pages_dir = tmp_path / "input" / "pages"
+    pages_dir.mkdir(parents=True)
+    output_dir = tmp_path / "output"
+    figures_dir = output_dir / "figures"
+    figures_dir.mkdir(parents=True)
+    Image.new("RGB", (120, 240), "white").save(pages_dir / "page-1.png")
+    Image.new("RGB", (120, 240), "white").save(figures_dir / "figure-001.png")
+
+    with pytest.raises(RuntimeError, match="full-page copies"):
+        _assert_no_full_page_figure_copies(output_dir=output_dir, pages_dir=pages_dir)
 
 
 def test_terminate_process_tree_kills_child_holding_stdio(tmp_path: Path) -> None:

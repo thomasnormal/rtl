@@ -23,6 +23,7 @@ from rtl_training.pdf_convert import (  # noqa: E402
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+TASK_LIBRARY_ROOT = REPO_ROOT / "task_library" / "avip"
 DEFAULT_WORK_ROOT = Path("/tmp/avip-batch-convert")
 DEFAULT_MODEL = "openai/gpt-5.4-mini"
 DEFAULT_TIMEOUT_S = 1800
@@ -66,7 +67,9 @@ def _task_spec_root(pdf: Path) -> Path:
 
 
 def _final_output_dir(pdf: Path) -> Path:
-    return _task_spec_root(pdf) / "doc" / pdf.stem
+    avip_root = REPO_ROOT / "data" / "task_store" / "avip"
+    task_name = pdf.relative_to(avip_root).parts[0]
+    return TASK_LIBRARY_ROOT / task_name / "doc" / pdf.stem
 
 
 def _next_backup_path(path: Path) -> Path:
