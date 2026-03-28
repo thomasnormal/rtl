@@ -1,11 +1,10 @@
 # I2C Microarchitecture Profile
 
-This directory defines the public microarchitecture ABI for the OpenTitan `i2c`
-task.
+This directory defines the public microarchitecture ABI for the `i2c` task.
 
 The top-level interface already captures the externally visible bus behavior.
 The microarchitecture ABI here adds the specific bus-monitor and state-machine
-observation points that OpenTitan's deeper I2C verification relies on.
+observation points that a deeper I2C verification environment relies on.
 
 ## Required ABI
 

@@ -1,17 +1,11 @@
 # Analog to Digital Converter Control Interface
 
-[`adc_ctrl`](https://reports.opentitan.org/hw/ip/adc_ctrl/dv/latest/report.html):
-![](https://dashboards.lowrisc.org/badges/dv/adc_ctrl/test.svg)
-![](https://dashboards.lowrisc.org/badges/dv/adc_ctrl/passing.svg)
-![](https://dashboards.lowrisc.org/badges/dv/adc_ctrl/functional.svg)
-![](https://dashboards.lowrisc.org/badges/dv/adc_ctrl/code.svg)
+This task is presented as a standalone hardware-design problem. Use `spec/interface/` as the canonical boundary for `adc_ctrl`, and use `spec/micro_arch/` only when deeper verification compatibility is required.
 
 # Overview
 
 This document specifies the ADC controller IP functionality.
 This IP block implements control and filter logic for an analog block that implements a dual ADC.
-This module conforms to the [Comportable guideline for peripheral functionality.](../../../doc/contributing/hw/comportability/README.md)
-See that document for integration overview within the broader top level system.
 
 ## Features
 
@@ -28,7 +22,5 @@ The IP block implements the following features:
 ## Description
 
 The ADC controller is a simple front-end to an analog block that allows filtering and debouncing of the analog signals.
-
-## Compatibility
 
 The ADC controller programming interface is not based on any existing interface.

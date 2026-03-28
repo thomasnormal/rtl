@@ -1,19 +1,10 @@
-# UART HWIP Technical Specification
+# UART Specification
 
-[`uart`](https://reports.opentitan.org/hw/ip/uart/dv/latest/report.html):
-![](https://dashboards.lowrisc.org/badges/dv/uart/test.svg)
-![](https://dashboards.lowrisc.org/badges/dv/uart/passing.svg)
-![](https://dashboards.lowrisc.org/badges/dv/uart/functional.svg)
-![](https://dashboards.lowrisc.org/badges/dv/uart/code.svg)
+This task is presented as a standalone hardware-design problem. Use `spec/interface/` as the canonical boundary for `uart`, and use `spec/micro_arch/` only when deeper verification compatibility is required.
 
 # Overview
 
-This document specifies UART hardware IP functionality. This module
-conforms to the
-[Comportable guideline for peripheral functionality.](../../../doc/contributing/hw/comportability/README.md)
-See that document for integration overview within the broader
-top level system.
-
+This document specifies UART hardware IP functionality.
 
 ## Features
 
@@ -34,8 +25,3 @@ for basic terminal-style communication. It is programmed to run at a particular
 baud rate and contains only a transmit and receive signal to the outside world,
 i.e. no synchronizing clock. The programmable baud rate guarantees to be met up
 to 1Mbps.
-
-## Compatibility
-
-The OpenTitan UART is feature compatible to a specific implementation in [Chromium EC](https://chromium.googlesource.com/chromiumos/platform/ec/+/refs/heads/cr50_stab/chip/g/uart.c).
-Additional features such as parity have been added.

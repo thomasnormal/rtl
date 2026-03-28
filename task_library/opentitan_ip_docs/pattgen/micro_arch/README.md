@@ -1,12 +1,12 @@
 # PATTGEN Microarchitecture Profile
 
-This directory defines the public microarchitecture ABI for the OpenTitan
-`pattgen` task.
+This directory defines the public microarchitecture ABI for the `pattgen`
+task.
 
 The public top-level interface is enough to describe the generated waveforms.
-The microarchitecture ABI here captures the per-channel enable and counter state
-that the deeper OpenTitan DV environment uses for coverage and completion
-reasoning.
+The microarchitecture ABI here captures the per-channel enable and counter
+state that a deeper reference verification environment uses for coverage and
+completion reasoning.
 
 ## Required ABI
 

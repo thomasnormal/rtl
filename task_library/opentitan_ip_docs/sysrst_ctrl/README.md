@@ -1,17 +1,11 @@
 # System Reset Control Technical Specification
 
-[`sysrst_ctrl`](https://reports.opentitan.org/hw/ip/sysrst_ctrl/dv/latest/report.html):
-![](https://dashboards.lowrisc.org/badges/dv/sysrst_ctrl/test.svg)
-![](https://dashboards.lowrisc.org/badges/dv/sysrst_ctrl/passing.svg)
-![](https://dashboards.lowrisc.org/badges/dv/sysrst_ctrl/functional.svg)
-![](https://dashboards.lowrisc.org/badges/dv/sysrst_ctrl/code.svg)
+This task is presented as a standalone hardware-design problem. Use `spec/interface/` as the canonical boundary for `sysrst_ctrl`, and use `spec/micro_arch/` only when deeper verification compatibility is required.
 
 # Overview
 
 This document specifies the functionality of the System Reset Controller (`sysrst_ctrl`) that provides programmable hardware-level responses to trusted IOs and basic board-level reset sequencing capabilities.
-These capabilities include keyboard and button combination-triggered actions, reset stretching for system-level reset signals, and internal reset / wakeup requests that go to the OpenTitan reset and power manager blocks.
-This module conforms to the [Comportable guideline for peripheral functionality](../../../doc/contributing/hw/comportability/README.md).
-See that document for integration overview within the broader top level system.
+These capabilities include keyboard and button combination-triggered actions, reset stretching for system-level reset signals, and internal reset / wakeup requests that go to the system reset and power-management logic.
 
 ## Features
 
@@ -28,8 +22,6 @@ The IP block implements the following features:
 
 The `sysrst_ctrl` logic is very simple.
 It looks up the configuration registers to decide how long the EC reset pulse duration and how long the key presses should be.
-Also what actions to take (e.g. Interrupt, EC reset, OpenTitan reset request, disconnect the battery from the power tree).
-
-## Compatibility
+Also what actions to take (e.g. Interrupt, EC reset, target device reset request, disconnect the battery from the power tree).
 
 The configuration programming interface is not based on any existing interface.

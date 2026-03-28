@@ -1,38 +1,35 @@
-# Hardware Interfaces
+# Interface Summary
 
-<!-- BEGIN CMDGEN util/regtool.py --interfaces ./hw/ip/rv_timer/data/rv_timer.hjson -->
-Referring to the [Comportable guideline for peripheral device functionality](https://opentitan.org/book/doc/contributing/hw/comportability), the module **`rv_timer`** has the following hardware interfaces defined
-- Primary Clock: **`clk_i`**
-- Other Clocks: *none*
-- Bus Device Interfaces (TL-UL): **`tl`**
-- Bus Host Interfaces (TL-UL): *none*
-- Peripheral Pins for Chip IO: *none*
+The canonical machine-readable interface for `rv_timer` is defined in `spec/interface/`.
+Use the SystemVerilog files there as the source of truth for port directions, packed types, parameters, and modports.
 
-## [Inter-Module Signals](https://opentitan.org/book/doc/contributing/hw/comportability/index.html#inter-signal-handling)
+## Parameters
 
-| Port Name     | Package::Struct               | Type    | Act   |   Width | Description                                                                                                                          |
-|:--------------|:------------------------------|:--------|:------|--------:|:-------------------------------------------------------------------------------------------------------------------------------------|
-| racl_policies | top_racl_pkg::racl_policy_vec | uni     | rcv   |       1 | Incoming RACL policy vector from a racl_ctrl instance. The policy selection vector (parameter) selects the policy for each register. |
-| racl_error    | top_racl_pkg::racl_error_log  | uni     | req   |       1 | RACL error log information of this module.                                                                                           |
-| tl            | tlul_pkg::tl                  | req_rsp | rsp   |       1 |                                                                                                                                      |
+| Name | Default |
+| --- | --- |
+| `AlertAsyncOn` | `1'b1` |
+| `AlertSkewCycles` | `1` |
+| `EnableRacl` | `1'b0` |
+| `RaclErrorRsp` | `EnableRacl` |
+| `RaclPolicySelVec` | `'0` |
 
-## Interrupts
+## Ports
 
-| Interrupt Name             | Type   | Description                                          |
-|:---------------------------|:-------|:-----------------------------------------------------|
-| timer_expired_hart0_timer0 | Event  | raised if hart0's timer0 expired (mtimecmp >= mtime) |
+| Direction | Name | Type |
+| --- | --- | --- |
+| `input` | `clk_i` | `logic` |
+| `input` | `rst_ni` | `logic` |
+| `input` | `tl_i` | `rv_timer_public_types_pkg::rv_timer_tl_i_t` |
+| `input` | `alert_rx_i` | `rv_timer_public_types_pkg::rv_timer_alert_rx_i_t` |
+| `input` | `racl_policies_i` | `rv_timer_public_types_pkg::rv_timer_racl_policies_i_t` |
+| `output` | `tl_o` | `rv_timer_public_types_pkg::rv_timer_tl_o_t` |
+| `output` | `alert_tx_o` | `rv_timer_public_types_pkg::rv_timer_alert_tx_o_t` |
+| `output` | `racl_error_o` | `rv_timer_public_types_pkg::rv_timer_racl_error_o_t` |
+| `output` | `intr_timer_expired_hart0_timer0_o` | `logic` |
 
-## Security Alerts
+## Supporting SV Files
 
-| Alert Name   | Description                                                                                                |
-|:-------------|:-----------------------------------------------------------------------------------------------------------|
-| fatal_fault  | This fatal alert is triggered when a fatal TL-UL bus integrity fault is detected inside the RV_TIMER unit. |
-
-## Security Countermeasures
-
-| Countermeasure ID      | Description                      |
-|:-----------------------|:---------------------------------|
-| RV_TIMER.BUS.INTEGRITY | End-to-end bus integrity scheme. |
-
-
-<!-- END CMDGEN -->
+- `spec/interface/rv_timer_public_if.sv`
+- `spec/interface/rv_timer_public_regs_pkg.sv`
+- `spec/interface/rv_timer_public_tlul_pkg.sv`
+- `spec/interface/rv_timer_public_types_pkg.sv`

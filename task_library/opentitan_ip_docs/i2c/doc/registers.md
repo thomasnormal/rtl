@@ -1,42 +1,41 @@
 # Registers
 
-<!-- BEGIN CMDGEN util/regtool.py -d ./hw/ip/i2c/data/i2c.hjson -->
 ## Summary
 
 | Name                                                          | Offset   |   Length | Description                                                                                               |
 |:--------------------------------------------------------------|:---------|---------:|:----------------------------------------------------------------------------------------------------------|
-| i2c.[`INTR_STATE`](#intr_state)                               | 0x0      |        4 | Interrupt State Register                                                                                  |
-| i2c.[`INTR_ENABLE`](#intr_enable)                             | 0x4      |        4 | Interrupt Enable Register                                                                                 |
-| i2c.[`INTR_TEST`](#intr_test)                                 | 0x8      |        4 | Interrupt Test Register                                                                                   |
-| i2c.[`ALERT_TEST`](#alert_test)                               | 0xc      |        4 | Alert Test Register                                                                                       |
-| i2c.[`CTRL`](#ctrl)                                           | 0x10     |        4 | I2C Control Register                                                                                      |
-| i2c.[`STATUS`](#status)                                       | 0x14     |        4 | I2C Live Status Register for Host and Target modes                                                        |
-| i2c.[`RDATA`](#rdata)                                         | 0x18     |        4 | I2C Read Data                                                                                             |
-| i2c.[`FDATA`](#fdata)                                         | 0x1c     |        4 | I2C Host Format Data                                                                                      |
-| i2c.[`FIFO_CTRL`](#fifo_ctrl)                                 | 0x20     |        4 | I2C FIFO control register                                                                                 |
-| i2c.[`HOST_FIFO_CONFIG`](#host_fifo_config)                   | 0x24     |        4 | Host mode FIFO configuration                                                                              |
-| i2c.[`TARGET_FIFO_CONFIG`](#target_fifo_config)               | 0x28     |        4 | Target mode FIFO configuration                                                                            |
-| i2c.[`HOST_FIFO_STATUS`](#host_fifo_status)                   | 0x2c     |        4 | Host mode FIFO status register                                                                            |
-| i2c.[`TARGET_FIFO_STATUS`](#target_fifo_status)               | 0x30     |        4 | Target mode FIFO status register                                                                          |
-| i2c.[`OVRD`](#ovrd)                                           | 0x34     |        4 | I2C Override Control Register                                                                             |
-| i2c.[`VAL`](#val)                                             | 0x38     |        4 | Oversampled RX values                                                                                     |
-| i2c.[`TIMING0`](#timing0)                                     | 0x3c     |        4 | Detailed I2C Timings (directly corresponding to table 10 in the I2C Specification).                       |
-| i2c.[`TIMING1`](#timing1)                                     | 0x40     |        4 | Detailed I2C Timings (directly corresponding to table 10 in the I2C Specification).                       |
-| i2c.[`TIMING2`](#timing2)                                     | 0x44     |        4 | Detailed I2C Timings (directly corresponding to table 10 in the I2C Specification).                       |
-| i2c.[`TIMING3`](#timing3)                                     | 0x48     |        4 | Detailed I2C Timings (directly corresponding to table 10, in the I2C Specification).                      |
-| i2c.[`TIMING4`](#timing4)                                     | 0x4c     |        4 | Detailed I2C Timings (directly corresponding to table 10, in the I2C Specification).                      |
-| i2c.[`TIMEOUT_CTRL`](#timeout_ctrl)                           | 0x50     |        4 | I2C clock stretching and bus timeout control.                                                             |
-| i2c.[`TARGET_ID`](#target_id)                                 | 0x54     |        4 | I2C target address and mask pairs                                                                         |
-| i2c.[`ACQDATA`](#acqdata)                                     | 0x58     |        4 | I2C target acquired data                                                                                  |
-| i2c.[`TXDATA`](#txdata)                                       | 0x5c     |        4 | I2C target transmit data                                                                                  |
-| i2c.[`HOST_TIMEOUT_CTRL`](#host_timeout_ctrl)                 | 0x60     |        4 | I2C host clock generation timeout value (in units of input clock frequency).                              |
-| i2c.[`TARGET_TIMEOUT_CTRL`](#target_timeout_ctrl)             | 0x64     |        4 | I2C target internal stretching timeout control.                                                           |
-| i2c.[`TARGET_NACK_COUNT`](#target_nack_count)                 | 0x68     |        4 | Number of times the I2C target has NACK'ed a new transaction since the last read of this register.        |
-| i2c.[`TARGET_ACK_CTRL`](#target_ack_ctrl)                     | 0x6c     |        4 | Controls for mid-transfer (N)ACK phase handling                                                           |
-| i2c.[`ACQ_FIFO_NEXT_DATA`](#acq_fifo_next_data)               | 0x70     |        4 | The data byte pending to be written to the ACQ FIFO.                                                      |
-| i2c.[`HOST_NACK_HANDLER_TIMEOUT`](#host_nack_handler_timeout) | 0x74     |        4 | Timeout in Host-Mode for an unhandled NACK before hardware automatically ends the transaction.            |
-| i2c.[`CONTROLLER_EVENTS`](#controller_events)                 | 0x78     |        4 | Latched events that explain why the controller halted.                                                    |
-| i2c.[`TARGET_EVENTS`](#target_events)                         | 0x7c     |        4 | Latched events that can cause the target module to stretch the clock at the beginning of a read transfer. |
+| i2c.`INTR_STATE`                               | 0x0      |        4 | Interrupt State Register                                                                                  |
+| i2c.`INTR_ENABLE`                             | 0x4      |        4 | Interrupt Enable Register                                                                                 |
+| i2c.`INTR_TEST`                                 | 0x8      |        4 | Interrupt Test Register                                                                                   |
+| i2c.`ALERT_TEST`                               | 0xc      |        4 | Alert Test Register                                                                                       |
+| i2c.`CTRL`                                           | 0x10     |        4 | I2C Control Register                                                                                      |
+| i2c.`STATUS`                                       | 0x14     |        4 | I2C Live Status Register for Host and Target modes                                                        |
+| i2c.`RDATA`                                         | 0x18     |        4 | I2C Read Data                                                                                             |
+| i2c.`FDATA`                                         | 0x1c     |        4 | I2C Host Format Data                                                                                      |
+| i2c.`FIFO_CTRL`                                 | 0x20     |        4 | I2C FIFO control register                                                                                 |
+| i2c.`HOST_FIFO_CONFIG`                   | 0x24     |        4 | Host mode FIFO configuration                                                                              |
+| i2c.`TARGET_FIFO_CONFIG`               | 0x28     |        4 | Target mode FIFO configuration                                                                            |
+| i2c.`HOST_FIFO_STATUS`                   | 0x2c     |        4 | Host mode FIFO status register                                                                            |
+| i2c.`TARGET_FIFO_STATUS`               | 0x30     |        4 | Target mode FIFO status register                                                                          |
+| i2c.`OVRD`                                           | 0x34     |        4 | I2C Override Control Register                                                                             |
+| i2c.`VAL`                                             | 0x38     |        4 | Oversampled RX values                                                                                     |
+| i2c.`TIMING0`                                     | 0x3c     |        4 | Detailed I2C Timings (directly corresponding to table 10 in the I2C Specification).                       |
+| i2c.`TIMING1`                                     | 0x40     |        4 | Detailed I2C Timings (directly corresponding to table 10 in the I2C Specification).                       |
+| i2c.`TIMING2`                                     | 0x44     |        4 | Detailed I2C Timings (directly corresponding to table 10 in the I2C Specification).                       |
+| i2c.`TIMING3`                                     | 0x48     |        4 | Detailed I2C Timings (directly corresponding to table 10, in the I2C Specification).                      |
+| i2c.`TIMING4`                                     | 0x4c     |        4 | Detailed I2C Timings (directly corresponding to table 10, in the I2C Specification).                      |
+| i2c.`TIMEOUT_CTRL`                           | 0x50     |        4 | I2C clock stretching and bus timeout control.                                                             |
+| i2c.`TARGET_ID`                                 | 0x54     |        4 | I2C target address and mask pairs                                                                         |
+| i2c.`ACQDATA`                                     | 0x58     |        4 | I2C target acquired data                                                                                  |
+| i2c.`TXDATA`                                       | 0x5c     |        4 | I2C target transmit data                                                                                  |
+| i2c.`HOST_TIMEOUT_CTRL`                 | 0x60     |        4 | I2C host clock generation timeout value (in units of input clock frequency).                              |
+| i2c.`TARGET_TIMEOUT_CTRL`             | 0x64     |        4 | I2C target internal stretching timeout control.                                                           |
+| i2c.`TARGET_NACK_COUNT`                 | 0x68     |        4 | Number of times the I2C target has NACK'ed a new transaction since the last read of this register.        |
+| i2c.`TARGET_ACK_CTRL`                     | 0x6c     |        4 | Controls for mid-transfer (N)ACK phase handling                                                           |
+| i2c.`ACQ_FIFO_NEXT_DATA`               | 0x70     |        4 | The data byte pending to be written to the ACQ FIFO.                                                      |
+| i2c.`HOST_NACK_HANDLER_TIMEOUT` | 0x74     |        4 | Timeout in Host-Mode for an unhandled NACK before hardware automatically ends the transaction.            |
+| i2c.`CONTROLLER_EVENTS`                 | 0x78     |        4 | Latched events that explain why the controller halted.                                                    |
+| i2c.`TARGET_EVENTS`                         | 0x7c     |        4 | Latched events that can cause the target module to stretch the clock at the beginning of a read transfer. |
 
 ## INTR_STATE
 Interrupt State Register
@@ -55,7 +54,7 @@ Interrupt State Register
 | 31:15  |        |         |                  | Reserved                                                                                                                                                                                                                                                                               |
 |   14   |  rw1c  |   0x0   | host_timeout     | target mode interrupt: raised if the host stops sending the clock during an ongoing transaction.                                                                                                                                                                                       |
 |   13   |  rw1c  |   0x0   | unexp_stop       | target mode interrupt: raised if STOP is received without a preceding NACK during an external host read.                                                                                                                                                                               |
-|   12   |   ro   |   0x0   | acq_stretch      | target mode interrupt: raised if the target is stretching clocks due to full ACQ FIFO or zero count in [`TARGET_ACK_CTRL.NBYTES`](#target_ack_ctrl) (if enabled). This is a level status interrupt.                                                                                    |
+|   12   |   ro   |   0x0   | acq_stretch      | target mode interrupt: raised if the target is stretching clocks due to full ACQ FIFO or zero count in `TARGET_ACK_CTRL.NBYTES` (if enabled). This is a level status interrupt.                                                                                    |
 |   11   |   ro   |   0x0   | tx_threshold     | target mode interrupt: asserted whilst the TX FIFO level is below the low threshold. This is a level status interrupt.                                                                                                                                                                 |
 |   10   |   ro   |   0x0   | tx_stretch       | target mode interrupt: raised if the target is stretching clocks for a read command. This is a level status interrupt.                                                                                                                                                                 |
 |   9    |  rw1c  |   0x0   | cmd_complete     | host and target mode interrupt. In host mode, raised if the host issues a repeated START or terminates the transaction by issuing STOP. In target mode, raised if the external host issues a STOP or repeated START.                                                                   |
@@ -63,7 +62,7 @@ Interrupt State Register
 |   7    |  rw1c  |   0x0   | stretch_timeout  | host mode interrupt: raised if target stretches the clock beyond the allowed timeout period                                                                                                                                                                                            |
 |   6    |  rw1c  |   0x0   | sda_interference | host mode interrupt: raised if the SDA line goes low when host is trying to assert high                                                                                                                                                                                                |
 |   5    |  rw1c  |   0x0   | scl_interference | host mode interrupt: raised if the SCL line drops early (not supported without clock synchronization).                                                                                                                                                                                 |
-|   4    |   ro   |   0x0   | controller_halt  | host mode interrupt: raised if the controller FSM is halted, such as on an unexpected NACK or lost arbitration. Check [`CONTROLLER_EVENTS`](#controller_events) for the reason. The interrupt will be released when the bits in [`CONTROLLER_EVENTS`](#controller_events) are cleared. |
+|   4    |   ro   |   0x0   | controller_halt  | host mode interrupt: raised if the controller FSM is halted, such as on an unexpected NACK or lost arbitration. Check `CONTROLLER_EVENTS` for the reason. The interrupt will be released when the bits in `CONTROLLER_EVENTS` are cleared. |
 |   3    |  rw1c  |   0x0   | rx_overflow      | host mode interrupt: raised if the RX FIFO has overflowed.                                                                                                                                                                                                                             |
 |   2    |   ro   |   0x0   | acq_threshold    | target mode interrupt: asserted whilst the ACQ FIFO level is above the high threshold. This is a level status interrupt.                                                                                                                                                               |
 |   1    |   ro   |   0x0   | rx_threshold     | host mode interrupt: asserted whilst the RX FIFO level is above the high threshold. This is a level status interrupt.                                                                                                                                                                  |
@@ -84,21 +83,21 @@ Interrupt Enable Register
 |  Bits  |  Type  |  Reset  | Name             | Description                                                                |
 |:------:|:------:|:-------:|:-----------------|:---------------------------------------------------------------------------|
 | 31:15  |        |         |                  | Reserved                                                                   |
-|   14   |   rw   |   0x0   | host_timeout     | Enable interrupt when [`INTR_STATE.host_timeout`](#intr_state) is set.     |
-|   13   |   rw   |   0x0   | unexp_stop       | Enable interrupt when [`INTR_STATE.unexp_stop`](#intr_state) is set.       |
-|   12   |   rw   |   0x0   | acq_stretch      | Enable interrupt when [`INTR_STATE.acq_stretch`](#intr_state) is set.      |
-|   11   |   rw   |   0x0   | tx_threshold     | Enable interrupt when [`INTR_STATE.tx_threshold`](#intr_state) is set.     |
-|   10   |   rw   |   0x0   | tx_stretch       | Enable interrupt when [`INTR_STATE.tx_stretch`](#intr_state) is set.       |
-|   9    |   rw   |   0x0   | cmd_complete     | Enable interrupt when [`INTR_STATE.cmd_complete`](#intr_state) is set.     |
-|   8    |   rw   |   0x0   | sda_unstable     | Enable interrupt when [`INTR_STATE.sda_unstable`](#intr_state) is set.     |
-|   7    |   rw   |   0x0   | stretch_timeout  | Enable interrupt when [`INTR_STATE.stretch_timeout`](#intr_state) is set.  |
-|   6    |   rw   |   0x0   | sda_interference | Enable interrupt when [`INTR_STATE.sda_interference`](#intr_state) is set. |
-|   5    |   rw   |   0x0   | scl_interference | Enable interrupt when [`INTR_STATE.scl_interference`](#intr_state) is set. |
-|   4    |   rw   |   0x0   | controller_halt  | Enable interrupt when [`INTR_STATE.controller_halt`](#intr_state) is set.  |
-|   3    |   rw   |   0x0   | rx_overflow      | Enable interrupt when [`INTR_STATE.rx_overflow`](#intr_state) is set.      |
-|   2    |   rw   |   0x0   | acq_threshold    | Enable interrupt when [`INTR_STATE.acq_threshold`](#intr_state) is set.    |
-|   1    |   rw   |   0x0   | rx_threshold     | Enable interrupt when [`INTR_STATE.rx_threshold`](#intr_state) is set.     |
-|   0    |   rw   |   0x0   | fmt_threshold    | Enable interrupt when [`INTR_STATE.fmt_threshold`](#intr_state) is set.    |
+|   14   |   rw   |   0x0   | host_timeout     | Enable interrupt when `INTR_STATE.host_timeout` is set.     |
+|   13   |   rw   |   0x0   | unexp_stop       | Enable interrupt when `INTR_STATE.unexp_stop` is set.       |
+|   12   |   rw   |   0x0   | acq_stretch      | Enable interrupt when `INTR_STATE.acq_stretch` is set.      |
+|   11   |   rw   |   0x0   | tx_threshold     | Enable interrupt when `INTR_STATE.tx_threshold` is set.     |
+|   10   |   rw   |   0x0   | tx_stretch       | Enable interrupt when `INTR_STATE.tx_stretch` is set.       |
+|   9    |   rw   |   0x0   | cmd_complete     | Enable interrupt when `INTR_STATE.cmd_complete` is set.     |
+|   8    |   rw   |   0x0   | sda_unstable     | Enable interrupt when `INTR_STATE.sda_unstable` is set.     |
+|   7    |   rw   |   0x0   | stretch_timeout  | Enable interrupt when `INTR_STATE.stretch_timeout` is set.  |
+|   6    |   rw   |   0x0   | sda_interference | Enable interrupt when `INTR_STATE.sda_interference` is set. |
+|   5    |   rw   |   0x0   | scl_interference | Enable interrupt when `INTR_STATE.scl_interference` is set. |
+|   4    |   rw   |   0x0   | controller_halt  | Enable interrupt when `INTR_STATE.controller_halt` is set.  |
+|   3    |   rw   |   0x0   | rx_overflow      | Enable interrupt when `INTR_STATE.rx_overflow` is set.      |
+|   2    |   rw   |   0x0   | acq_threshold    | Enable interrupt when `INTR_STATE.acq_threshold` is set.    |
+|   1    |   rw   |   0x0   | rx_threshold     | Enable interrupt when `INTR_STATE.rx_threshold` is set.     |
+|   0    |   rw   |   0x0   | fmt_threshold    | Enable interrupt when `INTR_STATE.fmt_threshold` is set.    |
 
 ## INTR_TEST
 Interrupt Test Register
@@ -115,21 +114,21 @@ Interrupt Test Register
 |  Bits  |  Type  |  Reset  | Name             | Description                                                         |
 |:------:|:------:|:-------:|:-----------------|:--------------------------------------------------------------------|
 | 31:15  |        |         |                  | Reserved                                                            |
-|   14   |   wo   |   0x0   | host_timeout     | Write 1 to force [`INTR_STATE.host_timeout`](#intr_state) to 1.     |
-|   13   |   wo   |   0x0   | unexp_stop       | Write 1 to force [`INTR_STATE.unexp_stop`](#intr_state) to 1.       |
-|   12   |   wo   |   0x0   | acq_stretch      | Write 1 to force [`INTR_STATE.acq_stretch`](#intr_state) to 1.      |
-|   11   |   wo   |   0x0   | tx_threshold     | Write 1 to force [`INTR_STATE.tx_threshold`](#intr_state) to 1.     |
-|   10   |   wo   |   0x0   | tx_stretch       | Write 1 to force [`INTR_STATE.tx_stretch`](#intr_state) to 1.       |
-|   9    |   wo   |   0x0   | cmd_complete     | Write 1 to force [`INTR_STATE.cmd_complete`](#intr_state) to 1.     |
-|   8    |   wo   |   0x0   | sda_unstable     | Write 1 to force [`INTR_STATE.sda_unstable`](#intr_state) to 1.     |
-|   7    |   wo   |   0x0   | stretch_timeout  | Write 1 to force [`INTR_STATE.stretch_timeout`](#intr_state) to 1.  |
-|   6    |   wo   |   0x0   | sda_interference | Write 1 to force [`INTR_STATE.sda_interference`](#intr_state) to 1. |
-|   5    |   wo   |   0x0   | scl_interference | Write 1 to force [`INTR_STATE.scl_interference`](#intr_state) to 1. |
-|   4    |   wo   |   0x0   | controller_halt  | Write 1 to force [`INTR_STATE.controller_halt`](#intr_state) to 1.  |
-|   3    |   wo   |   0x0   | rx_overflow      | Write 1 to force [`INTR_STATE.rx_overflow`](#intr_state) to 1.      |
-|   2    |   wo   |   0x0   | acq_threshold    | Write 1 to force [`INTR_STATE.acq_threshold`](#intr_state) to 1.    |
-|   1    |   wo   |   0x0   | rx_threshold     | Write 1 to force [`INTR_STATE.rx_threshold`](#intr_state) to 1.     |
-|   0    |   wo   |   0x0   | fmt_threshold    | Write 1 to force [`INTR_STATE.fmt_threshold`](#intr_state) to 1.    |
+|   14   |   wo   |   0x0   | host_timeout     | Write 1 to force `INTR_STATE.host_timeout` to 1.     |
+|   13   |   wo   |   0x0   | unexp_stop       | Write 1 to force `INTR_STATE.unexp_stop` to 1.       |
+|   12   |   wo   |   0x0   | acq_stretch      | Write 1 to force `INTR_STATE.acq_stretch` to 1.      |
+|   11   |   wo   |   0x0   | tx_threshold     | Write 1 to force `INTR_STATE.tx_threshold` to 1.     |
+|   10   |   wo   |   0x0   | tx_stretch       | Write 1 to force `INTR_STATE.tx_stretch` to 1.       |
+|   9    |   wo   |   0x0   | cmd_complete     | Write 1 to force `INTR_STATE.cmd_complete` to 1.     |
+|   8    |   wo   |   0x0   | sda_unstable     | Write 1 to force `INTR_STATE.sda_unstable` to 1.     |
+|   7    |   wo   |   0x0   | stretch_timeout  | Write 1 to force `INTR_STATE.stretch_timeout` to 1.  |
+|   6    |   wo   |   0x0   | sda_interference | Write 1 to force `INTR_STATE.sda_interference` to 1. |
+|   5    |   wo   |   0x0   | scl_interference | Write 1 to force `INTR_STATE.scl_interference` to 1. |
+|   4    |   wo   |   0x0   | controller_halt  | Write 1 to force `INTR_STATE.controller_halt` to 1.  |
+|   3    |   wo   |   0x0   | rx_overflow      | Write 1 to force `INTR_STATE.rx_overflow` to 1.      |
+|   2    |   wo   |   0x0   | acq_threshold    | Write 1 to force `INTR_STATE.acq_threshold` to 1.    |
+|   1    |   wo   |   0x0   | rx_threshold     | Write 1 to force `INTR_STATE.rx_threshold` to 1.     |
+|   0    |   wo   |   0x0   | fmt_threshold    | Write 1 to force `INTR_STATE.fmt_threshold` to 1.    |
 
 ## ALERT_TEST
 Alert Test Register
@@ -163,18 +162,18 @@ I2C Control Register
 |  Bits  |  Type  |  Reset  | Name                                                              |
 |:------:|:------:|:-------:|:------------------------------------------------------------------|
 |  31:7  |        |         | Reserved                                                          |
-|   6    |   rw   |   0x0   | [TX_STRETCH_CTRL_EN](#ctrl--tx_stretch_ctrl_en)                   |
-|   5    |   rw   |   0x0   | [MULTI_CONTROLLER_MONITOR_EN](#ctrl--multi_controller_monitor_en) |
-|   4    |   rw   |   0x0   | [ACK_CTRL_EN](#ctrl--ack_ctrl_en)                                 |
-|   3    |   rw   |   0x0   | [NACK_ADDR_AFTER_TIMEOUT](#ctrl--nack_addr_after_timeout)         |
-|   2    |   rw   |   0x0   | [LLPBK](#ctrl--llpbk)                                             |
-|   1    |   rw   |   0x0   | [ENABLETARGET](#ctrl--enabletarget)                               |
-|   0    |   rw   |   0x0   | [ENABLEHOST](#ctrl--enablehost)                                   |
+|   6    |   rw   |   0x0   | TX_STRETCH_CTRL_EN                   |
+|   5    |   rw   |   0x0   | MULTI_CONTROLLER_MONITOR_EN |
+|   4    |   rw   |   0x0   | ACK_CTRL_EN                                 |
+|   3    |   rw   |   0x0   | NACK_ADDR_AFTER_TIMEOUT         |
+|   2    |   rw   |   0x0   | LLPBK                                             |
+|   1    |   rw   |   0x0   | ENABLETARGET                               |
+|   0    |   rw   |   0x0   | ENABLEHOST                                   |
 
 ### CTRL . TX_STRETCH_CTRL_EN
-If set to 1, this bit causes a read transfer addressed to this target to set the corresponding bit in [`TARGET_EVENTS.`](#target_events)
+If set to 1, this bit causes a read transfer addressed to this target to set the corresponding bit in `TARGET_EVENTS.`
 
-While [`TARGET_EVENTS.TX_PENDING`](#target_events) is 1, subsequent read transactions will stretch the clock, even if there is data in the TX FIFO.
+While `TARGET_EVENTS.TX_PENDING` is 1, subsequent read transactions will stretch the clock, even if there is data in the TX FIFO.
 
 If enabled, this function allows software to confirm the data in the TX FIFO should be released for the current read.
 This may be useful for cases where the TX FIFO has data that does not apply to the current transfer.
@@ -183,13 +182,13 @@ For example, the transaction could've targeted an alternate function via another
 ### CTRL . MULTI_CONTROLLER_MONITOR_EN
 Enable the bus monitor in multi-controller mode.
 
-If a 0->1 transition happens while [`CTRL.ENABLEHOST`](#ctrl) and [`CTRL.ENABLETARGET`](#ctrl) are both 0, the bus monitor will enable and begin in the "bus busy" state.
-To transition to a bus free state, [`HOST_TIMEOUT_CTRL`](#host_timeout_ctrl) must be nonzero, so the bus monitor may count out idle cycles to confirm the freedom to transmit.
+If a 0->1 transition happens while `CTRL.ENABLEHOST` and `CTRL.ENABLETARGET` are both 0, the bus monitor will enable and begin in the "bus busy" state.
+To transition to a bus free state, `HOST_TIMEOUT_CTRL` must be nonzero, so the bus monitor may count out idle cycles to confirm the freedom to transmit.
 In addition, the bus monitor will track whether the bus is free based on the enabled timeouts and detected Stop symbols.
-For multi-controller mode, ensure [`CTRL.MULTI_CONTROLLER_MONITOR_EN`](#ctrl) becomes 1 no later than [`CTRL.ENABLEHOST`](#ctrl) or [`CTRL.ENABLETARGET.`](#ctrl)
+For multi-controller mode, ensure `CTRL.MULTI_CONTROLLER_MONITOR_EN` becomes 1 no later than `CTRL.ENABLEHOST` or `CTRL.ENABLETARGET.`
 This bit can be set at the same time as either or both of the other two, though.
 
-Note that if [`CTRL.MULTI_CONTROLLER_MONITOR_EN`](#ctrl) is set after [`CTRL.ENABLEHOST`](#ctrl) or [`CTRL.ENABLETARGET`](#ctrl), the bus monitor will begin in the "bus free" state instead.
+Note that if `CTRL.MULTI_CONTROLLER_MONITOR_EN` is set after `CTRL.ENABLEHOST` or `CTRL.ENABLETARGET`, the bus monitor will begin in the "bus free" state instead.
 This would violate the proper protocol for a controller to join a multi-controller environment.
 However, if this controller is known to be the first to join, this ordering will enable skipping the idle wait.
 
@@ -198,9 +197,9 @@ When 0, the bus monitor will report that the bus is always free, so the controll
 ### CTRL . ACK_CTRL_EN
 Enable I2C Target ACK Control Mode.
 
-ACK Control Mode works together with [`TARGET_ACK_CTRL.NBYTES`](#target_ack_ctrl) to allow software to control upper-layer protocol (N)ACKing (e.g. as in SMBus).
-This bit enables the mode when 1, and [`TARGET_ACK_CTRL.NBYTES`](#target_ack_ctrl) limits how many bytes may be automatically ACK'd while the ACQ FIFO has space.
-If it is 0, the decision to ACK or NACK is made only from stretching timeouts and [`CTRL.NACK_ADDR_AFTER_TIMEOUT.`](#ctrl)
+ACK Control Mode works together with `TARGET_ACK_CTRL.NBYTES` to allow software to control upper-layer protocol (N)ACKing (e.g. as in SMBus).
+This bit enables the mode when 1, and `TARGET_ACK_CTRL.NBYTES` limits how many bytes may be automatically ACK'd while the ACQ FIFO has space.
+If it is 0, the decision to ACK or NACK is made only from stretching timeouts and `CTRL.NACK_ADDR_AFTER_TIMEOUT.`
 
 ### CTRL . NACK_ADDR_AFTER_TIMEOUT
 Enable NACKing the address on a stretch timeout.
@@ -240,7 +239,7 @@ I2C Live Status Register for Host and Target modes
 |  Bits  |  Type  |  Reset  | Name             | Description                                                                                              |
 |:------:|:------:|:-------:|:-----------------|:---------------------------------------------------------------------------------------------------------|
 | 31:11  |        |         |                  | Reserved                                                                                                 |
-|   10   |   ro   |    x    | ACK_CTRL_STRETCH | Target mode stretching at (N)ACK phase due to zero count in [`TARGET_ACK_CTRL.NBYTES`](#target_ack_ctrl) |
+|   10   |   ro   |    x    | ACK_CTRL_STRETCH | Target mode stretching at (N)ACK phase due to zero count in `TARGET_ACK_CTRL.NBYTES` |
 |   9    |   ro   |   0x1   | ACQEMPTY         | Target mode receive FIFO is empty                                                                        |
 |   8    |   ro   |   0x1   | TXEMPTY          | Target mode TX FIFO is empty                                                                             |
 |   7    |   ro   |    x    | ACQFULL          | Target mode receive FIFO is full                                                                         |
@@ -286,12 +285,12 @@ Writes to this register are used to define and drive Controller-Mode transaction
 |  Bits  |  Type  |  Reset  | Name                   |
 |:------:|:------:|:-------:|:-----------------------|
 | 31:13  |        |         | Reserved               |
-|   12   |   wo   |   0x0   | [NAKOK](#fdata--nakok) |
-|   11   |   wo   |   0x0   | [RCONT](#fdata--rcont) |
-|   10   |   wo   |   0x0   | [READB](#fdata--readb) |
-|   9    |   wo   |   0x0   | [STOP](#fdata--stop)   |
-|   8    |   wo   |   0x0   | [START](#fdata--start) |
-|  7:0   |   wo   |   0x0   | [FBYTE](#fdata--fbyte) |
+|   12   |   wo   |   0x0   | NAKOK |
+|   11   |   wo   |   0x0   | RCONT |
+|   10   |   wo   |   0x0   | READB |
+|   9    |   wo   |   0x0   | STOP   |
+|   8    |   wo   |   0x0   | START |
+|  7:0   |   wo   |   0x0   | FBYTE |
 
 ### FDATA . NAKOK
 For the currrent controller-transmitter byte (WRITE), do not halt via CONTROLLER_EVENTS
@@ -535,9 +534,9 @@ All values are expressed in units of the input clock period.
 |  Bits  |  Type  |  Reset  | Name                         |
 |:------:|:------:|:-------:|:-----------------------------|
 | 31:29  |        |         | Reserved                     |
-| 28:16  |   rw   |   0x0   | [THD_DAT](#timing3--thd_dat) |
+| 28:16  |   rw   |   0x0   | THD_DAT |
 |  15:9  |        |         | Reserved                     |
-|  8:0   |   rw   |   0x0   | [TSU_DAT](#timing3--tsu_dat) |
+|  8:0   |   rw   |   0x0   | TSU_DAT |
 
 ### TIMING3 . THD_DAT
 Actual hold time for data (or ack) bits.
@@ -573,7 +572,7 @@ All values are expressed in units of the input clock period.
 ## TIMEOUT_CTRL
 I2C clock stretching and bus timeout control.
 
-This timeout must be enabled by setting [`TIMEOUT_CTRL.EN`](#timeout_ctrl) to 1, and the behavior of this feature depends on the value of [`TIMEOUT_CTRL.MODE.`](#timeout_ctrl)
+This timeout must be enabled by setting `TIMEOUT_CTRL.EN` to 1, and the behavior of this feature depends on the value of `TIMEOUT_CTRL.MODE.`
 
 If the mode is "STRETCH_TIMEOUT", this is used in I2C controller mode to detect whether a connected target is stretching a single low time beyond the timeout value.
 Configured as such, this timeout is more informative and doesn't do more than assert the "stretch_timeout" interrupt.
@@ -592,9 +591,9 @@ This is useful for an SMBus context, where the VAL programmed should be tTIMEOUT
 
 |  Bits  |  Type  |  Reset  | Name                        |
 |:------:|:------:|:-------:|:----------------------------|
-|   31   |   rw   |   0x0   | [EN](#timeout_ctrl--en)     |
-|   30   |   rw   |   0x0   | [MODE](#timeout_ctrl--mode) |
-|  29:0  |   rw   |   0x0   | [VAL](#timeout_ctrl--val)   |
+|   31   |   rw   |   0x0   | EN     |
+|   30   |   rw   |   0x0   | MODE |
+|  29:0  |   rw   |   0x0   | VAL   |
 
 ### TIMEOUT_CTRL . EN
 Enable stretch timeout or bus timeout feature
@@ -606,13 +605,12 @@ Between the two modes, the primary difference is how much of the clock low perio
 For a stretch timeout, only the time that another device holds the clock low will be counted.
 For a bus timeout, the entire clock low time is counted, consistent with the SMBus tTIMEOUT type.
 
-[`TIMEOUT_CTRL.EN`](#timeout_ctrl) must be 1 for either of these features to be enabled.
+`TIMEOUT_CTRL.EN` must be 1 for either of these features to be enabled.
 
 | Value   | Name            | Description                                                                                                                                                                                                                                                      |
 |:--------|:----------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 0x0     | STRETCH_TIMEOUT | The timeout is a target stretch timeout. The counter will track how long the clock has been stretched by another device while the controller is active.                                                                                                          |
-| 0x1     | BUS_TIMEOUT     | The timeout is a clock low timeout. The counter will track how long the clock low period is, inclusive of the controller's ordinary low count. A timeout will set [`CONTROLLER_EVENTS.BUS_TIMEOUT`](#controller_events) and cause a "controller_halt" interrupt. |
-
+| 0x1     | BUS_TIMEOUT     | The timeout is a clock low timeout. The counter will track how long the clock low period is, inclusive of the controller's ordinary low count. A timeout will set `CONTROLLER_EVENTS.BUS_TIMEOUT` and cause a "controller_halt" interrupt. |
 
 ### TIMEOUT_CTRL . VAL
 Clock stretching timeout value (in units of input clock frequency)
@@ -652,8 +650,8 @@ I2C target acquired data
 |  Bits  |  Type  |  Reset  | Name                       |
 |:------:|:------:|:-------:|:---------------------------|
 | 31:11  |        |         | Reserved                   |
-|  10:8  |   ro   |    x    | [SIGNAL](#acqdata--signal) |
-|  7:0   |   ro   |    x    | [ABYTE](#acqdata--abyte)   |
+|  10:8  |   ro   |    x    | SIGNAL |
+|  7:0   |   ro   |    x    | ABYTE   |
 
 ### ACQDATA . SIGNAL
 Indicates any control symbols associated with the ABYTE.
@@ -703,7 +701,7 @@ I2C host clock generation timeout value (in units of input clock frequency).
 In an active transaction in Target-Mode, if the Controller ceases to send SCL pulses
 for this number of cycles then the "host_timeout" interrupt will be asserted.
 
-In multi-controller monitoring mode, [`HOST_TIMEOUT_CTRL`](#host_timeout_ctrl) is required to be nonzero to transition out of the initial busy state.
+In multi-controller monitoring mode, `HOST_TIMEOUT_CTRL` is required to be nonzero to transition out of the initial busy state.
 Set this CSR to 0 to disable this behaviour.
 - Offset: `0x60`
 - Reset default: `0x0`
@@ -723,7 +721,7 @@ Set this CSR to 0 to disable this behaviour.
 ## TARGET_TIMEOUT_CTRL
 I2C target internal stretching timeout control.
 When the target has stretched beyond this time it will send a NACK for incoming data bytes or release SDA for outgoing data bytes.
-The behavior for the address byte is configurable via [`CTRL.ACK_ADDR_AFTER_TIMEOUT.`](#ctrl)
+The behavior for the address byte is configurable via `CTRL.ACK_ADDR_AFTER_TIMEOUT.`
 Note that the count accumulates stretching time over the course of a transaction.
 In other words, this is equivalent to the SMBus cumulative target clock extension time.
 - Offset: `0x64`
@@ -775,23 +773,23 @@ Controls for mid-transfer (N)ACK phase handling
 
 |  Bits  |  Type  |  Reset  | Name                               |
 |:------:|:------:|:-------:|:-----------------------------------|
-|   31   |   wo   |    x    | [NACK](#target_ack_ctrl--nack)     |
+|   31   |   wo   |    x    | NACK     |
 |  30:9  |        |         | Reserved                           |
-|  8:0   |   rw   |    x    | [NBYTES](#target_ack_ctrl--nbytes) |
+|  8:0   |   rw   |    x    | NBYTES |
 
 ### TARGET_ACK_CTRL . NACK
-When the Target module stretches on the (N)ACK phase of a Write due to [`TARGET_ACK_CTRL.NBYTES`](#target_ack_ctrl) being 0, writing a 1 here will cause it to send a NACK.
+When the Target module stretches on the (N)ACK phase of a Write due to `TARGET_ACK_CTRL.NBYTES` being 0, writing a 1 here will cause it to send a NACK.
 
 If software chooses to NACK, note that the NACKing behavior is the same as if a stretch timeout occurred.
 The rest of the transaction will be NACK'd, including subsequent transfers.
-For the address byte, the (N)ACK phase of subsequent transfers will follow the behavior specified by [`CTRL.NACK_ADDR_AFTER_TIMEOUT.`](#ctrl)
+For the address byte, the (N)ACK phase of subsequent transfers will follow the behavior specified by `CTRL.NACK_ADDR_AFTER_TIMEOUT.`
 
 Automatically clears to 0.
 
 ### TARGET_ACK_CTRL . NBYTES
 Remaining number of bytes the Target module may ACK automatically.
 
-If [`CTRL.ACK_CTRL_EN`](#ctrl) is set to 1, the Target module will stretch the clock at the (N)ACK phase of a byte if this CSR is 0, awaiting software's instructions.
+If `CTRL.ACK_CTRL_EN` is set to 1, the Target module will stretch the clock at the (N)ACK phase of a byte if this CSR is 0, awaiting software's instructions.
 
 At the beginning of each Write transfer, this byte count is reset to 0.
 Writes to this CSR also are only accepted while the Target module is stretching the clock.
@@ -801,14 +799,14 @@ For each data byte that is ACK'd in a transaction, the byte count will decrease 
 
 Note that a full ACQ FIFO can still cause the Target module to halt at the beginning of a new byte.
 The ACK Control Mode provides an additional synchronization point, during the (N)ACK phase instead of after.
-For both cases, [`TARGET_TIMEOUT_CTRL`](#target_timeout_ctrl) applies, and stretching past the timeout will produce an automatic NACK.
+For both cases, `TARGET_TIMEOUT_CTRL` applies, and stretching past the timeout will produce an automatic NACK.
 
 This mode can be used to implement the mid-transfer (N)ACK responses required by various SMBus protocols.
 
 ## ACQ_FIFO_NEXT_DATA
 The data byte pending to be written to the ACQ FIFO.
 
-This CSR is only valid while the Target module is stretching in the (N)ACK phase, indicated by [`STATUS.ACK_CTRL_STRETCH`](#status) .
+This CSR is only valid while the Target module is stretching in the (N)ACK phase, indicated by `STATUS.ACK_CTRL_STRETCH` .
 It is intended to be used with ACK Control Mode, so software may check the current byte.
 - Offset: `0x70`
 - Reset default: `0x0`
@@ -829,14 +827,14 @@ It is intended to be used with ACK Control Mode, so software may check the curre
 Timeout in Host-Mode for an unhandled NACK before hardware automatically ends the transaction.
 (in units of input clock frequency)
 
-If an active Controller-Transmitter transfer receives a NACK from the Target, the [`CONTROLLER_EVENTS.NACK`](#controller_events) bit is set.
+If an active Controller-Transmitter transfer receives a NACK from the Target, the `CONTROLLER_EVENTS.NACK` bit is set.
 In turn, this causes the Controller FSM to halt awaiting software intervention, and the 'controller_halt' interrupt may assert.
-Software must clear the [`CONTROLLER_EVENTS.NACK`](#controller_events) bit to allow the state machine to continue, typically after clearing out the FMTFIFO to start a new transfer.
+Software must clear the `CONTROLLER_EVENTS.NACK` bit to allow the state machine to continue, typically after clearing out the FMTFIFO to start a new transfer.
 While halted, the active transaction is not ended (no STOP (P) condition is created), and the block asserts SCL and leaves SDA released.
 
 This timeout can be used to automatically produce a STOP condition, whether as a backstop for slow software responses (longer timeout) or as a convenience (short timeout).
 If the timeout expires, the Controller FSM will issue a STOP (P) condition on the bus to end the active transaction.
-Additionally, the [`CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT`](#controller_events) bit is set to alert software, and the FSM will return to the idle state and halt until the bit is cleared.
+Additionally, the `CONTROLLER_EVENTS.UNHANDLED_NACK_TIMEOUT` bit is set to alert software, and the FSM will return to the idle state and halt until the bit is cleared.
 
 The enable bit must be set for this feature to operate.
 - Offset: `0x74`
@@ -872,8 +870,8 @@ Any bits that are set must be written (with a 1) to clear the CONTROLLER_HALT in
 |:------:|:------:|:-------:|:-----------------------|:--------------------------------------------------------------------------------------------------------------------------|
 |  31:4  |        |         |                        | Reserved                                                                                                                  |
 |   3    |  rw1c  |   0x0   | ARBITRATION_LOST       | A Host-Mode active transaction has terminated due to lost arbitration.                                                    |
-|   2    |  rw1c  |   0x0   | BUS_TIMEOUT            | A Host-Mode active transaction has terminated due to a bus timeout activated by [`TIMEOUT_CTRL.`](#timeout_ctrl)          |
-|   1    |  rw1c  |   0x0   | UNHANDLED_NACK_TIMEOUT | A Host-Mode active transaction has been ended by the [`HOST_NACK_HANDLER_TIMEOUT`](#host_nack_handler_timeout) mechanism. |
+|   2    |  rw1c  |   0x0   | BUS_TIMEOUT            | A Host-Mode active transaction has terminated due to a bus timeout activated by `TIMEOUT_CTRL.`          |
+|   1    |  rw1c  |   0x0   | UNHANDLED_NACK_TIMEOUT | A Host-Mode active transaction has been ended by the `HOST_NACK_HANDLER_TIMEOUT` mechanism. |
 |   0    |  rw1c  |   0x0   | NACK                   | Received an unexpected NACK                                                                                               |
 
 ## TARGET_EVENTS
@@ -896,15 +894,15 @@ This CSR serves as a gate to prevent the Target module from responding to a read
 |  Bits  |  Type  |  Reset  | Name                                                 |
 |:------:|:------:|:-------:|:-----------------------------------------------------|
 |  31:3  |        |         | Reserved                                             |
-|   2    |  rw1c  |   0x0   | [ARBITRATION_LOST](#target_events--arbitration_lost) |
-|   1    |  rw1c  |   0x0   | [BUS_TIMEOUT](#target_events--bus_timeout)           |
-|   0    |  rw1c  |   0x0   | [TX_PENDING](#target_events--tx_pending)             |
+|   2    |  rw1c  |   0x0   | ARBITRATION_LOST |
+|   1    |  rw1c  |   0x0   | BUS_TIMEOUT           |
+|   0    |  rw1c  |   0x0   | TX_PENDING             |
 
 ### TARGET_EVENTS . ARBITRATION_LOST
 A Target-Mode read transfer has terminated due to lost arbitration.
 
 ### TARGET_EVENTS . BUS_TIMEOUT
-A Target-Mode read transfer has terminated due to a bus timeout activated by [`TIMEOUT_CTRL.`](#timeout_ctrl)
+A Target-Mode read transfer has terminated due to a bus timeout activated by `TIMEOUT_CTRL.`
 
 ### TARGET_EVENTS . TX_PENDING
 A new Target-Mode read transfer has arrived that addressed this target.
@@ -912,7 +910,4 @@ A new Target-Mode read transfer has arrived that addressed this target.
 This bit is used by software to confirm the release of the contents in the TX FIFO.
 If the contents do not apply, software should first reset the TX FIFO, then load it with the correct data, then clear this bit.
 
-Optionally enabled by [`CTRL.TX_STRETCH_CTRL_EN.`](#ctrl)
-
-
-<!-- END CMDGEN -->
+Optionally enabled by `CTRL.TX_STRETCH_CTRL_EN.`

@@ -18,7 +18,6 @@ from .interface_contracts import (
     prepare_public_interface_contract,
 )
 from .micro_arch_contracts import validate_public_micro_arch_dir
-from .public_spec_profiles import apply_public_spec_profile
 from .shared_sources import SharedSourceRegistry, register_shared_source_bundle
 
 
@@ -520,7 +519,6 @@ def _write_task_bundle(
     raw_oracle_dir: Path | None = None,
     raw_oracle_metadata: dict[str, Any] | None = None,
     public_interface_support_files: tuple[tuple[str, str], ...] = (),
-    public_spec_profile: str | None = None,
 ) -> Path:
     """Write a task bundle to *output_root/dataset_name/task_id/*.
 
@@ -559,15 +557,6 @@ def _write_task_bundle(
         )
     else:
         normalized_public_interface = None
-    if public_spec_profile is not None:
-        apply_public_spec_profile(
-            spec_dir,
-            profile=public_spec_profile,
-            task_id=task_id,
-            top_module=candidate_top_module,
-            public_interface=normalized_public_interface,
-            oracle_metadata=raw_oracle_metadata,
-        )
     validate_public_micro_arch_dir(spec_dir)
     public_task_path.write_text(json.dumps(public_metadata, indent=2, sort_keys=True) + "\n")
 
@@ -853,7 +842,6 @@ def store_generic_task(
     raw_oracle_dir: str | Path | None = None,
     raw_oracle_metadata: dict[str, Any] | None = None,
     public_interface_support_files: tuple[tuple[str, str], ...] = (),
-    public_spec_profile: str | None = None,
 ) -> Path:
     """Ingest a hand-assembled task into the task store.
 
@@ -909,7 +897,6 @@ def store_generic_task(
         raw_oracle_dir=None if raw_oracle_dir is None else Path(raw_oracle_dir),
         raw_oracle_metadata=raw_oracle_metadata,
         public_interface_support_files=public_interface_support_files,
-        public_spec_profile=public_spec_profile,
     )
 
 
@@ -925,9 +912,6 @@ def store_curated_task_pack(
     default_interface_profile = manifest_document.get("default_public_interface_profile")
     if default_interface_profile is not None:
         default_interface_profile = str(default_interface_profile)
-    default_public_spec_profile = manifest_document.get("default_public_spec_profile")
-    if default_public_spec_profile is not None:
-        default_public_spec_profile = str(default_public_spec_profile)
     specs_root = _curated_task_pack_specs_root(dataset_name)
     source_root_path = Path(source_root).expanduser().resolve() if source_root is not None else None
     registry_root = Path(output_root).resolve().parent / "shared_sources"
@@ -983,9 +967,6 @@ def store_curated_task_pack(
                 f"missing curated spec directory for {dataset_name}/{task_id}: {spec_dir}"
             )
         task_tier = tier if tier is not None else task.get("tier")
-        public_spec_profile = task.get("public_spec_profile", default_public_spec_profile)
-        if public_spec_profile is not None:
-            public_spec_profile = str(public_spec_profile)
         source_docs = task.get("source_docs")
         if source_docs is not None:
             if not isinstance(source_docs, list):
@@ -1105,7 +1086,6 @@ def store_curated_task_pack(
                 raw_oracle_dir=raw_oracle_dir,
                 raw_oracle_metadata=raw_oracle_metadata,
                 public_interface_support_files=public_interface_support_files,
-                public_spec_profile=public_spec_profile,
             )
         )
         if tempdir_cm is not None:
@@ -1402,9 +1382,8 @@ def store_chipbench_tasks(
             # comparison issues).  Fall back to xrun for tasks with coding
             # patterns verilator rejects (BLKANDNBLK, BLKLOOPINIT).
             _VERILATOR_BLOCKLIST = {
-                "Prob006_cpu_top",         # mixed blocking/nonblocking
-                "Prob023_gray_code_counter",  # mixed blocking/nonblocking
-                "Prob030_simple_implementation_RAM",  # loop init
+                "Prob023_gray_code_counter",  # mixed blocking/nonblocking in gold RTL
+                "Prob030_simple_implementation_RAM",  # loop init in gold RTL
             }
             stem = spec_path.name.replace("_prompt.txt", "")
             sim = "xrun" if stem in _VERILATOR_BLOCKLIST else "verilator"

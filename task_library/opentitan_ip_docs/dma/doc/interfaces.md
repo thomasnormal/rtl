@@ -1,48 +1,50 @@
-# Hardware Interfaces
+# Interface Summary
 
-<!-- BEGIN CMDGEN util/regtool.py --interfaces ./hw/ip/dma/data/dma.hjson -->
-Referring to the [Comportable guideline for peripheral device functionality](https://opentitan.org/book/doc/contributing/hw/comportability), the module **`dma`** has the following hardware interfaces defined
-- Primary Clock: **`clk_i`**
-- Other Clocks: *none*
-- Bus Device Interfaces (TL-UL): **`tl_d`**
-- Bus Host Interfaces (TL-UL): **`host_tl_h`**
-- Peripheral Pins for Chip IO: *none*
+The canonical machine-readable interface for `dma` is defined in `spec/interface/`.
+Use the SystemVerilog files there as the source of truth for port directions, packed types, parameters, and modports.
 
-## [Inter-Module Signals](https://opentitan.org/book/doc/contributing/hw/comportability/index.html#inter-signal-handling)
+## Parameters
 
-| Port Name     | Package::Struct               | Type    | Act   |   Width | Description                                                                                                                          |
-|:--------------|:------------------------------|:--------|:------|--------:|:-------------------------------------------------------------------------------------------------------------------------------------|
-| lsio_trigger  | dma_pkg::lsio_trigger         | uni     | rcv   |       1 |                                                                                                                                      |
-| sys           | dma_pkg::sys                  | req_rsp | req   |       1 | SoC System Bus (requests and responses), synchronous                                                                                 |
-| ctn_tl_h2d    | tlul_pkg::tl_h2d              | uni     | req   |       1 | TL-UL host port for egress into CTN (request part), synchronous                                                                      |
-| ctn_tl_d2h    | tlul_pkg::tl_d2h              | uni     | rcv   |       1 | TL-UL host port for egress into CTN (response part), synchronous                                                                     |
-| racl_policies | top_racl_pkg::racl_policy_vec | uni     | rcv   |       1 | Incoming RACL policy vector from a racl_ctrl instance. The policy selection vector (parameter) selects the policy for each register. |
-| racl_error    | top_racl_pkg::racl_error_log  | uni     | req   |       1 | RACL error log information of this module.                                                                                           |
-| host_tl_h     | tlul_pkg::tl                  | req_rsp | req   |       1 |                                                                                                                                      |
-| tl_d          | tlul_pkg::tl                  | req_rsp | rsp   |       1 |                                                                                                                                      |
+| Name | Default |
+| --- | --- |
+| `AlertAsyncOn` | `1'b1` |
+| `AlertSkewCycles` | `1` |
+| `EnableDataIntgGen` | `1'b1` |
+| `EnableRspDataIntgCheck` | `1'b1` |
+| `TlUserRsvd` | `'0` |
+| `SysRaclRole` | `'0` |
+| `OtAgentId` | `0` |
+| `EnableRacl` | `1'b0` |
+| `RaclErrorRsp` | `EnableRacl` |
+| `RaclPolicySelVec` | `'0` |
 
-## Interrupts
+## Ports
 
-| Interrupt Name   | Type   | Description                                                               |
-|:-----------------|:-------|:--------------------------------------------------------------------------|
-| dma_done         | Status | DMA operation has been completed.                                         |
-| dma_chunk_done   | Status | Indicates the transfer of a single chunk has been completed.              |
-| dma_error        | Status | DMA error has occurred. DMA_STATUS.error_code register shows the details. |
+| Direction | Name | Type |
+| --- | --- | --- |
+| `input` | `clk_i` | `logic` |
+| `input` | `rst_ni` | `logic` |
+| `input` | `scanmode_i` | `dma_public_types_pkg::dma_scanmode_i_t` |
+| `input` | `lsio_trigger_i` | `dma_public_types_pkg::dma_lsio_trigger_i_t` |
+| `input` | `alert_rx_i` | `dma_public_types_pkg::dma_alert_rx_i_t` |
+| `input` | `racl_policies_i` | `dma_public_types_pkg::dma_racl_policies_i_t` |
+| `input` | `tl_d_i` | `dma_public_types_pkg::dma_tl_d_i_t` |
+| `input` | `ctn_tl_d2h_i` | `dma_public_types_pkg::dma_ctn_tl_d2h_i_t` |
+| `input` | `host_tl_h_i` | `dma_public_types_pkg::dma_host_tl_h_i_t` |
+| `input` | `sys_i` | `dma_public_types_pkg::dma_sys_i_t` |
+| `output` | `intr_dma_done_o` | `logic` |
+| `output` | `intr_dma_chunk_done_o` | `logic` |
+| `output` | `intr_dma_error_o` | `logic` |
+| `output` | `alert_tx_o` | `dma_public_types_pkg::dma_alert_tx_o_t` |
+| `output` | `racl_error_o` | `dma_public_types_pkg::dma_racl_error_o_t` |
+| `output` | `tl_d_o` | `dma_public_types_pkg::dma_tl_d_o_t` |
+| `output` | `ctn_tl_h2d_o` | `dma_public_types_pkg::dma_ctn_tl_h2d_o_t` |
+| `output` | `host_tl_h_o` | `dma_public_types_pkg::dma_host_tl_h_o_t` |
+| `output` | `sys_o` | `dma_public_types_pkg::dma_sys_o_t` |
 
-## Security Alerts
+## Supporting SV Files
 
-| Alert Name   | Description                                                                       |
-|:-------------|:----------------------------------------------------------------------------------|
-| fatal_fault  | This fatal alert is triggered when a fatal TL-UL bus integrity fault is detected. |
-
-## Security Countermeasures
-
-| Countermeasure ID            | Description                                                  |
-|:-----------------------------|:-------------------------------------------------------------|
-| DMA.BUS.INTEGRITY            | End-to-end bus integrity scheme.                             |
-| DMA.ASID.INTERSIG.MUBI       | Destination and source ASID signals are multibit encoded.    |
-| DMA.RANGE.CONFIG.REGWEN_MUBI | DMA enabled memory range is software multibit lockable.      |
-| DMA.FSM.SPARSE               | FSM is sparsely encoded. There is a single `ctrl_state` FSM. |
-
-
-<!-- END CMDGEN -->
+- `spec/interface/dma_public_if.sv`
+- `spec/interface/dma_public_regs_pkg.sv`
+- `spec/interface/dma_public_tlul_pkg.sv`
+- `spec/interface/dma_public_types_pkg.sv`

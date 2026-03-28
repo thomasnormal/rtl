@@ -1,12 +1,11 @@
 # DMA Microarchitecture Profile
 
-This directory defines the public microarchitecture ABI for the OpenTitan
-`dma` task.
+This directory defines the public microarchitecture ABI for the `dma` task.
 
 The top-level interface captures the externally visible DMA behavior. The
 microarchitecture ABI here adds the minimal event-level observability needed to
-reuse deeper DMA verification without assuming the original OpenTitan internal
-register-hardware structs.
+reuse deeper DMA verification without assuming a specific internal
+register-hardware representation.
 
 ## Required ABI
 

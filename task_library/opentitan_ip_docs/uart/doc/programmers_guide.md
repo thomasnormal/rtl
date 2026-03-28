@@ -13,8 +13,8 @@ $$ NCO = {{2^{20} * f\_{baud}} \over {f\_{pclk}}} $$
 
 Note that the NCO result from the above formula can be a fraction but
 the NCO register only accepts an integer value. See the
-[Reception](#reception) and [Setting the baud
-rate](#setting-the-baud-rate) sections for more discussion of the
+Reception and Setting the baud
+rate sections for more discussion of the
 baud rate error target and when care is needed.
 
 Also note that because the baud rate is multiplied by 2^20 care is
@@ -141,7 +141,7 @@ void uart_interrupt_routine() {
 }
 ```
 
-One use of the `rx_timeout` interrupt is when the [`FIFO_CTRL.RXILVL`](registers.md#fifo_ctrl--rxilvl)
+One use of the `rx_timeout` interrupt is when the `FIFO_CTRL.RXILVL`
 is set greater than one, so an interrupt is only fired when the fifo
 is full to a certain level. If the remote device sends fewer than the
 watermark number of characters before stopping sending (for example it
@@ -155,7 +155,3 @@ character arrives just before the timeout for the first (resetting the
 timer), the third just before the timeout from the second etc. In this
 case the host will eventually get a watermark interrupt, this will happen
 `((RXILVL - 1)*timeout)` after the first character was received.
-
-## Device Interface Functions (DIFs)
-
-- [Device Interface Functions](../../../../sw/device/lib/dif/dif_uart.h)

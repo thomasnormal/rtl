@@ -1,7 +1,7 @@
 # SPI_HOST Microarchitecture Profile
 
-This directory defines the public microarchitecture ABI for the OpenTitan
-`spi_host` task.
+This directory defines the public microarchitecture ABI for the `spi_host`
+task.
 
 The public top-level interface already describes the observable SPI behavior.
 The microarchitecture ABI here makes the command-engine state explicit enough to

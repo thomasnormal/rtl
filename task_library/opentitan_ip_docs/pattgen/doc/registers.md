@@ -1,22 +1,21 @@
 # Registers
 
-<!-- BEGIN CMDGEN util/regtool.py -d ./hw/ip/pattgen/data/pattgen.hjson -->
 ## Summary
 
 | Name                                  | Offset   |   Length | Description                                         |
 |:--------------------------------------|:---------|---------:|:----------------------------------------------------|
-| pattgen.[`INTR_STATE`](#intr_state)   | 0x0      |        4 | Interrupt State Register                            |
-| pattgen.[`INTR_ENABLE`](#intr_enable) | 0x4      |        4 | Interrupt Enable Register                           |
-| pattgen.[`INTR_TEST`](#intr_test)     | 0x8      |        4 | Interrupt Test Register                             |
-| pattgen.[`ALERT_TEST`](#alert_test)   | 0xc      |        4 | Alert Test Register                                 |
-| pattgen.[`CTRL`](#ctrl)               | 0x10     |        4 | PATTGEN control register                            |
-| pattgen.[`PREDIV_CH0`](#prediv_ch0)   | 0x14     |        4 | PATTGEN pre-divider register for Channel 0          |
-| pattgen.[`PREDIV_CH1`](#prediv_ch1)   | 0x18     |        4 | PATTGEN pre-divider register for Channel 1          |
-| pattgen.[`DATA_CH0_0`](#data_ch0)     | 0x1c     |        4 | PATTGEN seed pattern multi-registers for Channel 0. |
-| pattgen.[`DATA_CH0_1`](#data_ch0)     | 0x20     |        4 | PATTGEN seed pattern multi-registers for Channel 0. |
-| pattgen.[`DATA_CH1_0`](#data_ch1)     | 0x24     |        4 | PATTGEN seed pattern multi-registers for Channel 1. |
-| pattgen.[`DATA_CH1_1`](#data_ch1)     | 0x28     |        4 | PATTGEN seed pattern multi-registers for Channel 1. |
-| pattgen.[`SIZE`](#size)               | 0x2c     |        4 | PATTGEN pattern length                              |
+| pattgen.`INTR_STATE`   | 0x0      |        4 | Interrupt State Register                            |
+| pattgen.`INTR_ENABLE` | 0x4      |        4 | Interrupt Enable Register                           |
+| pattgen.`INTR_TEST`     | 0x8      |        4 | Interrupt Test Register                             |
+| pattgen.`ALERT_TEST`   | 0xc      |        4 | Alert Test Register                                 |
+| pattgen.`CTRL`               | 0x10     |        4 | PATTGEN control register                            |
+| pattgen.`PREDIV_CH0`   | 0x14     |        4 | PATTGEN pre-divider register for Channel 0          |
+| pattgen.`PREDIV_CH1`   | 0x18     |        4 | PATTGEN pre-divider register for Channel 1          |
+| pattgen.`DATA_CH0_0`     | 0x1c     |        4 | PATTGEN seed pattern multi-registers for Channel 0. |
+| pattgen.`DATA_CH0_1`     | 0x20     |        4 | PATTGEN seed pattern multi-registers for Channel 0. |
+| pattgen.`DATA_CH1_0`     | 0x24     |        4 | PATTGEN seed pattern multi-registers for Channel 1. |
+| pattgen.`DATA_CH1_1`     | 0x28     |        4 | PATTGEN seed pattern multi-registers for Channel 1. |
+| pattgen.`SIZE`               | 0x2c     |        4 | PATTGEN pattern length                              |
 
 ## INTR_STATE
 Interrupt State Register
@@ -51,8 +50,8 @@ Interrupt Enable Register
 |  Bits  |  Type  |  Reset  | Name     | Description                                                        |
 |:------:|:------:|:-------:|:---------|:-------------------------------------------------------------------|
 |  31:2  |        |         |          | Reserved                                                           |
-|   1    |   rw   |   0x0   | done_ch1 | Enable interrupt when [`INTR_STATE.done_ch1`](#intr_state) is set. |
-|   0    |   rw   |   0x0   | done_ch0 | Enable interrupt when [`INTR_STATE.done_ch0`](#intr_state) is set. |
+|   1    |   rw   |   0x0   | done_ch1 | Enable interrupt when `INTR_STATE.done_ch1` is set. |
+|   0    |   rw   |   0x0   | done_ch0 | Enable interrupt when `INTR_STATE.done_ch0` is set. |
 
 ## INTR_TEST
 Interrupt Test Register
@@ -69,8 +68,8 @@ Interrupt Test Register
 |  Bits  |  Type  |  Reset  | Name     | Description                                                 |
 |:------:|:------:|:-------:|:---------|:------------------------------------------------------------|
 |  31:2  |        |         |          | Reserved                                                    |
-|   1    |   wo   |   0x0   | done_ch1 | Write 1 to force [`INTR_STATE.done_ch1`](#intr_state) to 1. |
-|   0    |   wo   |   0x0   | done_ch0 | Write 1 to force [`INTR_STATE.done_ch0`](#intr_state) to 1. |
+|   1    |   wo   |   0x0   | done_ch1 | Write 1 to force `INTR_STATE.done_ch1` to 1. |
+|   0    |   wo   |   0x0   | done_ch0 | Write 1 to force `INTR_STATE.done_ch0` to 1. |
 
 ## ALERT_TEST
 Alert Test Register
@@ -157,7 +156,6 @@ PATTGEN seed pattern multi-registers for Channel 0.
 | DATA_CH0_0 | 0x1c     |
 | DATA_CH0_1 | 0x20     |
 
-
 ### Fields
 
 ```wavejson
@@ -179,7 +177,6 @@ PATTGEN seed pattern multi-registers for Channel 1.
 |:-----------|:---------|
 | DATA_CH1_0 | 0x24     |
 | DATA_CH1_1 | 0x28     |
-
 
 ### Fields
 
@@ -209,6 +206,3 @@ PATTGEN pattern length
 | 21:16  |   rw   |   0x0   | LEN_CH1  | Length of the seed pattern for Channel 1, minus 1. Valid values: 0..63. Note that writes to a channel's configuration registers have no effect while the channel is enabled.      |
 |  15:6  |   rw   |   0x0   | REPS_CH0 | Number of pattern repetitions for Channel 0, minus 1. Valid values: 0..1023. Note that writes to a channel's configuration registers have no effect while the channel is enabled. |
 |  5:0   |   rw   |   0x0   | LEN_CH0  | Length of the seed pattern for Channel 0, minus 1. Valid values: 0..63. Note that writes to a channel's configuration registers have no effect while the channel is enabled.      |
-
-
-<!-- END CMDGEN -->

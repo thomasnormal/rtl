@@ -1,16 +1,10 @@
-# I2C HWIP Technical Specification
+# I2C Specification
 
-[`i2c`](https://reports.opentitan.org/hw/ip/i2c/dv/latest/report.html):
-![](https://dashboards.lowrisc.org/badges/dv/i2c/test.svg)
-![](https://dashboards.lowrisc.org/badges/dv/i2c/passing.svg)
-![](https://dashboards.lowrisc.org/badges/dv/i2c/functional.svg)
-![](https://dashboards.lowrisc.org/badges/dv/i2c/code.svg)
+This task is presented as a standalone hardware-design problem. Use `spec/interface/` as the canonical boundary for `i2c`, and use `spec/micro_arch/` only when deeper verification compatibility is required.
 
 # Overview
 
 This document specifies I2C hardware IP functionality.
-This module conforms to the [Comportable guideline for peripheral functionality.](../../../doc/contributing/hw/comportability/README.md)
-See that document for integration overview within the broader top level system.
 
 ## Features
 
@@ -18,7 +12,7 @@ See that document for integration overview within the broader top level system.
 - Support for I2C Controller ("I2C Master"<sup>1</sup>) and I2C Target ("I2C Slave"<sup>1</sup>) device modes
 - Support for Standard-mode (100 kbaud), Fast-mode (400 kbaud) and Fast-mode Plus (1 Mbaud)
 - Bandwidth up to 1 Mbaud
-- Support for all "Mandatory" features as specified for I2C Controllers (as listed in Table 2 of the [I2C specification (revision 6)](https://web.archive.org/web/20210813122132/https://www.nxp.com/docs/en/user-guide/UM10204.pdf)):
+- Support for all "Mandatory" features as specified for I2C Controllers (as listed in Table 2 of the I2C specification (revision 6)):
     - Start condition
     - Stop condition
     - Acknowledge (ACK)
@@ -40,7 +34,7 @@ See that document for integration overview within the broader top level system.
 - Loopback support with external controller when in target operation
 - SW may reset I2C block using the Reset Manager
 
-<sup>1</sup> lowRISC is avoiding the fraught terms master/slave and defaulting to controller/target where applicable.
+<sup>1</sup> This task uses controller/target terminology instead of master/slave.
 
 <sup>2</sup> The target is only compatible with controllers that support clock stretching.
 For controllers that do not support clock stretching, it is expected that there must be an additional protocol to guarantee there is always sufficient space and data.
@@ -48,7 +42,7 @@ These protocols are not in scope of this document.
 
 ## Description
 
-This IP block implements the [I2C specification (rev. 6)](https://web.archive.org/web/20210813122132/https://www.nxp.com/docs/en/user-guide/UM10204.pdf), though with some variation in nomenclature.
+This IP block implements the I2C specification (rev. 6), though with some variation in nomenclature.
 For the purposes of this document, an "I2C Controller" meets the specifications put forth for a "Master" device.
 Furthermore, a device which meets the specifications put forward for an "I2C Slave" device is here referred to as an "I2C Target" or "I2C Target Device".
 Note that there are some places where "host" is used, such as in register and interrupt names.
@@ -83,9 +77,7 @@ However, this IP does support detection of bus timeouts, when there has been no 
 This protocol is generally quite flexible with respect to timing constraints, and slow enough to be managed by a software microcontroller, however such an implementation requires frequent activity on the part of the microcontroller.
 This IP presents a simple register interface and state-machine to manage the corresponding I/O pins directly using a byte-formatted programming model.
 
-## Compatibility
-
-This IP block should be compatible with any target device covered by the [I2C specification (rev. 6)](https://web.archive.org/web/20210813122132/https://www.nxp.com/docs/en/user-guide/UM10204.pdf), operating at speeds up to 1 Mbaud.
+This IP block should be compatible with any target device covered by the I2C specification (rev. 6), operating at speeds up to 1 Mbaud.
 This IP in the controller mode issues addresses in 7-bit encoding, and in the target mode, receives addresses in 7-bit encoding.
 (It remains the obligation of system designers to ensure that devices remain in a 7-bit address space.)
 This IP also supports clock-stretching, should that be required by target devices.

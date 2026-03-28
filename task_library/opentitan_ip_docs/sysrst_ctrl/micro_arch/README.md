@@ -1,7 +1,7 @@
 # SYSRST_CTRL Microarchitecture Profile
 
-This directory defines the public microarchitecture ABI for the OpenTitan
-`sysrst_ctrl` task.
+This directory defines the public microarchitecture ABI for the `sysrst_ctrl`
+task.
 
 The public top-level interface describes the externally visible pins and reset /
 wakeup outputs. The microarchitecture ABI here adds the synchronized internal
@@ -29,5 +29,5 @@ The DUT must drive these signals:
 - `combo_any_pulse`
 
 These signals expose the synchronized input view and the main wakeup / combo
-event pulses without forcing the candidate to preserve OpenTitan's original
+event pulses without forcing the candidate to preserve any specific original
 submodule hierarchy.

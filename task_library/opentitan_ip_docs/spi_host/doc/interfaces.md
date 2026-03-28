@@ -1,48 +1,49 @@
-# Hardware Interfaces
+# Interface Summary
 
-<!-- BEGIN CMDGEN util/regtool.py --interfaces ./hw/ip/spi_host/data/spi_host.hjson -->
-Referring to the [Comportable guideline for peripheral device functionality](https://opentitan.org/book/doc/contributing/hw/comportability), the module **`spi_host`** has the following hardware interfaces defined
-- Primary Clock: **`clk_i`**
-- Other Clocks: *none*
-- Bus Device Interfaces (TL-UL): **`tl`**
-- Bus Host Interfaces (TL-UL): *none*
+The canonical machine-readable interface for `spi_host` is defined in `spec/interface/`.
+Use the SystemVerilog files there as the source of truth for port directions, packed types, parameters, and modports.
 
-## Peripheral Pins for Chip IO
+## Parameters
 
-| Pin name   | Direction   | Description                                                                    |
-|:-----------|:------------|:-------------------------------------------------------------------------------|
-| sck        | output      | SPI Clock                                                                      |
-| csb        | output      | Chip Select# (One hot, active low).  The size of this port should match NumCS. |
-| sd[3:0]    | inout       | SPI data bus                                                                   |
+| Name | Default |
+| --- | --- |
+| `AlertAsyncOn` | `1'b1` |
+| `AlertSkewCycles` | `1` |
+| `NumCS` | `1` |
+| `EnableRacl` | `1'b0` |
+| `RaclErrorRsp` | `EnableRacl` |
+| `RaclPolicySelVec` | `'0` |
+| `RaclPolicySelWinRXDATA` | `0` |
+| `RaclPolicySelWinTXDATA` | `0` |
 
-## [Inter-Module Signals](https://opentitan.org/book/doc/contributing/hw/comportability/index.html#inter-signal-handling)
+## Ports
 
-| Port Name     | Package::Struct               | Type    | Act   |   Width | Description                                                                                                                                    |
-|:--------------|:------------------------------|:--------|:------|--------:|:-----------------------------------------------------------------------------------------------------------------------------------------------|
-| passthrough   | spi_device_pkg::passthrough   | req_rsp | rsp   |       1 |                                                                                                                                                |
-| lsio_trigger  | logic                         | uni     | req   |       1 | Self-clearing status trigger for the DMA. Set when RX or TX FIFOs are past their configured watermarks matching watermark interrupt behaviour. |
-| racl_policies | top_racl_pkg::racl_policy_vec | uni     | rcv   |       1 | Incoming RACL policy vector from a racl_ctrl instance. The policy selection vector (parameter) selects the policy for each register.           |
-| racl_error    | top_racl_pkg::racl_error_log  | uni     | req   |       1 | RACL error log information of this module.                                                                                                     |
-| tl            | tlul_pkg::tl                  | req_rsp | rsp   |       1 |                                                                                                                                                |
+| Direction | Name | Type |
+| --- | --- | --- |
+| `input` | `clk_i` | `logic` |
+| `input` | `rst_ni` | `logic` |
+| `input` | `tl_i` | `spi_host_public_types_pkg::spi_host_tl_i_t` |
+| `input` | `alert_rx_i` | `spi_host_public_types_pkg::spi_host_alert_rx_i_t` |
+| `input` | `racl_policies_i` | `spi_host_public_types_pkg::spi_host_racl_policies_i_t` |
+| `input` | `passthrough_i` | `spi_host_public_types_pkg::spi_host_passthrough_i_t` |
+| `input` | `cio_sd_i` | `logic [3:0]` |
+| `output` | `tl_o` | `spi_host_public_types_pkg::spi_host_tl_o_t` |
+| `output` | `alert_tx_o` | `spi_host_public_types_pkg::spi_host_alert_tx_o_t` |
+| `output` | `racl_error_o` | `spi_host_public_types_pkg::spi_host_racl_error_o_t` |
+| `output` | `cio_sck_o` | `logic` |
+| `output` | `cio_sck_en_o` | `logic` |
+| `output` | `cio_csb_o` | `logic [NumCS-1:0]` |
+| `output` | `cio_csb_en_o` | `logic [NumCS-1:0]` |
+| `output` | `cio_sd_o` | `logic [3:0]` |
+| `output` | `cio_sd_en_o` | `logic [3:0]` |
+| `output` | `passthrough_o` | `spi_host_public_types_pkg::spi_host_passthrough_o_t` |
+| `output` | `lsio_trigger_o` | `logic` |
+| `output` | `intr_error_o` | `logic` |
+| `output` | `intr_spi_event_o` | `logic` |
 
-## Interrupts
+## Supporting SV Files
 
-| Interrupt Name   | Type   | Description                                                                                              |
-|:-----------------|:-------|:---------------------------------------------------------------------------------------------------------|
-| error            | Event  | Error-related interrupts, see [`ERROR_ENABLE`](registers.md#error_enable) register for more information. |
-| spi_event        | Status | Event-related interrupts, see [`EVENT_ENABLE`](registers.md#event_enable) register for more information. |
-
-## Security Alerts
-
-| Alert Name   | Description                                                                       |
-|:-------------|:----------------------------------------------------------------------------------|
-| fatal_fault  | This fatal alert is triggered when a fatal TL-UL bus integrity fault is detected. |
-
-## Security Countermeasures
-
-| Countermeasure ID      | Description                      |
-|:-----------------------|:---------------------------------|
-| SPI_HOST.BUS.INTEGRITY | End-to-end bus integrity scheme. |
-
-
-<!-- END CMDGEN -->
+- `spec/interface/spi_host_public_if.sv`
+- `spec/interface/spi_host_public_regs_pkg.sv`
+- `spec/interface/spi_host_public_tlul_pkg.sv`
+- `spec/interface/spi_host_public_types_pkg.sv`

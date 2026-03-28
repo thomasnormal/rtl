@@ -141,9 +141,3 @@ All other parameters in registers `TIMING2`, `TIMING3`, `TIMING4` are unchanged 
 4. If the `INTR_STATE.CONTROLLER_HALT` bit is 1, then set `FIFO_CTRL.FMTRST` to reset the FMT FIFO, clear latched events in `CONTROLLER_EVENTS`, and go back to step 1. Otherwise, proceed.
 5. If `STATUS.FMTEMPTY` is 1, the read transfer has completed.
   - Retrieve the data from the FIFO by reading `RDATA` `n` times.
-
-<!-- TODO: Add target module operations. -->
-
-## Device Interface Functions (DIFs)
-
-- [Device Interface Functions](../../../../sw/device/lib/dif/dif_i2c.h)

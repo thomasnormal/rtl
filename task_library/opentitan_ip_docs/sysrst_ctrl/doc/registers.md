@@ -1,53 +1,52 @@
 # Registers
 
-<!-- BEGIN CMDGEN util/regtool.py -d ./hw/ip/sysrst_ctrl/data/sysrst_ctrl.hjson -->
 ## Summary
 
 | Name                                                              | Offset   |   Length | Description                                                                    |
 |:------------------------------------------------------------------|:---------|---------:|:-------------------------------------------------------------------------------|
-| sysrst_ctrl.[`INTR_STATE`](#intr_state)                           | 0x0      |        4 | Interrupt State Register                                                       |
-| sysrst_ctrl.[`INTR_ENABLE`](#intr_enable)                         | 0x4      |        4 | Interrupt Enable Register                                                      |
-| sysrst_ctrl.[`INTR_TEST`](#intr_test)                             | 0x8      |        4 | Interrupt Test Register                                                        |
-| sysrst_ctrl.[`ALERT_TEST`](#alert_test)                           | 0xc      |        4 | Alert Test Register                                                            |
-| sysrst_ctrl.[`REGWEN`](#regwen)                                   | 0x10     |        4 | Configuration write enable control register                                    |
-| sysrst_ctrl.[`EC_RST_CTL`](#ec_rst_ctl)                           | 0x14     |        4 | EC reset control register                                                      |
-| sysrst_ctrl.[`ULP_AC_DEBOUNCE_CTL`](#ulp_ac_debounce_ctl)         | 0x18     |        4 | Ultra low power AC debounce control register                                   |
-| sysrst_ctrl.[`ULP_LID_DEBOUNCE_CTL`](#ulp_lid_debounce_ctl)       | 0x1c     |        4 | Ultra low power lid debounce control register                                  |
-| sysrst_ctrl.[`ULP_PWRB_DEBOUNCE_CTL`](#ulp_pwrb_debounce_ctl)     | 0x20     |        4 | Ultra low power pwrb debounce control register                                 |
-| sysrst_ctrl.[`ULP_CTL`](#ulp_ctl)                                 | 0x24     |        4 | Ultra low power control register                                               |
-| sysrst_ctrl.[`ULP_STATUS`](#ulp_status)                           | 0x28     |        4 | Ultra low power status                                                         |
-| sysrst_ctrl.[`WKUP_STATUS`](#wkup_status)                         | 0x2c     |        4 | wakeup status                                                                  |
-| sysrst_ctrl.[`KEY_INVERT_CTL`](#key_invert_ctl)                   | 0x30     |        4 | configure key input output invert property                                     |
-| sysrst_ctrl.[`PIN_ALLOWED_CTL`](#pin_allowed_ctl)                 | 0x34     |        4 | This register determines which override values are allowed for a given output. |
-| sysrst_ctrl.[`PIN_OUT_CTL`](#pin_out_ctl)                         | 0x38     |        4 | Enables the override function for a specific pin.                              |
-| sysrst_ctrl.[`PIN_OUT_VALUE`](#pin_out_value)                     | 0x3c     |        4 | Sets the pin override value. Note that only the values                         |
-| sysrst_ctrl.[`PIN_IN_VALUE`](#pin_in_value)                       | 0x40     |        4 | For SW to read the sysrst_ctrl inputs like GPIO                                |
-| sysrst_ctrl.[`KEY_INTR_CTL`](#key_intr_ctl)                       | 0x44     |        4 | Define the keys or inputs that can trigger the interrupt                       |
-| sysrst_ctrl.[`KEY_INTR_DEBOUNCE_CTL`](#key_intr_debounce_ctl)     | 0x48     |        4 | Debounce timer control register for key-triggered interrupt                    |
-| sysrst_ctrl.[`AUTO_BLOCK_DEBOUNCE_CTL`](#auto_block_debounce_ctl) | 0x4c     |        4 | Debounce timer control register for pwrb_in H2L transition                     |
-| sysrst_ctrl.[`AUTO_BLOCK_OUT_CTL`](#auto_block_out_ctl)           | 0x50     |        4 | configure the key outputs to auto-override and their value                     |
-| sysrst_ctrl.[`COM_PRE_SEL_CTL_0`](#com_pre_sel_ctl)               | 0x54     |        4 | To define the keys that define the pre-condition of the combo                  |
-| sysrst_ctrl.[`COM_PRE_SEL_CTL_1`](#com_pre_sel_ctl)               | 0x58     |        4 | To define the keys that define the pre-condition of the combo                  |
-| sysrst_ctrl.[`COM_PRE_SEL_CTL_2`](#com_pre_sel_ctl)               | 0x5c     |        4 | To define the keys that define the pre-condition of the combo                  |
-| sysrst_ctrl.[`COM_PRE_SEL_CTL_3`](#com_pre_sel_ctl)               | 0x60     |        4 | To define the keys that define the pre-condition of the combo                  |
-| sysrst_ctrl.[`COM_PRE_DET_CTL_0`](#com_pre_det_ctl)               | 0x64     |        4 | To define the duration that the combo pre-condition should be pressed          |
-| sysrst_ctrl.[`COM_PRE_DET_CTL_1`](#com_pre_det_ctl)               | 0x68     |        4 | To define the duration that the combo pre-condition should be pressed          |
-| sysrst_ctrl.[`COM_PRE_DET_CTL_2`](#com_pre_det_ctl)               | 0x6c     |        4 | To define the duration that the combo pre-condition should be pressed          |
-| sysrst_ctrl.[`COM_PRE_DET_CTL_3`](#com_pre_det_ctl)               | 0x70     |        4 | To define the duration that the combo pre-condition should be pressed          |
-| sysrst_ctrl.[`COM_SEL_CTL_0`](#com_sel_ctl)                       | 0x74     |        4 | To define the keys that trigger the combo                                      |
-| sysrst_ctrl.[`COM_SEL_CTL_1`](#com_sel_ctl)                       | 0x78     |        4 | To define the keys that trigger the combo                                      |
-| sysrst_ctrl.[`COM_SEL_CTL_2`](#com_sel_ctl)                       | 0x7c     |        4 | To define the keys that trigger the combo                                      |
-| sysrst_ctrl.[`COM_SEL_CTL_3`](#com_sel_ctl)                       | 0x80     |        4 | To define the keys that trigger the combo                                      |
-| sysrst_ctrl.[`COM_DET_CTL_0`](#com_det_ctl)                       | 0x84     |        4 | To define the duration that the combo should be pressed                        |
-| sysrst_ctrl.[`COM_DET_CTL_1`](#com_det_ctl)                       | 0x88     |        4 | To define the duration that the combo should be pressed                        |
-| sysrst_ctrl.[`COM_DET_CTL_2`](#com_det_ctl)                       | 0x8c     |        4 | To define the duration that the combo should be pressed                        |
-| sysrst_ctrl.[`COM_DET_CTL_3`](#com_det_ctl)                       | 0x90     |        4 | To define the duration that the combo should be pressed                        |
-| sysrst_ctrl.[`COM_OUT_CTL_0`](#com_out_ctl)                       | 0x94     |        4 | To define the actions once the combo is detected                               |
-| sysrst_ctrl.[`COM_OUT_CTL_1`](#com_out_ctl)                       | 0x98     |        4 | To define the actions once the combo is detected                               |
-| sysrst_ctrl.[`COM_OUT_CTL_2`](#com_out_ctl)                       | 0x9c     |        4 | To define the actions once the combo is detected                               |
-| sysrst_ctrl.[`COM_OUT_CTL_3`](#com_out_ctl)                       | 0xa0     |        4 | To define the actions once the combo is detected                               |
-| sysrst_ctrl.[`COMBO_INTR_STATUS`](#combo_intr_status)             | 0xa4     |        4 | Combo interrupt source. These registers will only be set if the                |
-| sysrst_ctrl.[`KEY_INTR_STATUS`](#key_intr_status)                 | 0xa8     |        4 | key interrupt source                                                           |
+| sysrst_ctrl.`INTR_STATE`                           | 0x0      |        4 | Interrupt State Register                                                       |
+| sysrst_ctrl.`INTR_ENABLE`                         | 0x4      |        4 | Interrupt Enable Register                                                      |
+| sysrst_ctrl.`INTR_TEST`                             | 0x8      |        4 | Interrupt Test Register                                                        |
+| sysrst_ctrl.`ALERT_TEST`                           | 0xc      |        4 | Alert Test Register                                                            |
+| sysrst_ctrl.`REGWEN`                                   | 0x10     |        4 | Configuration write enable control register                                    |
+| sysrst_ctrl.`EC_RST_CTL`                           | 0x14     |        4 | EC reset control register                                                      |
+| sysrst_ctrl.`ULP_AC_DEBOUNCE_CTL`         | 0x18     |        4 | Ultra low power AC debounce control register                                   |
+| sysrst_ctrl.`ULP_LID_DEBOUNCE_CTL`       | 0x1c     |        4 | Ultra low power lid debounce control register                                  |
+| sysrst_ctrl.`ULP_PWRB_DEBOUNCE_CTL`     | 0x20     |        4 | Ultra low power pwrb debounce control register                                 |
+| sysrst_ctrl.`ULP_CTL`                                 | 0x24     |        4 | Ultra low power control register                                               |
+| sysrst_ctrl.`ULP_STATUS`                           | 0x28     |        4 | Ultra low power status                                                         |
+| sysrst_ctrl.`WKUP_STATUS`                         | 0x2c     |        4 | wakeup status                                                                  |
+| sysrst_ctrl.`KEY_INVERT_CTL`                   | 0x30     |        4 | configure key input output invert property                                     |
+| sysrst_ctrl.`PIN_ALLOWED_CTL`                 | 0x34     |        4 | This register determines which override values are allowed for a given output. |
+| sysrst_ctrl.`PIN_OUT_CTL`                         | 0x38     |        4 | Enables the override function for a specific pin.                              |
+| sysrst_ctrl.`PIN_OUT_VALUE`                     | 0x3c     |        4 | Sets the pin override value. Note that only the values                         |
+| sysrst_ctrl.`PIN_IN_VALUE`                       | 0x40     |        4 | For SW to read the sysrst_ctrl inputs like GPIO                                |
+| sysrst_ctrl.`KEY_INTR_CTL`                       | 0x44     |        4 | Define the keys or inputs that can trigger the interrupt                       |
+| sysrst_ctrl.`KEY_INTR_DEBOUNCE_CTL`     | 0x48     |        4 | Debounce timer control register for key-triggered interrupt                    |
+| sysrst_ctrl.`AUTO_BLOCK_DEBOUNCE_CTL` | 0x4c     |        4 | Debounce timer control register for pwrb_in H2L transition                     |
+| sysrst_ctrl.`AUTO_BLOCK_OUT_CTL`           | 0x50     |        4 | configure the key outputs to auto-override and their value                     |
+| sysrst_ctrl.`COM_PRE_SEL_CTL_0`               | 0x54     |        4 | To define the keys that define the pre-condition of the combo                  |
+| sysrst_ctrl.`COM_PRE_SEL_CTL_1`               | 0x58     |        4 | To define the keys that define the pre-condition of the combo                  |
+| sysrst_ctrl.`COM_PRE_SEL_CTL_2`               | 0x5c     |        4 | To define the keys that define the pre-condition of the combo                  |
+| sysrst_ctrl.`COM_PRE_SEL_CTL_3`               | 0x60     |        4 | To define the keys that define the pre-condition of the combo                  |
+| sysrst_ctrl.`COM_PRE_DET_CTL_0`               | 0x64     |        4 | To define the duration that the combo pre-condition should be pressed          |
+| sysrst_ctrl.`COM_PRE_DET_CTL_1`               | 0x68     |        4 | To define the duration that the combo pre-condition should be pressed          |
+| sysrst_ctrl.`COM_PRE_DET_CTL_2`               | 0x6c     |        4 | To define the duration that the combo pre-condition should be pressed          |
+| sysrst_ctrl.`COM_PRE_DET_CTL_3`               | 0x70     |        4 | To define the duration that the combo pre-condition should be pressed          |
+| sysrst_ctrl.`COM_SEL_CTL_0`                       | 0x74     |        4 | To define the keys that trigger the combo                                      |
+| sysrst_ctrl.`COM_SEL_CTL_1`                       | 0x78     |        4 | To define the keys that trigger the combo                                      |
+| sysrst_ctrl.`COM_SEL_CTL_2`                       | 0x7c     |        4 | To define the keys that trigger the combo                                      |
+| sysrst_ctrl.`COM_SEL_CTL_3`                       | 0x80     |        4 | To define the keys that trigger the combo                                      |
+| sysrst_ctrl.`COM_DET_CTL_0`                       | 0x84     |        4 | To define the duration that the combo should be pressed                        |
+| sysrst_ctrl.`COM_DET_CTL_1`                       | 0x88     |        4 | To define the duration that the combo should be pressed                        |
+| sysrst_ctrl.`COM_DET_CTL_2`                       | 0x8c     |        4 | To define the duration that the combo should be pressed                        |
+| sysrst_ctrl.`COM_DET_CTL_3`                       | 0x90     |        4 | To define the duration that the combo should be pressed                        |
+| sysrst_ctrl.`COM_OUT_CTL_0`                       | 0x94     |        4 | To define the actions once the combo is detected                               |
+| sysrst_ctrl.`COM_OUT_CTL_1`                       | 0x98     |        4 | To define the actions once the combo is detected                               |
+| sysrst_ctrl.`COM_OUT_CTL_2`                       | 0x9c     |        4 | To define the actions once the combo is detected                               |
+| sysrst_ctrl.`COM_OUT_CTL_3`                       | 0xa0     |        4 | To define the actions once the combo is detected                               |
+| sysrst_ctrl.`COMBO_INTR_STATUS`             | 0xa4     |        4 | Combo interrupt source. These registers will only be set if the                |
+| sysrst_ctrl.`KEY_INTR_STATUS`                 | 0xa8     |        4 | key interrupt source                                                           |
 
 ## INTR_STATE
 Interrupt State Register
@@ -81,7 +80,7 @@ Interrupt Enable Register
 |  Bits  |  Type  |  Reset  | Name           | Description                                                              |
 |:------:|:------:|:-------:|:---------------|:-------------------------------------------------------------------------|
 |  31:1  |        |         |                | Reserved                                                                 |
-|   0    |   rw   |   0x0   | event_detected | Enable interrupt when [`INTR_STATE.event_detected`](#intr_state) is set. |
+|   0    |   rw   |   0x0   | event_detected | Enable interrupt when `INTR_STATE.event_detected` is set. |
 
 ## INTR_TEST
 Interrupt Test Register
@@ -98,7 +97,7 @@ Interrupt Test Register
 |  Bits  |  Type  |  Reset  | Name           | Description                                                       |
 |:------:|:------:|:-------:|:---------------|:------------------------------------------------------------------|
 |  31:1  |        |         |                | Reserved                                                          |
-|   0    |   wo   |   0x0   | event_detected | Write 1 to force [`INTR_STATE.event_detected`](#intr_state) to 1. |
+|   0    |   wo   |   0x0   | event_detected | Write 1 to force `INTR_STATE.event_detected` to 1. |
 
 ## ALERT_TEST
 Alert Test Register
@@ -139,7 +138,7 @@ EC reset control register
 - Offset: `0x14`
 - Reset default: `0x7d0`
 - Reset mask: `0xffff`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Fields
 
@@ -157,7 +156,7 @@ Ultra low power AC debounce control register
 - Offset: `0x18`
 - Reset default: `0x1f40`
 - Reset mask: `0xffff`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Fields
 
@@ -175,7 +174,7 @@ Ultra low power lid debounce control register
 - Offset: `0x1c`
 - Reset default: `0x1f40`
 - Reset mask: `0xffff`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Fields
 
@@ -193,7 +192,7 @@ Ultra low power pwrb debounce control register
 - Offset: `0x20`
 - Reset default: `0x1f40`
 - Reset mask: `0xffff`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Fields
 
@@ -262,7 +261,7 @@ configure key input output invert property
 - Offset: `0x30`
 - Reset default: `0x0`
 - Reset mask: `0xfff`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Fields
 
@@ -288,12 +287,12 @@ configure key input output invert property
 
 ## PIN_ALLOWED_CTL
 This register determines which override values are allowed for a given output.
-If an override value programmed via [`PIN_OUT_VALUE`](#pin_out_value) is not configured as an allowed value,
+If an override value programmed via `PIN_OUT_VALUE` is not configured as an allowed value,
 it will not have any effect.
 - Offset: `0x34`
 - Reset default: `0x82`
 - Reset mask: `0xffff`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Fields
 
@@ -347,7 +346,7 @@ Enables the override function for a specific pin.
 
 ## PIN_OUT_VALUE
 Sets the pin override value. Note that only the values
-configured as 'allowed' in [`PIN_ALLOWED_CTL`](#pin_allowed_ctl) will have
+configured as 'allowed' in `PIN_ALLOWED_CTL` will have
 an effect. Otherwise the pin value will not be overridden.
 - Offset: `0x3c`
 - Reset default: `0x0`
@@ -400,7 +399,7 @@ Define the keys or inputs that can trigger the interrupt
 - Offset: `0x44`
 - Reset default: `0x0`
 - Reset mask: `0x3fff`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Fields
 
@@ -431,7 +430,7 @@ Debounce timer control register for key-triggered interrupt
 - Offset: `0x48`
 - Reset default: `0x7d0`
 - Reset mask: `0xffff`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Fields
 
@@ -449,7 +448,7 @@ Debounce timer control register for pwrb_in H2L transition
 - Offset: `0x4c`
 - Reset default: `0x7d0`
 - Reset mask: `0x1ffff`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Fields
 
@@ -468,7 +467,7 @@ configure the key outputs to auto-override and their value
 - Offset: `0x50`
 - Reset default: `0x0`
 - Reset mask: `0x77`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Fields
 
@@ -494,14 +493,14 @@ To define the keys that define the pre-condition of the combo
 [2]: key2_in_sel
 [3]: pwrb_in_sel
 [4]: ac_present_sel
-HW will start matching the combo as defined by [`COM_SEL_CTL`](#com_sel_ctl) if this precondition is fulfilled.
+HW will start matching the combo as defined by `COM_SEL_CTL` if this precondition is fulfilled.
 
 If no keys are configured for the pre-condition, the pre-condition always evaluates to true.
 
-The debounce timing is defined via [`KEY_INTR_DEBOUNCE_CTL`](#key_intr_debounce_ctl) whereas the pre-condition pressed timing is defined via [`COM_PRE_DET_CTL.`](#com_pre_det_ctl)
+The debounce timing is defined via `KEY_INTR_DEBOUNCE_CTL` whereas the pre-condition pressed timing is defined via `COM_PRE_DET_CTL.`
 - Reset default: `0x0`
 - Reset mask: `0x1f`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Instances
 
@@ -511,7 +510,6 @@ The debounce timing is defined via [`KEY_INTR_DEBOUNCE_CTL`](#key_intr_debounce_
 | COM_PRE_SEL_CTL_1 | 0x58     |
 | COM_PRE_SEL_CTL_2 | 0x5c     |
 | COM_PRE_SEL_CTL_3 | 0x60     |
-
 
 ### Fields
 
@@ -533,7 +531,7 @@ To define the duration that the combo pre-condition should be pressed
 0-60s, each step is 5us(200KHz clock)
 - Reset default: `0x0`
 - Reset mask: `0xffffffff`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Instances
 
@@ -543,7 +541,6 @@ To define the duration that the combo pre-condition should be pressed
 | COM_PRE_DET_CTL_1 | 0x68     |
 | COM_PRE_DET_CTL_2 | 0x6c     |
 | COM_PRE_DET_CTL_3 | 0x70     |
-
 
 ### Fields
 
@@ -564,14 +561,14 @@ To define the keys that trigger the combo
 [4]: ac_present_sel
 HW will detect H2L transition in the combo use case.
 
-Optionally, a pre-condition can be configured for the combo detection via [`COM_PRE_SEL_CTL.`](#com_pre_sel_ctl)
+Optionally, a pre-condition can be configured for the combo detection via `COM_PRE_SEL_CTL.`
 
 If no keys are configured for the combo, the combo detection is disabled.
 
-The debounce timing is defined via [`KEY_INTR_DEBOUNCE_CTL`](#key_intr_debounce_ctl) whereas the key-pressed timing is defined via [`COM_DET_CTL.`](#com_det_ctl)
+The debounce timing is defined via `KEY_INTR_DEBOUNCE_CTL` whereas the key-pressed timing is defined via `COM_DET_CTL.`
 - Reset default: `0x0`
 - Reset mask: `0x1f`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Instances
 
@@ -581,7 +578,6 @@ The debounce timing is defined via [`KEY_INTR_DEBOUNCE_CTL`](#key_intr_debounce_
 | COM_SEL_CTL_1 | 0x78     |
 | COM_SEL_CTL_2 | 0x7c     |
 | COM_SEL_CTL_3 | 0x80     |
-
 
 ### Fields
 
@@ -603,7 +599,7 @@ To define the duration that the combo should be pressed
 0-60s, each step is 5us(200KHz clock)
 - Reset default: `0x0`
 - Reset mask: `0xffffffff`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Instances
 
@@ -613,7 +609,6 @@ To define the duration that the combo should be pressed
 | COM_DET_CTL_1 | 0x88     |
 | COM_DET_CTL_2 | 0x8c     |
 | COM_DET_CTL_3 | 0x90     |
-
 
 ### Fields
 
@@ -628,12 +623,12 @@ To define the duration that the combo should be pressed
 ## COM_OUT_CTL
 To define the actions once the combo is detected
 [0]: bat_disable
-[1]: interrupt (to OpenTitan processor)
+[1]: interrupt (to target device processor)
 [2]: ec_rst (for Embedded Controller)
-[3]: rst_req (to OpenTitan reset manager)
+[3]: rst_req (to target device reset manager)
 - Reset default: `0x0`
 - Reset mask: `0xf`
-- Register enable: [`REGWEN`](#regwen)
+- Register enable: `REGWEN`
 
 ### Instances
 
@@ -643,7 +638,6 @@ To define the actions once the combo is detected
 | COM_OUT_CTL_1 | 0x98     |
 | COM_OUT_CTL_2 | 0x9c     |
 | COM_OUT_CTL_3 | 0xa0     |
-
 
 ### Fields
 
@@ -661,7 +655,7 @@ To define the actions once the combo is detected
 
 ## COMBO_INTR_STATUS
 Combo interrupt source. These registers will only be set if the
-interrupt action is configured in the corresponding [`COM_OUT_CTL`](#com_out_ctl) register.
+interrupt action is configured in the corresponding `COM_OUT_CTL` register.
 - Offset: `0xa4`
 - Reset default: `0x0`
 - Reset mask: `0xf`
@@ -709,6 +703,3 @@ key interrupt source
 |   2    |  rw1c  |   0x0   | key1_in_H2L    | 0: case not detected;1: case detected |
 |   1    |  rw1c  |   0x0   | key0_in_H2L    | 0: case not detected;1: case detected |
 |   0    |  rw1c  |   0x0   | pwrb_H2L       | 0: case not detected;1: case detected |
-
-
-<!-- END CMDGEN -->

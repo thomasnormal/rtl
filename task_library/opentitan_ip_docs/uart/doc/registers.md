@@ -1,23 +1,22 @@
 # Registers
 
-<!-- BEGIN CMDGEN util/regtool.py -d ./hw/ip/uart/data/uart.hjson -->
 ## Summary
 
 | Name                                 | Offset   |   Length | Description                                                        |
 |:-------------------------------------|:---------|---------:|:-------------------------------------------------------------------|
-| uart.[`INTR_STATE`](#intr_state)     | 0x0      |        4 | Interrupt State Register                                           |
-| uart.[`INTR_ENABLE`](#intr_enable)   | 0x4      |        4 | Interrupt Enable Register                                          |
-| uart.[`INTR_TEST`](#intr_test)       | 0x8      |        4 | Interrupt Test Register                                            |
-| uart.[`ALERT_TEST`](#alert_test)     | 0xc      |        4 | Alert Test Register                                                |
-| uart.[`CTRL`](#ctrl)                 | 0x10     |        4 | UART control register                                              |
-| uart.[`STATUS`](#status)             | 0x14     |        4 | UART live status register                                          |
-| uart.[`RDATA`](#rdata)               | 0x18     |        4 | UART read data                                                     |
-| uart.[`WDATA`](#wdata)               | 0x1c     |        4 | UART write data                                                    |
-| uart.[`FIFO_CTRL`](#fifo_ctrl)       | 0x20     |        4 | UART FIFO control register                                         |
-| uart.[`FIFO_STATUS`](#fifo_status)   | 0x24     |        4 | UART FIFO status register                                          |
-| uart.[`OVRD`](#ovrd)                 | 0x28     |        4 | TX pin override control. Gives direct SW control over TX pin state |
-| uart.[`VAL`](#val)                   | 0x2c     |        4 | UART oversampled values                                            |
-| uart.[`TIMEOUT_CTRL`](#timeout_ctrl) | 0x30     |        4 | UART RX timeout control                                            |
+| uart.`INTR_STATE`     | 0x0      |        4 | Interrupt State Register                                           |
+| uart.`INTR_ENABLE`   | 0x4      |        4 | Interrupt Enable Register                                          |
+| uart.`INTR_TEST`       | 0x8      |        4 | Interrupt Test Register                                            |
+| uart.`ALERT_TEST`     | 0xc      |        4 | Alert Test Register                                                |
+| uart.`CTRL`                 | 0x10     |        4 | UART control register                                              |
+| uart.`STATUS`             | 0x14     |        4 | UART live status register                                          |
+| uart.`RDATA`               | 0x18     |        4 | UART read data                                                     |
+| uart.`WDATA`               | 0x1c     |        4 | UART write data                                                    |
+| uart.`FIFO_CTRL`       | 0x20     |        4 | UART FIFO control register                                         |
+| uart.`FIFO_STATUS`   | 0x24     |        4 | UART FIFO status register                                          |
+| uart.`OVRD`                 | 0x28     |        4 | TX pin override control. Gives direct SW control over TX pin state |
+| uart.`VAL`                   | 0x2c     |        4 | UART oversampled values                                            |
+| uart.`TIMEOUT_CTRL` | 0x30     |        4 | UART RX timeout control                                            |
 
 ## INTR_STATE
 Interrupt State Register
@@ -59,15 +58,15 @@ Interrupt Enable Register
 |  Bits  |  Type  |  Reset  | Name          | Description                                                             |
 |:------:|:------:|:-------:|:--------------|:------------------------------------------------------------------------|
 |  31:9  |        |         |               | Reserved                                                                |
-|   8    |   rw   |   0x0   | tx_empty      | Enable interrupt when [`INTR_STATE.tx_empty`](#intr_state) is set.      |
-|   7    |   rw   |   0x0   | rx_parity_err | Enable interrupt when [`INTR_STATE.rx_parity_err`](#intr_state) is set. |
-|   6    |   rw   |   0x0   | rx_timeout    | Enable interrupt when [`INTR_STATE.rx_timeout`](#intr_state) is set.    |
-|   5    |   rw   |   0x0   | rx_break_err  | Enable interrupt when [`INTR_STATE.rx_break_err`](#intr_state) is set.  |
-|   4    |   rw   |   0x0   | rx_frame_err  | Enable interrupt when [`INTR_STATE.rx_frame_err`](#intr_state) is set.  |
-|   3    |   rw   |   0x0   | rx_overflow   | Enable interrupt when [`INTR_STATE.rx_overflow`](#intr_state) is set.   |
-|   2    |   rw   |   0x0   | tx_done       | Enable interrupt when [`INTR_STATE.tx_done`](#intr_state) is set.       |
-|   1    |   rw   |   0x0   | rx_watermark  | Enable interrupt when [`INTR_STATE.rx_watermark`](#intr_state) is set.  |
-|   0    |   rw   |   0x0   | tx_watermark  | Enable interrupt when [`INTR_STATE.tx_watermark`](#intr_state) is set.  |
+|   8    |   rw   |   0x0   | tx_empty      | Enable interrupt when `INTR_STATE.tx_empty` is set.      |
+|   7    |   rw   |   0x0   | rx_parity_err | Enable interrupt when `INTR_STATE.rx_parity_err` is set. |
+|   6    |   rw   |   0x0   | rx_timeout    | Enable interrupt when `INTR_STATE.rx_timeout` is set.    |
+|   5    |   rw   |   0x0   | rx_break_err  | Enable interrupt when `INTR_STATE.rx_break_err` is set.  |
+|   4    |   rw   |   0x0   | rx_frame_err  | Enable interrupt when `INTR_STATE.rx_frame_err` is set.  |
+|   3    |   rw   |   0x0   | rx_overflow   | Enable interrupt when `INTR_STATE.rx_overflow` is set.   |
+|   2    |   rw   |   0x0   | tx_done       | Enable interrupt when `INTR_STATE.tx_done` is set.       |
+|   1    |   rw   |   0x0   | rx_watermark  | Enable interrupt when `INTR_STATE.rx_watermark` is set.  |
+|   0    |   rw   |   0x0   | tx_watermark  | Enable interrupt when `INTR_STATE.tx_watermark` is set.  |
 
 ## INTR_TEST
 Interrupt Test Register
@@ -84,15 +83,15 @@ Interrupt Test Register
 |  Bits  |  Type  |  Reset  | Name          | Description                                                      |
 |:------:|:------:|:-------:|:--------------|:-----------------------------------------------------------------|
 |  31:9  |        |         |               | Reserved                                                         |
-|   8    |   wo   |   0x0   | tx_empty      | Write 1 to force [`INTR_STATE.tx_empty`](#intr_state) to 1.      |
-|   7    |   wo   |   0x0   | rx_parity_err | Write 1 to force [`INTR_STATE.rx_parity_err`](#intr_state) to 1. |
-|   6    |   wo   |   0x0   | rx_timeout    | Write 1 to force [`INTR_STATE.rx_timeout`](#intr_state) to 1.    |
-|   5    |   wo   |   0x0   | rx_break_err  | Write 1 to force [`INTR_STATE.rx_break_err`](#intr_state) to 1.  |
-|   4    |   wo   |   0x0   | rx_frame_err  | Write 1 to force [`INTR_STATE.rx_frame_err`](#intr_state) to 1.  |
-|   3    |   wo   |   0x0   | rx_overflow   | Write 1 to force [`INTR_STATE.rx_overflow`](#intr_state) to 1.   |
-|   2    |   wo   |   0x0   | tx_done       | Write 1 to force [`INTR_STATE.tx_done`](#intr_state) to 1.       |
-|   1    |   wo   |   0x0   | rx_watermark  | Write 1 to force [`INTR_STATE.rx_watermark`](#intr_state) to 1.  |
-|   0    |   wo   |   0x0   | tx_watermark  | Write 1 to force [`INTR_STATE.tx_watermark`](#intr_state) to 1.  |
+|   8    |   wo   |   0x0   | tx_empty      | Write 1 to force `INTR_STATE.tx_empty` to 1.      |
+|   7    |   wo   |   0x0   | rx_parity_err | Write 1 to force `INTR_STATE.rx_parity_err` to 1. |
+|   6    |   wo   |   0x0   | rx_timeout    | Write 1 to force `INTR_STATE.rx_timeout` to 1.    |
+|   5    |   wo   |   0x0   | rx_break_err  | Write 1 to force `INTR_STATE.rx_break_err` to 1.  |
+|   4    |   wo   |   0x0   | rx_frame_err  | Write 1 to force `INTR_STATE.rx_frame_err` to 1.  |
+|   3    |   wo   |   0x0   | rx_overflow   | Write 1 to force `INTR_STATE.rx_overflow` to 1.   |
+|   2    |   wo   |   0x0   | tx_done       | Write 1 to force `INTR_STATE.tx_done` to 1.       |
+|   1    |   wo   |   0x0   | rx_watermark  | Write 1 to force `INTR_STATE.rx_watermark` to 1.  |
+|   0    |   wo   |   0x0   | tx_watermark  | Write 1 to force `INTR_STATE.tx_watermark` to 1.  |
 
 ## ALERT_TEST
 Alert Test Register
@@ -125,17 +124,17 @@ UART control register
 
 |  Bits  |  Type  |  Reset  | Name                            |
 |:------:|:------:|:-------:|:--------------------------------|
-| 31:16  |   rw   |   0x0   | [NCO](#ctrl--nco)               |
+| 31:16  |   rw   |   0x0   | NCO               |
 | 15:10  |        |         | Reserved                        |
-|  9:8   |   rw   |   0x0   | [RXBLVL](#ctrl--rxblvl)         |
-|   7    |   rw   |   0x0   | [PARITY_ODD](#ctrl--parity_odd) |
-|   6    |   rw   |   0x0   | [PARITY_EN](#ctrl--parity_en)   |
-|   5    |   rw   |   0x0   | [LLPBK](#ctrl--llpbk)           |
-|   4    |   rw   |   0x0   | [SLPBK](#ctrl--slpbk)           |
+|  9:8   |   rw   |   0x0   | RXBLVL         |
+|   7    |   rw   |   0x0   | PARITY_ODD |
+|   6    |   rw   |   0x0   | PARITY_EN   |
+|   5    |   rw   |   0x0   | LLPBK           |
+|   4    |   rw   |   0x0   | SLPBK           |
 |   3    |        |         | Reserved                        |
-|   2    |   rw   |   0x0   | [NF](#ctrl--nf)                 |
-|   1    |   rw   |   0x0   | [RX](#ctrl--rx)                 |
-|   0    |   rw   |   0x0   | [TX](#ctrl--tx)                 |
+|   2    |   rw   |   0x0   | NF                 |
+|   1    |   rw   |   0x0   | RX                 |
+|   0    |   rw   |   0x0   | TX                 |
 
 ### CTRL . NCO
 BAUD clock rate control.
@@ -150,7 +149,6 @@ times the line must be low to detect a break.
 | 0x1     | break4  | 4 characters  |
 | 0x2     | break8  | 8 characters  |
 | 0x3     | break16 | 16 characters |
-
 
 ### CTRL . PARITY_ODD
 If PARITY_EN is true, this determines the type, 1 for odd parity, 0 for even.
@@ -253,10 +251,10 @@ UART FIFO control register
 |  Bits  |  Type  |  Reset  | Name                         |
 |:------:|:------:|:-------:|:-----------------------------|
 |  31:8  |        |         | Reserved                     |
-|  7:5   |   rw   |   0x0   | [TXILVL](#fifo_ctrl--txilvl) |
-|  4:2   |   rw   |   0x0   | [RXILVL](#fifo_ctrl--rxilvl) |
-|   1    |   wo   |   0x0   | [TXRST](#fifo_ctrl--txrst)   |
-|   0    |   wo   |   0x0   | [RXRST](#fifo_ctrl--rxrst)   |
+|  7:5   |   rw   |   0x0   | TXILVL |
+|  4:2   |   rw   |   0x0   | RXILVL |
+|   1    |   wo   |   0x0   | TXRST   |
+|   0    |   wo   |   0x0   | RXRST   |
 
 ### FIFO_CTRL . TXILVL
 Trigger level for TX interrupts. If the FIFO depth is less than the setting, it
@@ -365,6 +363,3 @@ UART RX timeout control
 |   31   |   rw   |   0x0   | EN     | Enable RX timeout feature          |
 | 30:24  |        |         |        | Reserved                           |
 |  23:0  |   rw   |   0x0   | VAL    | RX timeout value in UART bit times |
-
-
-<!-- END CMDGEN -->

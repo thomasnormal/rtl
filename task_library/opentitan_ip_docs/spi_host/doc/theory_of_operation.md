@@ -1,11 +1,11 @@
 # Theory of Operation
 
-- [SPI Protocol Basics](#spi-protocol-basics)
-- [API Details](#api-details): *Interface information, such as models for conceptual interactions, CSRs and interrupts.*
-    - [Command Interface](#command-interface) *Primary interface for constructing SPI commands.*
-- [Design Details](#design-details): *Further info about the implementation.*
-    - [Block Diagrams](#block-diagrams)
-- [Appendices](#appendices)
+- SPI Protocol Basics
+- API Details: *Interface information, such as models for conceptual interactions, CSRs and interrupts.*
+    - Command Interface *Primary interface for constructing SPI commands.*
+- Design Details: *Further info about the implementation.*
+    - Block Diagrams
+- Appendices
 
 # SPI Protocol Basics
 
@@ -24,7 +24,7 @@ So, although the exact details of the operation may vary from device to device, 
 Typical SPI commands are categorized as Standard, Dual, or Quad depending on the number of serial data lines (`SD[x]`) they utilize.
 This is often referred to as the 'Speed-Mode' or just 'Speed', although as the clock frequency remains constant this is a slight misnomer, so it may be better thought-of as a 'Throughput-Mode' or just a data width.
 A command may be composed of a number of phases or segments, where different numbers of data lines are used in different directions.
-The OpenTitan SPI_HOST IP uses the term '[segment](#command-interface)' to describe this smaller unit of traffic, and each segment can have it's own data direction and speed-mode.
+The target device SPI_HOST IP uses the term 'segment' to describe this smaller unit of traffic, and each segment can have it's own data direction and speed-mode.
 For example, in a Standard SPI command a number of instruction-, address- or data-bytes are transmitted on `SD[0]`, and response bytes are received on `SD[1]`.
 Therefore, for Standard-mode commands `SD[0]` is always configured as an output and `SD[1]` is always an input.
 In this mode, the bus can be effectively used as a full-duplex communication channel.
@@ -41,14 +41,14 @@ Devices with `CPHA = 0` expect that both the host and device will be sampling da
 When `CPHA = 0` the first output bit is asserted with the falling edge of `CSB`.
 Conversely, if `CPHA = 1` data is always asserted on the leading edge of `SCK` and sampled on the trailing edge of `SCK`.
 
-As well as supporting any combination of CPOL/CPHA, this IP also offers an additional [Full-Cycle sampling](#full-cycle-sampling) option via the ([`CONFIGOPTS.FULLCYC`](registers.md#configopts--fullcyc)) field, which can ease timing pressure for devices which require setup times exceeding half a cycle.
+As well as supporting any combination of CPOL/CPHA, this IP also offers an additional Full-Cycle sampling option via the (`CONFIGOPTS.FULLCYC`) field, which can ease timing pressure for devices which require setup times exceeding half a cycle.
 For even faster transfer rates, some flash chips support double transfer rate (DTR) variations to the SPI protocol wherein the device receives and transmits fresh data on *both* the leading and trailing edge.
 This IP only supports single transfer rate (STR), *not* DTR.
 A preliminary investigation of DTR transfer mode suggests that proper support for setup and hold times in this mode may require a level of sub-cycle timing control which is not currently planned for this IP.
 
 # API Details
 
-Broadly speaking, the SPI_HOST IP accepts commands from the TL-UL interface, and based on these commands, serially transmits and receives data on the external SPI interface pins.
+Broadly speaking, the SPI_HOST IP accepts commands from the control bus interface, and based on these commands, serially transmits and receives data on the external SPI interface pins.
 The timing and data-line formatting of the command sequence depend on the external peripheral device and the nature of the specific command issued.
 
 ## Command Interface
@@ -90,9 +90,9 @@ Likewise, software-provided data is only transmitted in the first two segments.
 ```
 
 A SPI transaction always consists of at least one segment, and the Command Interface will begin to enact a new segment as soon as the previous segment has completed.
-(There is a small [Command FIFO](#back-to-back-segments) to allow software to enqueue multiple segments at once.)
+(There is a small Command FIFO to allow software to enqueue multiple segments at once.)
 The IP will automatically control the chip-select for each segment, by asserting it at the start of a segment and desasserting it at the end.
-By setting [`COMMAND.CSAAT`](registers.md#command--csaat), the `CSB` will **not** be deasserted at the end of a segment, allowing multiple segments to be composed into a longer continuous command.
+By setting `COMMAND.CSAAT`, the `CSB` will **not** be deasserted at the end of a segment, allowing multiple segments to be composed into a longer continuous command.
 Each segment may have a different speed, direction and length, and there is no restriction on the configuration of a segment relative to any other.
 
 For example, a Quad-IO (1-4-4) SPI Read could be constructed from the following 4 segments:
@@ -109,27 +109,27 @@ For example, a Quad-IO (1-4-4) SPI Read could be constructed from the following 
 More generally, the process of issuing a SPI command consists of the following steps:
 
 1. Configure the IP to be compatible with each attached peripheral.
-The [`CONFIGOPTS`](registers.md#configopts) multi-register holds separate sets of configuration settings, one for each `CSB` line.
+The `CONFIGOPTS` multi-register holds separate sets of configuration settings, one for each `CSB` line.
 In principle, the configuration of these device-specific options only needs to be done/performed once at initialization.
-2. Load the TX FIFO with the instructions and data to be transmitted to the remote device by writing to the [`TXDATA`](registers.md#txdata) memory window.
-3. Specify which device should receive the next command using the [`CSID`](registers.md#csid) register.
-4. Wait for [`STATUS.READY`](registers.md#status) before continuing.
-5. Issue speed, direction, and length details for the next command segment using the [`COMMAND`](registers.md#command) register.
-If a command consists of multiple segments, [`COMMAND.CSAAT`](registers.md#command--csaat) (**C**hip-**S**elect **A**ctive **A**fter **T**ransaction) should be set to one for all segments except the final one.
-Setting [`COMMAND.CSAAT`](registers.md#command--csaat) to zero indicates the end of a transaction, prompting the IP to raise `CSB` at the end of the segment.
+2. Load the TX FIFO with the instructions and data to be transmitted to the remote device by writing to the `TXDATA` memory window.
+3. Specify which device should receive the next command using the `CSID` register.
+4. Wait for `STATUS.READY` before continuing.
+5. Issue speed, direction, and length details for the next command segment using the `COMMAND` register.
+If a command consists of multiple segments, `COMMAND.CSAAT` (**C**hip-**S**elect **A**ctive **A**fter **T**ransaction) should be set to one for all segments except the final one.
+Setting `COMMAND.CSAAT` to zero indicates the end of a transaction, prompting the IP to raise `CSB` at the end of the segment.
 6. Repeat steps 4 and 5 until all segments have been described.
-7. Read any peripheral response data from the RX FIFO by reading from the [`RXDATA`](registers.md#rxdata) memory window.
+7. Read any peripheral response data from the RX FIFO by reading from the `RXDATA` memory window.
 
 ### About Command Segments
 
-Each **segment** is defined by writing the following fields in the [`COMMAND`](registers.md#command) register.
+Each **segment** is defined by writing the following fields in the `COMMAND` register.
 
 | name                                         | size | values                                |
 |----------------------------------------------|------|---------------------------------------|
-| [DIRECTION](registers.md#command--direction) | 2    | {Bidir, Tx_Only, Rx_Only, None/Dummy} |
-| [SPEED](registers.md#command--speed)         | 2    | {Std, Dual, Quad}                     |
-| [CSAAT](registers.md#command--csaat)         | 1    | {1, 0}                                |
-| [LEN](registers.md#command--len)             | 8    | [0:255]                               |
+| DIRECTION | 2    | {Bidir, Tx_Only, Rx_Only, None/Dummy} |
+| SPEED         | 2    | {Std, Dual, Quad}                     |
+| CSAAT         | 1    | {1, 0}                                |
+| LEN             | 8    | [0:255]                               |
 
 The 'Direction' field allows each segment to configure how data should be transmitted/received from the RX and TX Data FIFOs.
 This allows software to automatically discard data that is irrelevant or invalid before it is captured.
@@ -198,53 +198,53 @@ For this reason the speed-mode is also adjustable on a segment-by-segment basis.
 
 ### CSID Register
 
-The [`CSID`](registers.md#csid) register is used to identify the target device for the next command segment.
-Whenever a command segment descriptor is written to [`COMMAND`](registers.md#command), [`CSID`](registers.md#csid) is passed into the FSM along with the command segment descriptor and the corresponding configurations options (taken from the CSID'th element of the `CONFIGOPTS` multi-register).
+The `CSID` register is used to identify the target device for the next command segment.
+Whenever a command segment descriptor is written to `COMMAND`, `CSID` is passed into the FSM along with the command segment descriptor and the corresponding configurations options (taken from the CSID'th element of the `CONFIGOPTS` multi-register).
 
 This register still exists when instantiated with only one `CSB` line (i.e. when NumCS=1).
-However in this case the [`CSID`](registers.md#csid) value is ignored.
+However in this case the `CSID` value is ignored.
 
-Changes in [`CSID`](registers.md#csid) also affect the `CSB` lines, because a change in CSID can also implicitly end a command, overriding [`COMMAND.CSAAT`](registers.md#command).
-If a change is detected in [`CSID`](registers.md#csid), but the previous segment was submitted with the `CSAAT` bit asserted, the FSM terminates the previous command before moving on to the next segment.
-The previous `CSB` line is held low for *at least* `CSNTRAIL` cycles (as defined by the previous value of [`CONFIGOPTS.CSNTRAIL`](registers.md#configopts)) and then brought high.
-All `CSB` lines are held high for `CSNIDLE` cycles (using the new value of [`CONFIGOPTS.CSNIDLE`](registers.md#configopts)).
+Changes in `CSID` also affect the `CSB` lines, because a change in CSID can also implicitly end a command, overriding `COMMAND.CSAAT`.
+If a change is detected in `CSID`, but the previous segment was submitted with the `CSAAT` bit asserted, the FSM terminates the previous command before moving on to the next segment.
+The previous `CSB` line is held low for *at least* `CSNTRAIL` cycles (as defined by the previous value of `CONFIGOPTS.CSNTRAIL`) and then brought high.
+All `CSB` lines are held high for `CSNIDLE` cycles (using the new value of `CONFIGOPTS.CSNIDLE`).
 The new `CSB` line is asserted low, and `SCK` begins toggling after the usual `CSNLEAD` cycle delay.
 
 ### Configuration Options
 
 Before starting a command, some common configuration for the target device must be setup.
 Each target device attached to a chip-select can have an independent set of configuration parameters to match it's specific needs.
-When starting a command, the value of [`CSID`](registers.md#csid) is used to select the correct set of configuration parameters.
-The [`CONFIGOPTS`](registers.md#configopts) multi-register contains separate configuration entries for each chip select.
+When starting a command, the value of `CSID` is used to select the correct set of configuration parameters.
+The `CONFIGOPTS` multi-register contains separate configuration entries for each chip select.
 Each entry holds clock configuration and timing settings which are specific to each peripheral.
-Once the [`CONFIGOPTS`](registers.md#configopts) multi-register has been programmed for each SPI peripheral device, the values can be left unchanged.
+Once the `CONFIGOPTS` multi-register has been programmed for each SPI peripheral device, the values can be left unchanged.
 
 The following sections give details on how the SPI_HOST IP can be used to control a specific peripheral.
-For simplicity, this section describes how to interact one device, attached to `CSB[0]`, and as such references are made to the multi-registers [`CONFIGOPTS`](registers.md#configopts) and [`COMMAND`](registers.md#command).
+For simplicity, this section describes how to interact one device, attached to `CSB[0]`, and as such references are made to the multi-registers `CONFIGOPTS` and `COMMAND`.
 To configure timing and send commands to devices on other `CSB` lines, instead use the `CONFIGOPTS` multi-register corresponding to desired `CSB` line.
 
 #### Clock rate selection
 
 The SPI clock rate for each peripheral is set by two factors:
 - The SPI_HOST input clock
-- A 16-bit clock divider ([`CONFIGOPTS.CLKDIV`](#configopts--clkdiv))
+- A 16-bit clock divider (`CONFIGOPTS.CLKDIV`)
 
 The SPI protocol usually requires activity (either sampling or asserting data) on either edge of the `SCK` clock.
 For this reason the maximum `SCK` frequency is at most one half the SPI_HOST core frequency.
 
 Since some peripheral devices attached to the same SPI_HOST IP may require different clock frequencies, there is also the option to divide the core clock by an additional factor when dealing with slower peripherals.
-This is configured per-peripheral by setting the field [`CONFIGOPTS.CLKDIV`](#configopts--clkdiv).
+This is configured per-peripheral by setting the field `CONFIGOPTS.CLKDIV`.
 
 $$T_{\textrm{SCK},0}=\frac{1}{2}\frac{T_\textrm{clk}}{\textrm{CONFIGOPTS.CLKDIV}+1}$$
 
 #### Chip-select Timing Control
 
 Typically the `CSB` line is automatically deasserted after the last edge of `SCK`.
-However, by asserting [`COMMAND.CSAAT`](registers.md#command) when issuing a particular command, one can instruct the core to hold `CSB` low indefinitely after the last clock edge.
+However, by asserting `COMMAND.CSAAT` when issuing a particular command, one can instruct the core to hold `CSB` low indefinitely after the last clock edge.
 This is useful for merging two adjacent command segments together, to create more complex commands, such as flash Quad read commands which require a mix of segments with different speeds and directions.
-The `CSB` line can then be deasserted by either issuing another command without the [`COMMAND.CSAAT`](registers.md#command) field, issuing a command to a different device (after changing the [`CSID`](registers.md#csid) register), or simply resetting the core FSM via the [`CONTROL.SW_RST`](registers.md#control) register.
+The `CSB` line can then be deasserted by either issuing another command without the `COMMAND.CSAAT` field, issuing a command to a different device (after changing the `CSID` register), or simply resetting the core FSM via the `CONTROL.SW_RST` register.
 
-To avoid spurious clock signals, changes to the [`CONFIGOPTS`](registers.md#configopts) parameters take effect only at the end of a command segment and only when all `CSB` lines are deasserted.
+To avoid spurious clock signals, changes to the `CONFIGOPTS` parameters take effect only at the end of a command segment and only when all `CSB` lines are deasserted.
 There are two cases to consider:
 1. Configuration changes detected and `CSAAT=0` for the previous segment:
 This is when configuration changes are typically expected, and in this case, the SPI_HOST IP waits for the previous segment to complete before moving changing the configuration.
@@ -258,11 +258,11 @@ Most devices require at least one-half `SCK` clock-cycle between either edge of 
 However, some devices may require more timing margin and so the SPI_HOST core offers some configuration registers for controlling the timing of the `CSB` edges when operating under automatic control.
 The relevant parameters are as follows:
 - T<sub>IDLE</sub>: The minimum time between each rising edge of `CSB` and the following falling edge.
-This time delay is a half `SCK` cycle by default but can be extended to as long as eight `SCK` cycles by setting the [`CONFIGOPTS.CSNIDLE`](registers.md#configopts) register.
+This time delay is a half `SCK` cycle by default but can be extended to as long as eight `SCK` cycles by setting the `CONFIGOPTS.CSNIDLE` register.
 - T<sub>LEAD</sub>: The minimum time between each falling edge of `CSB` and the first leading edge of `SCK`.
-This time delay is a half `SCK` cycle by default but can be extended to as long as eight `SCK` cycles by setting the [`CONFIGOPTS.CSNLEAD`](registers.md#configopts) register.
+This time delay is a half `SCK` cycle by default but can be extended to as long as eight `SCK` cycles by setting the `CONFIGOPTS.CSNLEAD` register.
 - T<sub>TRAIL</sub>: The minimum time between the last trailing edge of `SCK` and the following rising edge of `CSB`.
-This time delay is a half `SCK` cycle by default but can be extended to as long as eight `SCK` cycles by setting the [`CONFIGOPTS.CSNTRAIL`](registers.md#configopts) register.
+This time delay is a half `SCK` cycle by default but can be extended to as long as eight `SCK` cycles by setting the `CONFIGOPTS.CSNTRAIL` register.
 
 ```wavejson
 {signal: [
@@ -288,13 +288,13 @@ These settings are all minimum bounds, and delays in the FSM implementation may 
 
 #### Clock Phase and Polarity
 
-The most common differences between target devices are the requirements for a specific SPI clock polarity and phase, CPOL and CPHA, which were described in the previous section [SPI Protocol Basics](#spi-protocol-basics).
-These clock parameters can be set via the [`CONFIGOPTS.CPOL`](registers.md#configopts) or [`CONFIGOPTS.CPHA`](registers.md#configopts) register fields.
+The most common differences between target devices are the requirements for a specific SPI clock polarity and phase, CPOL and CPHA, which were described in the previous section SPI Protocol Basics.
+These clock parameters can be set via the `CONFIGOPTS.CPOL` or `CONFIGOPTS.CPHA` register fields.
 
 #### Full-Cycle Sampling
 
 When operating at the fastest-rated clock speeds, some flash devices (i.e. both the Winbond and Micron devices noted on the summary page) require setup times which exceed half a clock-cycle.
-In order to support these fastest data rates, the SPI_HOST IP offers a modified "Full-cycle" ([`CONFIGOPTS.FULLCYC`](registers.md#configopts--fullcyc)) timing mode where data can be sampled a *full* cycle after the target device asserts data on the SD bus.
+In order to support these fastest data rates, the SPI_HOST IP offers a modified "Full-cycle" (`CONFIGOPTS.FULLCYC`) timing mode where data can be sampled a *full* cycle after the target device asserts data on the SD bus.
 This full cycle mode has no effect on any of the signals transmitted, only on the timing of the sampling of the incoming signals.
 
 ```wavejson
@@ -331,7 +331,7 @@ For example, if two devices have different requirements for `CPOL`, the clock po
 
 Furthermore, `CSB` should be remain high for the minimum idle time both before and after the configuration update.
 For example, consider a SPI_HOST attached to two devices each with different requirements for the clock divider, clock polarity, and idle time.
-Consider a configuration where total idle time (as determined by the [`CONFIGOPTS.CLKDIV`](registers.md#configopts) and [`CONFIGOPTS.CSNIDLE`](registers.md#configopts) multi-registers) works out to 9 idle clocks for the first device, and 4 clocks for the second device.
+Consider a configuration where total idle time (as determined by the `CONFIGOPTS.CLKDIV` and `CONFIGOPTS.CSNIDLE` multi-registers) works out to 9 idle clocks for the first device, and 4 clocks for the second device.
 In this scenario then, when swapping from the first device to the second, the SPI_HOST IP will only swap the clock polarity once the first `CSB` line, `CSB[0]`, has been high for at least 9 clocks, and will continue to hold the second `csb` line, `csb[1]`, high for 4 additional clocks before starting the next transaction.
 
 ```wavejson
@@ -363,25 +363,24 @@ In this scenario then, when swapping from the first device to the second, the SP
 ```
 
 This additional idle time applies not only when switching between devices but when making any changes to the configuration for most recently used device.
-For instance, even in a SPI_HOST configured for one device, changes to [`CONFIGOPTS`](registers.md#configopts), will trigger this extended idle time behavior to ensure that the change in configuration only occurs in the middle of a long idle period.
-
+For instance, even in a SPI_HOST configured for one device, changes to `CONFIGOPTS`, will trigger this extended idle time behavior to ensure that the change in configuration only occurs in the middle of a long idle period.
 
 ### Special Command Fields
 
-The [`COMMAND`](registers.md#command) register must be written once for each command segment.
-Whenever a command segment is written to [`COMMAND`](registers.md#command), the contents of the [`CONFIGOPTS`](registers.md#configopts), [`CSID`](registers.md#csid), and [`COMMAND`](registers.md#command) registers are passed through the Config/Command FIFO to the SPI_HOST core FSM.
-Once the command is issued, the core will immediately deassert [`STATUS.READY`](registers.md#status), and once the command has started [`STATUS.ACTIVE`](registers.md#status) will go high.
-The command is complete when [`STATUS.ACTIVE`](registers.md#status) goes low.
-A `spi_event` interrupt can also be triggered to go off on completion by setting [`EVENT_ENABLE.IDLE`](registers.md#event_enable).
+The `COMMAND` register must be written once for each command segment.
+Whenever a command segment is written to `COMMAND`, the contents of the `CONFIGOPTS`, `CSID`, and `COMMAND` registers are passed through the Config/Command FIFO to the SPI_HOST core FSM.
+Once the command is issued, the core will immediately deassert `STATUS.READY`, and once the command has started `STATUS.ACTIVE` will go high.
+The command is complete when `STATUS.ACTIVE` goes low.
+A `spi_event` interrupt can also be triggered to go off on completion by setting `EVENT_ENABLE.IDLE`.
 
 ### Chip Select Masks
 
 Each instance of the SPI_HOST IP supports a parametrizable number of chip select lines (`CSB[NumCS-1:0]`).
 Each `CSB` line can be routed either to a single peripheral or to a daisy-chain of peripherals.
-Whenever a segment description is written to the [`COMMAND`](registers.md#command) register, the  [`CSID`](registers.md#csid) is sent along with [`COMMAND`](registers.md#command) and the `CONFIGOPTS` multi-register corresponding to [`CSID`](registers.md#csid)  to indicate which device is meant to receive the command.
-The SPI_HOST core typically then manages the details of asserting and deasserting the proper `CSB` line, subject to the timing parameters expressed in [`CONFIGOPTS.CSNLEAD`](registers.md#configopts), [`CONFIGOPTS.CSNTRAIL`](registers.md#configopts), and [`CONFIGOPTS.CSNIDLE`](registers.md#configopts).
+Whenever a segment description is written to the `COMMAND` register, the  `CSID` is sent along with `COMMAND` and the `CONFIGOPTS` multi-register corresponding to `CSID`  to indicate which device is meant to receive the command.
+The SPI_HOST core typically then manages the details of asserting and deasserting the proper `CSB` line, subject to the timing parameters expressed in `CONFIGOPTS.CSNLEAD`, `CONFIGOPTS.CSNTRAIL`, and `CONFIGOPTS.CSNIDLE`.
 
-If [Pass-through mode](#pass-through-mode) is enabled then the `CSB` lines are controlled by *neither* the SPI_HOST hardware nor the firmware register.
+If Pass-through mode is enabled then the `CSB` lines are controlled by *neither* the SPI_HOST hardware nor the firmware register.
 In Pass-though mode, control of the `CSB` lines passes directly to the inter-module port, `passthrough_i.csb`.
 
 ### Back-to-back Segments
@@ -390,8 +389,8 @@ The command interface can allows for any number of segments in a given command.
 
 Since most SPI Flash transactions typically consist of 3 or 4 segments, there is a small command FIFO for submitting segments to the SPI_HOST IP, so that firmware can issue the entire transaction at one time.
 
-Writing a segment description to [`COMMAND`](registers.md#command) when [`STATUS.READY`](registers.md#status) is low will trigger an error condition, which must be acknowledged by software.
-When submitting multiple segments to the command queue, firmware can also check the [`STATUS.CMDQD`](registers.md#status) register to determine how many unprocessed segments are in the FIFO.
+Writing a segment description to `COMMAND` when `STATUS.READY` is low will trigger an error condition, which must be acknowledged by software.
+When submitting multiple segments to the command queue, firmware can also check the `STATUS.CMDQD` register to determine how many unprocessed segments are in the FIFO.
 
 ## Data Formatting
 
@@ -405,23 +404,23 @@ Based on the requirements for our chosen flash devices, this IP follows these co
 
 The programming model for the IP should meanwhile make it easy to quickly program the peripheral device, with a minimum amount of byte shuffling.
 It should be intuitive to program the specific flash devices we are targeting, while following the conventions above:
-- When transferring data in from the [`RXDATA`](registers.md#rxdata) memory window or out to the [`TXDATA`](registers.md#txdata) window, the IP should fully utilize the TL-UL bus, using 32-bit I/O instructions.
+- When transferring data in from the `RXDATA` memory window or out to the `TXDATA` window, the IP should fully utilize the control bus bus, using 32-bit I/O instructions.
 - The SPI_HOST IP should make it easy to arrange transaction data in processor memory, meaning that bytes should be sequentially transmitted in order of ascending memory address.
   - When using 32-bit I/O instructions, this requires some knowledge of the processor byte-order.
 
-Based on these requirements, data read from [`RXDATA`](registers.md#rxdata) or placed in [`TXDATA`](registers.md#txdata) are handled as follows:
-- 32-bit words placed in [`TXDATA`](registers.md#txdata) are transmitted in first-in-first-out order.
-Likewise, words received from the SPI data lines are made available for reading from [`RXDATA`](registers.md#rxdata) in first-in-first-out order.
-- Within a 32-bit word, the `ByteOrder` parameter controls the order in which bytes are transmitted, and also the manner in which received bytes are eventually arranged in the 32-bit [`RXDATA`](registers.md#rxdata) register.
-By default (`ByteOrder = 1`, for Little-Endian processors), the LSB of [`TXDATA`](registers.md#txdata) (i.e bits 7 though 0) is transmitted first, and the other bytes follow in order of increasing significance.
-Similarly, the first byte received is packed into the LSB of [`RXDATA`](registers.md#rxdata), and the subsequent bytes of each [`RXDATA`](registers.md#rxdata) word are packed in order of increasing significance.
+Based on these requirements, data read from `RXDATA` or placed in `TXDATA` are handled as follows:
+- 32-bit words placed in `TXDATA` are transmitted in first-in-first-out order.
+Likewise, words received from the SPI data lines are made available for reading from `RXDATA` in first-in-first-out order.
+- Within a 32-bit word, the `ByteOrder` parameter controls the order in which bytes are transmitted, and also the manner in which received bytes are eventually arranged in the 32-bit `RXDATA` register.
+By default (`ByteOrder = 1`, for Little-Endian processors), the LSB of `TXDATA` (i.e bits 7 though 0) is transmitted first, and the other bytes follow in order of increasing significance.
+Similarly, the first byte received is packed into the LSB of `RXDATA`, and the subsequent bytes of each `RXDATA` word are packed in order of increasing significance.
 
-On the other hand, if `ByteOrder` is set to 0 (for Big-Endian processors), the MSB is transmitted first from [`TXDATA`](registers.md#txdata), and received data is loaded first into the MSB of [`RXDATA`](registers.md#rxdata).
-   - The default choice of Little-Endian reflects native byte-order of the Ibex processor.
+On the other hand, if `ByteOrder` is set to 0 (for Big-Endian processors), the MSB is transmitted first from `TXDATA`, and received data is loaded first into the MSB of `RXDATA`.
+   - The default choice of Little-Endian reflects native byte-order of the main processor processor.
 - Finally *within a given byte*, the most significant bits are transmitted and received first.
 For Dual and Quad transactions the least significant bit in any instantaneous pair or nibble is transmitted or received on `SD[0]`, and the remaining SD bits (1 though 3) are populated in order of increasing significance.
 
-The following figure shows how data appears on the serial data bus when the hardware reads it from [`TXDATA`](registers.md#txdata) or writes it to [`RXDATA`](registers.md#rxdata).
+The following figure shows how data appears on the serial data bus when the hardware reads it from `TXDATA` or writes it to `RXDATA`.
 
 ```wavejson
  {signal: [
@@ -448,7 +447,6 @@ The following figure shows how data appears on the serial data bus when the hard
   }
 }
 ```
-
 
 As shown in the following figure, a similar time-ordering scheme applies for Dual- and Quad-mode transfers.
 However many bits of similar significance are packed into multiple parallel SD data lines, with the least significant going to SD[0].
@@ -479,14 +477,14 @@ However many bits of similar significance are packed into multiple parallel SD d
 
 ### Command Length and Alignment in DATA
 
-Even though the [`TXDATA`](registers.md#txdata) memory window typically accepts 32-bit words, command segments do not need to use all the bytes from every word.
+Even though the `TXDATA` memory window typically accepts 32-bit words, command segments do not need to use all the bytes from every word.
 
 For TX (or Bidirectional) segments, unused bytes from the latest TX FIFO word are simply ignored at the end of a segment.
 For RX (or Bidirectional) segments, if the last few bytes received do not fill an entire DATA word, the partial word will be zero-padded and inserted into the RX FIFO once the segment is completed.
 If ByteOrder=1 (the default, Little-Endian case), this padding will fill the unused most-significant bytes of the final RX DATA word, otherwise the padding will fill the unused least-significant bytes.
 
 The following waveform illustrates an example SPI transaction, where neither the data transmitted nor the data received in each segment fit into an even number of 32-bit words.
-In this example, the values `I[31:0]`, `A[31:0]` and `B[31:0]`, have been previously written into [`TXDATA`](registers.md#txdata) via firmware, and afterwards one word, `X[31:0]`, is available for reading from [`RXDATA`](registers.md#rxdata).
+In this example, the values `I[31:0]`, `A[31:0]` and `B[31:0]`, have been previously written into `TXDATA` via firmware, and afterwards one word, `X[31:0]`, is available for reading from `RXDATA`.
 All data in the waveform is transferred using 32-bit instructions.
 
 ```wavejson
@@ -520,8 +518,8 @@ All data in the waveform is transferred using 32-bit instructions.
 }
 ```
 
-When packing data into the TX FIFO, there are also no restrictions on the alignment of the data written to the [`TXDATA`](registers.md#txdata) memory window, as it supports byte-enable signals.
-This means that when copying bytes into [`TXDATA`](registers.md#txdata) from unaligned firmware memory addresses, it is possible to use byte or half-word instructions.
+When packing data into the TX FIFO, there are also no restrictions on the alignment of the data written to the `TXDATA` memory window, as it supports byte-enable signals.
+This means that when copying bytes into `TXDATA` from unaligned firmware memory addresses, it is possible to use byte or half-word instructions.
 Full-word instructions should however be used whenever possible, because each write consumes a full word of data in the TX FIFO regardless of the instruction size.
 Smaller writes will thus make inefficient use of the TX FIFO.
 
@@ -529,15 +527,14 @@ Filtering out disabled bytes consumes clock cycles in the data pipeline, and can
 In the worst case, such bubbles can also be interpreted as transient underflow conditions in the TX FIFO, and could trigger spurious interrupts.
 The longest delays occur whenever a word is loaded into the TX FIFO with only one byte enabled.
 
-When writing to the [`TXDATA`](registers.md#txdata) window, only three types of data are expected: individual bytes, half-words, and full-words.
+When writing to the `TXDATA` window, only three types of data are expected: individual bytes, half-words, and full-words.
 Other types of write transactions (i.e., non-contiguous, zero-byte and three-byte writes) are not supported by most processors.
 Therefore it is assumed that if such transactions do appear, it is likely a sign of a system integrity error, and so these other classes of writes are not supported.
 
-If such transactions ever occur, they trigger an "Invalid Access" error event, which suspends the processing of future commands until the error has been cleared by setting the [`ERROR_STATUS.ACCESSINVAL`](registers.md#error_status) bit.
+If such transactions ever occur, they trigger an "Invalid Access" error event, which suspends the processing of future commands until the error has been cleared by setting the `ERROR_STATUS.ACCESSINVAL` bit.
 
 The RX FIFO has no special provisions for packing received data in any unaligned fashion.
-Depending on the `ByteOrder` parameter, the first byte received is always packed into either the most- or least-significant byte read from the [`RXDATA`](registers.md#rxdata) memory window.
-
+Depending on the `ByteOrder` parameter, the first byte received is always packed into either the most- or least-significant byte read from the `RXDATA` memory window.
 
 ## Pass-through Mode
 
@@ -560,20 +557,20 @@ The SPI_HOST IP supports interrupts for the following SPI events:
 - `IDLE`: The SPI_HOST is idle.
 - `READY`: The SPI_HOST is ready to accept a new command.
 - `RXFULL`: The SPI_HOST has run out of room in the RXFIFO.
-- `RXWM`: The number of 32-bit words in the RXFIFO currently exceeds the value set in [`CONTROL.RX_WATERMARK`](registers.md#control).
+- `RXWM`: The number of 32-bit words in the RXFIFO currently exceeds the value set in `CONTROL.RX_WATERMARK`.
 - `TXEMPTY`: The SPI_HOST has transmitted all the data in the TX FIFO.
-- `TXWM`: The number of 32-bit words in the TX FIFO currently is currently less than the value set in [`CONTROL.TX_WATERMARK`](registers.md#control)
+- `TXWM`: The number of 32-bit words in the TX FIFO currently is currently less than the value set in `CONTROL.TX_WATERMARK`
 
-Most SPI events signal a particular condition that persists until it is fixed, and these conditions can be detected by polling the corresponding field in the [`STATUS`](registers.md#status) register.
+Most SPI events signal a particular condition that persists until it is fixed, and these conditions can be detected by polling the corresponding field in the `STATUS` register.
 
-In addition to these events, there are also two additional diagnostic fields in the [`STATUS`](registers.md#status) register:
+In addition to these events, there are also two additional diagnostic fields in the `STATUS` register:
 - `RXSTALL`: The RX FIFO is full, and the SPI_HOST is stalled and waiting for firmware to remove some data.
 - `TXSTALL`: The TX FIFO is not only empty, but the SPI_HOST is stalled and waiting for firmware to add more data.
 
 These bits can provide diagnostic data for tuning the throughput of the device, but do not themselves generate event interrupts.
 
 By default none of these SPI events trigger an interrupt.
-They need to be enabled by writing to the corresponding field in [`EVENT_ENABLE`](registers.md#event_enable).
+They need to be enabled by writing to the corresponding field in `EVENT_ENABLE`.
 
 The SPI event interrupt is signaled only when the IP enters the corresponding state.
 For example if an interrupt is requested when the TX FIFO is empty, the IP will only generate one interrupt when the last data word is transmitted from the TX FIFO.
@@ -585,66 +582,66 @@ The SPI_HOST IP will temporarily suspend operations if it detects a potential ov
 During a stall event, `CSB` remains active, and there are no `SCK` clock ticks until there is more data to transmit or there is some space to receive more data.
 The `RXSTALL` and `TXSTALL` status bits are meant to inform firmware of such halts.
 Due to implementation details the SPI_HOST IP will also pause, and signal a stall condition, if there are delays related to packing or unpacking the SPI_DATA into 32-bit words.
-The exact conditions for these *transient* stall conditions are implementation dependent, and described in detail in [the Design Details section](#bubbles-in-the-data-pipeline).
+The exact conditions for these *transient* stall conditions are implementation dependent, and described in detail in the Design Details section.
 
 ### Error Interrupt Conditions
 
 There are six types of error events which each represent a violation of the SPI_HOST IP programming model:
-- If [`COMMAND`](registers.md#command) is written when [`STATUS.READY`](registers.md#status) is zero, the IP will assert [`ERROR_STATUS.CMDERR`](registers.md#error_status).
-- The IP asserts [`ERROR_STATUS.OVERFLOW`](registers.md#error_status) if it receives a write to [`TXDATA`](registers.md#txdata) when the TX FIFO is full.
-- The IP asserts [`ERROR_STATUS.UNDERFLOW`](registers.md#error_status) if it software attempts to read [`RXDATA`](registers.md#rxdata) when the RX FIFO is empty.
-- Specifying a command segment with an invalid width (speed), or making a request for a Bidirectional Dual- or Quad-width segment will trigger a [`ERROR_STATUS.CMDINVAL`](registers.md#error_status) error event.
-- Submitting a command segment to an invalid CSID (one larger or equal to `NumCS`) will trigger a [`ERROR_STATUS.CSIDINVAL`](registers.md#error_status) event.
-- [`ERROR_STATUS.ACCESSINVAL`](registers.md#error_status) is asserted if the IP receives a write event to the [`TXDATA`](registers.md#txdata) window that does not correspond to any known processor data type (byte, half- or full-word).
+- If `COMMAND` is written when `STATUS.READY` is zero, the IP will assert `ERROR_STATUS.CMDERR`.
+- The IP asserts `ERROR_STATUS.OVERFLOW` if it receives a write to `TXDATA` when the TX FIFO is full.
+- The IP asserts `ERROR_STATUS.UNDERFLOW` if it software attempts to read `RXDATA` when the RX FIFO is empty.
+- Specifying a command segment with an invalid width (speed), or making a request for a Bidirectional Dual- or Quad-width segment will trigger a `ERROR_STATUS.CMDINVAL` error event.
+- Submitting a command segment to an invalid CSID (one larger or equal to `NumCS`) will trigger a `ERROR_STATUS.CSIDINVAL` event.
+- `ERROR_STATUS.ACCESSINVAL` is asserted if the IP receives a write event to the `TXDATA` window that does not correspond to any known processor data type (byte, half- or full-word).
 
 All of these programming violations will create an error event when they occur.
-They will also halt the IP until the corresponding bit is cleared in the [`ERROR_STATUS`](registers.md#error_status) register.
-Whenever an error event occurs, the error must be acknowledged by clearing (write 1 to clear) the corresponding bit in [`ERROR_STATUS`](registers.md#error_status).
+They will also halt the IP until the corresponding bit is cleared in the `ERROR_STATUS` register.
+Whenever an error event occurs, the error must be acknowledged by clearing (write 1 to clear) the corresponding bit in `ERROR_STATUS`.
 
 By default all error events will trigger an `error` interrupt.
-Clearing the bit corresponding bit in the [`ERROR_ENABLE`](registers.md#error_enable) register in the suppresses interrupts for that class of error event and allows the IP to proceed even if one of these errors has occurred.
-The [`ERROR_STATUS`](registers.md#error_status) register will continue to report all violations even if a particular class of error event has been disabled.
+Clearing the bit corresponding bit in the `ERROR_ENABLE` register in the suppresses interrupts for that class of error event and allows the IP to proceed even if one of these errors has occurred.
+The `ERROR_STATUS` register will continue to report all violations even if a particular class of error event has been disabled.
 
 Of the six error event classes, `ACCESSINVAL` error events are the only ones which cannot be disabled.
 This is because `ACCESSINVAL` events are caused by anomalous TLUL byte-enable masks that do not correspond to any known software instructions, and can only occur through a fault in the hardware integration.
 
-When handling SPI_HOST `error` interrupts, the [`ERROR_STATUS`](registers.md#error_status) bit should be cleared *before* clearing the error interrupt in the [`INTR_STATE`](registers.md#intr_state) register.
+When handling SPI_HOST `error` interrupts, the `ERROR_STATUS` bit should be cleared *before* clearing the error interrupt in the `INTR_STATE` register.
 Failure do to so may result in a repeated interrupt.
 
 ## Status Indicators
 
-The [`STATUS`](registers.md#status) register contains a number of fields that should be queried for successful operation or troubleshooting.
+The `STATUS` register contains a number of fields that should be queried for successful operation or troubleshooting.
 
-The register [`STATUS.ACTIVE`](registers.md#status) indicates whether a command segment is currently being processed by the FSM.
-Even if [`STATUS.ACTIVE`](registers.md#status) is high it is often still possible to insert another command segment into the command FIFO.
-The register [`STATUS.READY`](registers.md#status) indicates that there is room in the command FIFO.
+The register `STATUS.ACTIVE` indicates whether a command segment is currently being processed by the FSM.
+Even if `STATUS.ACTIVE` is high it is often still possible to insert another command segment into the command FIFO.
+The register `STATUS.READY` indicates that there is room in the command FIFO.
 
-The [`STATUS.BYTEORDER`](registers.md#status) field indicates the fixed value of the `ByteOrder` parameter, which is presented to software to confirm the byte ordering used in the [`RXDATA`](registers.md#rxdata) and [`TXDATA`](registers.md#txdata) windows.
+The `STATUS.BYTEORDER` field indicates the fixed value of the `ByteOrder` parameter, which is presented to software to confirm the byte ordering used in the `RXDATA` and `TXDATA` windows.
 
-The 8-bit fields [`STATUS.RXQD`](registers.md#status) and [`STATUS.TXQD`](registers.md#status) respectively indicate the number of words currently stored in the RX and TX FIFOs.
+The 8-bit fields `STATUS.RXQD` and `STATUS.TXQD` respectively indicate the number of words currently stored in the RX and TX FIFOs.
 
-The remaining fields in the [`STATUS`](registers.md#status) register are all flags related to the management of the TX and RX FIFOs, which are described in the [section on SPI Events](#spi-events-and-event-interrupts).
+The remaining fields in the `STATUS` register are all flags related to the management of the TX and RX FIFOs, which are described in the section on SPI Events.
 
 ## Other Registers
 
 ### SPI_HOST Enable
 
 The SPI_HOST IP state machine is disabled on reset.
-Before any commands are processed, the block must be enabled by writing one to the [`CONTROL.SPIEN`](registers.md#control) register.
+Before any commands are processed, the block must be enabled by writing one to the `CONTROL.SPIEN` register.
 Writing a zero to this register temporarily suspends any previously submitted transactions.
-If the block is re-enabled by writing a one to [`CONTROL.SPIEN`](registers.md#control), any previously executing commands will continue from wherever they left off.
+If the block is re-enabled by writing a one to `CONTROL.SPIEN`, any previously executing commands will continue from wherever they left off.
 
 An unacknowledged error event suspends the core state machine.
 
 ### SPI_HOST Output Enable
 
 In addition to enabling the SPI_HOST FSM, the SPI_HOST outputs must also be enabled for successful operation.
-This can be achieved by also setting the [`CONTROL.OUTPUT_EN`](registers.md#control) field when enabling the SPI_HOST FSM.
+This can be achieved by also setting the `CONTROL.OUTPUT_EN` field when enabling the SPI_HOST FSM.
 
 ### Component reset
 
 In addition to the global hardware reset, there is a software reset option which completely resets the SPI_HOST IP.
-To use this reset, assert [`CONTROL.SW_RST`](registers.md#control), and then wait for the device to reset ([`STATUS.ACTIVE`](registers.md#status), [`STATUS.TXQD`](registers.md#status) and [`STATUS.RXQD`](registers.md#status) to all go to zero), before releasing [`CONTROL.SW_RST`](registers.md#control).
+To use this reset, assert `CONTROL.SW_RST`, and then wait for the device to reset (`STATUS.ACTIVE`, `STATUS.TXQD` and `STATUS.RXQD` to all go to zero), before releasing `CONTROL.SW_RST`.
 
 # Design Details
 
@@ -656,10 +653,10 @@ To use this reset, assert [`CONTROL.SW_RST`](registers.md#control), and then wai
 
 ## Component Overview
 
-The SPI_HOST FSM parses the software command segments and orchestrates the proper transmission of data through its control of the [shift register](#shift-register).
+The SPI_HOST FSM parses the software command segments and orchestrates the proper transmission of data through its control of the shift register.
 The FSM directly drives the `cio_sck` and `cio_csb` signals at the commanded speed.
 The shift register is responsible for driving and receiving data on the `cio_sd` lines.
-By controlling the shift register, the FSM dictates the correct timing for sending out each beat of data, loading tx_bytes from the [Byte Select block](#byte-select), and sending rx_bytes onto the [Byte Merge block](#byte-merge).
+By controlling the shift register, the FSM dictates the correct timing for sending out each beat of data, loading tx_bytes from the Byte Select block, and sending rx_bytes onto the Byte Merge block.
 
 Transaction data words flow through the SPI_HOST IP in a path which starts with the TX FIFOs, shown in the block diagram above.
 At the output of the TX FIFO, each data word is separated into individual bytes by the Byte Select block, which is also responsible for parsing the byte-enable mask and discarding unwanted bytes.
@@ -669,7 +666,6 @@ The repacked words are then inserted into the RX FIFO to be read by firmware.
 
 All of the blocks in the data path use ready-valid handshakes for flow control.
 In addition, the Byte Select block receives a `flush` pulse from the shift register to signify when no further data is needed for the current segment.
-This allows the Byte Select `prim_packer_fifo` to discard any remaining data in the currently held word.
 Similarly, the Byte Merge block receives a `last` signal from the shift register to identify the end of a command segment.
 This triggers any remaining partial words to be passed into the RX FIFO (regardless of whether the last byte forms a complete 32-bit word).
 
@@ -681,7 +677,7 @@ The TX FIFO on the other hand is 36 bits wide, with 32 bits of SPI data (again t
 
 The depth of these FIFOs is controlled by two independent compile-time parameters for the RX and TX queues, `.RxDepth()` and `.TxDepth()`.
 
-Note that the [`Byte Select`](#byte-select) module greedily pops data from the TX FIFO, so the fifo is observed as having an effective depth of N+1 where N is the parameterized depth.
+Note that the `Byte Select` module greedily pops data from the TX FIFO, so the fifo is observed as having an effective depth of N+1 where N is the parameterized depth.
 This extra word of data is incorporated into the TX FIFO status signals, and is also reset/cleared in tandem with the fifo.
 Therefore, this extra storage is transparent to software.
 
@@ -690,7 +686,6 @@ Therefore, this extra storage is transparent to software.
 The Byte Select unit is responsible for loading words from the TX FIFO and feeding individual bytes into the shift register.
 This unit takes two data inputs: a data word `word_i[31:0]` and a byte enable signal `word_be_i[3:0]`.
 There is a single output `byte_o[7:0]` which feeds the following shift register.
-This block is built on the `prim_packer_fifo` primative to create the interface between the word-width and byte-width datapaths.
 
 There are ready/valid signals for managing flow control on both the word-input and the byte-output.
 The shift register asserts ready to request new bytes based on control inputs from the SPI_HOST FSM.
@@ -727,13 +722,12 @@ The following waveform illustrates the operation of the Byte Select module, high
 ## Byte Merge
 
 The Byte Merge block is responsible for accumulating received bytes from the shift register and packing them into words.
-Like the Byte Select block, it is based on the `prim_packer_fifo` primitive.
 
 The Byte Merge block has a data byte input and a data word output, which are both flow-controlled by their corresponding ready/valid signals.
 An additional input `byte_last_i` is used to indicate the final byte in a word.
 When `byte_last_i` is asserted alongside an input byte, the new byte will be added to the output word, and any remaining bytes will be set to zero before the word is immediately loaded into the RX FIFO.
 There are no byte-enable outputs for the byte merge, as it is assumed that software can infer which bytes in the RXFIFO are valid.
-The first byte for each read segment is always word-aligned in the RXFIFO, so the [`COMMAND.LEN`](registers.md#command) byte-count from the segment can be used to determine the effective byte-enables for the final word.
+The first byte for each read segment is always word-aligned in the RXFIFO, so the `COMMAND.LEN` byte-count from the segment can be used to determine the effective byte-enables for the final word.
 
 Input bytes are packed into the output word in decreasing significance.
 The first byte in each segment is loaded into `word_o[31:24]`.
@@ -741,7 +735,6 @@ The following bytes are packed into `word_o[23:16]`, `word_o[15:8]`, and then `w
 For partially filled words, the zero padding goes into the least significant byte positions.
 
 Any ByteOrder swapping is performed at the other end of the RX FIFO.
-
 
 ```wavejson
 {signal: [
@@ -838,7 +831,6 @@ There is also the possibility of encountering bubble events, which cause transie
 Transient stalls only occur for Quad-mode segments, and only when transmitting or receiving words with only one valid byte.
 
 When transmitting at full clock speed, Quad-mode segments need to process one byte every four clock cycles.
-If a particular Quad TX segment pulls only one byte from a particular data word (for reasons related either to the segment length or odd data alignment), the `prim_packer_fifo` used in the Byte Select block can generate delays of up to four clocks before releasing the next byte.
 This can cause temporary stall conditions either during the Quad segment, or--if there is another TX segment immediately following--just before the following segment.
 
 Similar delays exist when receiving Quad-mode data, which are similarly worst when packing words with just one byte (i.e., when receiving segments of length 4n+1).
@@ -849,7 +841,7 @@ As this is an unlikely use case, transient stalls are considered an unlikely occ
 
 Dual- and Standard-mode segments can tolerate byte-to-byte delays of 7 or 15 clocks, so there are no known mechanism for transient stalls at these speeds.
 
-Please refer to the [the Appendix](#analysis-of-transient-datapath-stalls) for a detailed analysis of transient stall events.
+Please refer to the the Appendix for a detailed analysis of transient stall events.
 
 ## SPI_HOST Finite State Machine (FSM)
 
@@ -861,10 +853,10 @@ This section describes the SPI_HOST FSM and its control of the `SCK` and `CSB` l
 ### Clock Divider
 
 The SPI_HOST FSM is driven by the rising edge of the input clock, however the FSM state registers are not *enabled* during every cycle.
-There is an internal clock counter `clk_cntr_q` which repeatedly counts down from [`CONFIGOPTS.CLKDIV`](registers.md#configopts) to 0, and the FSM is only enabled when `clk_cntr_q == 0`.
+There is an internal clock counter `clk_cntr_q` which repeatedly counts down from `CONFIGOPTS.CLKDIV` to 0, and the FSM is only enabled when `clk_cntr_q == 0`.
 
 The exception is when the FSM is one of the two possible Idle states (`Idle` or `IdleCSBActive`), in which case `clk_cntr_q` is constantly held at zero, making it possible to immediately transition out of the idle state as soon as a new command appears.
-Once the FSM transitions out of the idle state, `clk_cntr_q` resets to [`CONFIGOPTS.CLKDIV`](registers.md#configopts), and FSM transitions are only enabled at the divided clock rate.
+Once the FSM transitions out of the idle state, `clk_cntr_q` resets to `CONFIGOPTS.CLKDIV`, and FSM transitions are only enabled at the divided clock rate.
 
 As shown in the waveform below, this has the effect of limiting the FSM transitions to only occur at discrete *timeslices* of duration:
 
@@ -931,11 +923,11 @@ This state always returns back to the `InternalClkHigh` state in the next timesl
 
 5. WaitTrail state: Similar to the WaitLead, this state serves to control the timing of the `CSB` line.
 The FSM uses the `wait_cntr` register to ensure that it remains in this state for `csntrail+1` timeslices, during which time the active `CSB` is still held low.
-The `wait_cntr` register resets to [`CONFIGOPTS.CSNTRAIL`](registers.md#configopts) upon entering this state, and is decremented once per timeslice.
+The `wait_cntr` register resets to `CONFIGOPTS.CSNTRAIL` upon entering this state, and is decremented once per timeslice.
 This state transitions to `WaitIdle` when `wait_cntr` is zero.
 
 6. WaitIdle state: In this timing control state, the FSM uses the `wait_cntr` register to ensure that all `CSB` lines are held high for at least `csnidle+1` timeslices.
-The `wait_cntr` register resets to [`CONFIGOPTS.CSNIDLE`](registers.md#configopts) upon entering this state, and is decremented once per timeslice.
+The `wait_cntr` register resets to `CONFIGOPTS.CSNIDLE` upon entering this state, and is decremented once per timeslice.
 This state transitions to `Idle` when `wait_cntr` reaches zero.
 
 ```wavejson
@@ -1120,13 +1112,13 @@ The size of the decrement also depends on the speed of the current segment:
 - 2 for Dual-mode
 - 4 for Quad-mode
 
-The `byte_cntr_q` register is updated from the [`COMMAND.LEN`](registers.md#command) register value, at the beginning of each segment, and decremented after each `byte_ending` pulse until the counter reaches zero.
+The `byte_cntr_q` register is updated from the `COMMAND.LEN` register value, at the beginning of each segment, and decremented after each `byte_ending` pulse until the counter reaches zero.
 
 This relationship between the milestone signals and the bit and byte counters is also illustrated in the previous waveform.
 
 ### Implementation of Configuration Change Delays
 
-As described in the [Theory of Operation](#idle-time-delays-when-changing-configurations), changes in configuration only occur when the SPI_HOST IP is idle.
+As described in the Theory of Operation, changes in configuration only occur when the SPI_HOST IP is idle.
 The configuration change must be preceded by enough idle time to satisfy the previous configuration, and followed by enough idle time to satisfy the new configuration.
 
 In order to support these idle time requirements, the SPI_HOST FSM has two idle waiting states.
@@ -1137,7 +1129,7 @@ From the `ConfigSwitch` state, the state machine directly enters the `WaitLead` 
 
 A complete state diagram, including the `ConfigSwitch` state, is shown in the following section.
 
-The following waveform illustrates how a change in a single [`CONFIGOPTS`](registers.md#configopts), here [`CONFIGOPTS.CPOL`](registers.md#configopts), triggers an entry into the `ConfigSwitch` Idle state, and how the new configuration is applied at the transition from `WaitIdle` to `ConfigSwitch` thereby ensuring ample idle time both before and after the configuration update.
+The following waveform illustrates how a change in a single `CONFIGOPTS`, here `CONFIGOPTS.CPOL`, triggers an entry into the `ConfigSwitch` Idle state, and how the new configuration is applied at the transition from `WaitIdle` to `ConfigSwitch` thereby ensuring ample idle time both before and after the configuration update.
 
 ```wavejson
 {signal: [
@@ -1230,7 +1222,6 @@ Thus the FSM may not progress while stalled.
 ## Analysis of Transient Datapath Stalls
 
 Even if the RX (or TX) FIFOs have free-space (or data) available, stall events can still happen due to momentary backlogs or bubbles in the data pipeline.
-For instance, the Byte Merge and Byte Select blocks occasionally need some extra cycles to clean out the internal `prim_packer_fifo`.
 These delays are likely to cause transient stalls particularly, when constructing transactions with many short (less than 4-byte) segments.
 Transient stalls could lead to false diagnostics when trying to optimize SPI_HOST throughput.
 Thus it is useful to analyze the shift register's tolerance to bubble events, particularly for the highest bandwidth Quad-mode SPI.

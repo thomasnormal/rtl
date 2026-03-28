@@ -1,12 +1,12 @@
 # ADC_CTRL Microarchitecture Profile
 
-This directory defines the public microarchitecture ABI for the OpenTitan
-`adc_ctrl` task.
+This directory defines the public microarchitecture ABI for the `adc_ctrl`
+task.
 
 The public functional boundary is still the top-level DUT interface in
 `task/spec/interface/`. The files here describe additional named observation
 points that a standalone implementation should expose if it wants to be
-compatible with deeper OpenTitan-style checking.
+compatible with deeper reference-derived checking.
 
 ## Required ABI
 
@@ -25,8 +25,9 @@ The DUT must drive these observation signals:
 - `match_pending`
 - `oneshot_done_pulse`
 
-These signals mirror the AON-domain ADC control state that the OpenTitan DV
-environment reasons about when checking oneshot capture and FSM reset behavior.
+These signals mirror the AON-domain ADC control state that a deeper reference
+verification environment reasons about when checking oneshot capture and FSM
+reset behavior.
 
 ## Expected Use
 

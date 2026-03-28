@@ -1,12 +1,12 @@
 # RV_TIMER Microarchitecture Profile
 
-This directory defines the public microarchitecture ABI for the OpenTitan
-`rv_timer` task.
+This directory defines the public microarchitecture ABI for the `rv_timer`
+task.
 
 The functional task is still the public top-level `rv_timer` boundary from
 `task/task.json` and `task/spec/interface/`. The files here define additional
 named observation points that a generated implementation must expose if it
-wants to be compatible with deeper OpenTitan-style verification.
+wants to be compatible with deeper reference-derived verification.
 
 ## Required ABI
 
@@ -38,8 +38,8 @@ adapted deep-DV checks.
   fatal fault produced an alert event.
 
 The task remains implementable in isolation because every required signal is
-spelled out here in SV. No OpenTitan package imports or hidden hierarchy names
-are needed by the generator.
+spelled out here in SV. No hidden package imports or hidden hierarchy names are
+needed by the generator.
 
 ## Expected Use
 

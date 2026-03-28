@@ -1,38 +1,35 @@
-# Hardware Interfaces
+# Interface Summary
 
-<!-- BEGIN CMDGEN util/regtool.py --interfaces ./hw/ip/adc_ctrl/data/adc_ctrl.hjson -->
-Referring to the [Comportable guideline for peripheral device functionality](https://opentitan.org/book/doc/contributing/hw/comportability), the module **`adc_ctrl`** has the following hardware interfaces defined
-- Primary Clock: **`clk_i`**
-- Other Clocks: **`clk_aon_i`**
-- Bus Device Interfaces (TL-UL): **`tl`**
-- Bus Host Interfaces (TL-UL): *none*
-- Peripheral Pins for Chip IO: *none*
+The canonical machine-readable interface for `adc_ctrl` is defined in `spec/interface/`.
+Use the SystemVerilog files there as the source of truth for port directions, packed types, parameters, and modports.
 
-## [Inter-Module Signals](https://opentitan.org/book/doc/contributing/hw/comportability/index.html#inter-signal-handling)
+## Parameters
 
-| Port Name   | Package::Struct   | Type    | Act   |   Width | Description   |
-|:------------|:------------------|:--------|:------|--------:|:--------------|
-| adc         | ast_pkg::adc_ast  | req_rsp | req   |       1 |               |
-| wkup_req    | logic             | uni     | req   |       1 |               |
-| tl          | tlul_pkg::tl      | req_rsp | rsp   |       1 |               |
+| Name | Default |
+| --- | --- |
+| `AlertAsyncOn` | `1'b1` |
+| `AlertSkewCycles` | `1` |
 
-## Interrupts
+## Ports
 
-| Interrupt Name   | Type   | Description                                 |
-|:-----------------|:-------|:--------------------------------------------|
-| match_pending    | Status | ADC match or measurement event has occurred |
+| Direction | Name | Type |
+| --- | --- | --- |
+| `input` | `clk_i` | `logic` |
+| `input` | `clk_aon_i` | `logic` |
+| `input` | `rst_ni` | `logic` |
+| `input` | `rst_aon_ni` | `logic` |
+| `input` | `tl_i` | `adc_ctrl_public_types_pkg::adc_ctrl_tl_i_t` |
+| `input` | `alert_rx_i` | `adc_ctrl_public_types_pkg::adc_ctrl_alert_rx_i_t` |
+| `input` | `adc_i` | `adc_ctrl_public_types_pkg::adc_ctrl_adc_i_t` |
+| `output` | `tl_o` | `adc_ctrl_public_types_pkg::adc_ctrl_tl_o_t` |
+| `output` | `alert_tx_o` | `adc_ctrl_public_types_pkg::adc_ctrl_alert_tx_o_t` |
+| `output` | `adc_o` | `adc_ctrl_public_types_pkg::adc_ctrl_adc_o_t` |
+| `output` | `intr_match_pending_o` | `logic` |
+| `output` | `wkup_req_o` | `logic` |
 
-## Security Alerts
+## Supporting SV Files
 
-| Alert Name   | Description                                                                       |
-|:-------------|:----------------------------------------------------------------------------------|
-| fatal_fault  | This fatal alert is triggered when a fatal TL-UL bus integrity fault is detected. |
-
-## Security Countermeasures
-
-| Countermeasure ID      | Description                      |
-|:-----------------------|:---------------------------------|
-| ADC_CTRL.BUS.INTEGRITY | End-to-end bus integrity scheme. |
-
-
-<!-- END CMDGEN -->
+- `spec/interface/adc_ctrl_public_if.sv`
+- `spec/interface/adc_ctrl_public_regs_pkg.sv`
+- `spec/interface/adc_ctrl_public_tlul_pkg.sv`
+- `spec/interface/adc_ctrl_public_types_pkg.sv`

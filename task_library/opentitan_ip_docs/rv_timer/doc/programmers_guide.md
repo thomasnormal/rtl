@@ -27,7 +27,6 @@ This condition can be detected in a standard way using a third read. Figure 10.1
 in the RISC-V unprivileged specification explains how to avoid this.
 
 ```asm
-again:
     rdcycleh  x3
     rdcycle   x2
     rdcycleh  x4
@@ -50,7 +49,6 @@ sw a0, RV_TIMER_COMPARE_LOWER0_0_REG_OFFSET(t1)   # New value.
 In typical usage the `mtime` register would not be written, but if there is a need
 to set it to an arbitrary, dynamically-determined value, the following sequence
 should be used to prevent the operation of the timer yielding an indeterminate
-result:
 
 ```asm
 # Desired time is in a1:a0
@@ -94,10 +92,6 @@ between `mtime` and `mtimecmp` care is needed. A couple of cases are:
 
 If `mtime` is greater than or equal to the value of `mtimecmp`, the interrupt is generated from the RV_TIMER module.
 If the core enables the timer interrupt in `MIE` CSR, it jumps into the timer interrupt service routine.
-Clearing the interrupt can be done by writing 1 into the Interrupt Status register [`INTR_STATE0`](../../spi_device/data/spi_device.hjson#intr_state0).
+Clearing the interrupt can be done by writing 1 into the Interrupt Status register `INTR_STATE0`.
 The RV_TIMER module also follows RISC-V Privileged spec that requires the interrupt to be cleared by updating `mtimecmp` memory-mapped CSRs.
-In this case both [`COMPARE_LOWER0_0`](../../spi_device/data/spi_device.hjson#compare_lower0_0) and [`COMPARE_UPPER0_0`](../../spi_device/data/spi_device.hjson#compare_upper0_0) can clear the interrupt source.
-
-## Device Interface Functions (DIFs)
-
-- [Device Interface Functions](../../../../sw/device/lib/dif/dif_rv_timer.h)
+In this case both `COMPARE_LOWER0_0` and `COMPARE_UPPER0_0` can clear the interrupt source.

@@ -1,11 +1,11 @@
 # AON_TIMER Microarchitecture Profile
 
-This directory defines the public microarchitecture ABI for the OpenTitan
-`aon_timer` task.
+This directory defines the public microarchitecture ABI for the `aon_timer`
+task.
 
 The task remains implementable from the public top-level interface, but deeper
 verification needs a small set of named AON-domain observation points that are
-otherwise implicit in the upstream repo-native design.
+otherwise implicit in a deeper reference design.
 
 ## Required ABI
 

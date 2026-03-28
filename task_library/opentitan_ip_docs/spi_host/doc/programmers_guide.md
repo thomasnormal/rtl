@@ -3,50 +3,52 @@
 The operation of the SPI_HOST IP proceeds in seven general steps.
 
 To initialize the IP:
-1. Program the [`CONFIGOPTS`](registers.md#configopts) multi-register with the appropriate timing and polarity settings for each `csb` line.
+1. Program the `CONFIGOPTS` multi-register with the appropriate timing and polarity settings for each `csb` line.
 2. Set the desired interrupt parameters
 3. Enable the IP
 
 Then for each command:
 
-4. Load the data to be transmitted into the FIFO using the [`TXDATA`](registers.md#txdata) memory window.
-5. Specify the target device by programming the [`CSID`](registers.md#csid)
-6. Specify the structure of the command by writing each segment into the [`COMMAND`](registers.md#command) register
-   - For multi-segment transactions, be sure to assert [`COMMAND.CSAAT`](registers.md#command) for all but the last command segment
-7. For transactions which expect to receive a reply, the data can then be read back from the [`RXDATA`](registers.md#rxdata) window.
+4. Load the data to be transmitted into the FIFO using the `TXDATA` memory window.
+5. Specify the target device by programming the `CSID`
+6. Specify the structure of the command by writing each segment into the `COMMAND` register
+   - For multi-segment transactions, be sure to assert `COMMAND.CSAAT` for all but the last command segment
+7. For transactions which expect to receive a reply, the data can then be read back from the `RXDATA` window.
 
 These latter four steps are then repeated for each command.
 Each step is covered in detail in the following sections.
 
-For concreteness, this Programmer's Guide uses examples from one of our primary target devices, the [W25Q01JV flash from Winbond](https://www.winbond.com/resource-files/W25Q01JV%20SPI%20RevB%2011132019.pdf).
+For concreteness, this Programmer's Guide uses examples from one of our primary target devices, the W25Q01JV flash from Winbond.
 The SPI_HOST IP is however suitable for interacting with any number of SPI devices, and the same mode of operation can be used for any SPI device.
 
 ## Initializing the IP
 
 ### Per-target Configuration
 
-The [`CONFIGOPTS`](registers.md#configopts) multi-register must be programmed to reflect the requirements of the attached target devices.
+The `CONFIGOPTS` multi-register must be programmed to reflect the requirements of the attached target devices.
 As such these registers can be programmed once at initialization, or whenever a new device is connected (e.g., via changes in the external pin connections, or changes in the pinmux configuration).
-The proper settings for the [`CONFIGOPTS`](registers.md#configopts) fields (e.g., CPOL and CPHA, clock divider, ratios, and other timing or sampling requirements) will all depend on the specific device attached as well as the board level delays.
+The proper settings for the `CONFIGOPTS` fields (e.g., CPOL and CPHA, clock divider, ratios, and other timing or sampling requirements) will all depend on the specific device attached as well as the board level delays.
 
 ### Interrupt configuration
 
 The next step is to configuration the interrupts for the SPI_HOST.
-There are two comportable interrupts [`ERROR`](interfaces.md#interrupts) and [`SPI_EVENT`](interfaces.md#interrupts) which are configured using the following register fields:
+There are two interrupts, `ERROR` and `SPI_EVENT`, which are configured using
+the following register fields:
 
-- The [`ERROR_ENABLE`](registers.md#error_enable) register should be configured to indicate what types of error conditions (if any) will trigger an  [`ERROR`](interfaces.md#interrupts) interrupt.
+- The `ERROR_ENABLE` register should be configured to indicate what types of error conditions (if any) will trigger an  `ERROR` interrupt.
 At reset all fields in `ERROR_ENABLE` are set, indicating that all error classes will trigger an interrupt.
 
-- The [`EVENT_ENABLE`](registers.md#event_enable) register should be configured to select which classes of event assert the [`SPI_EVENT`](interfaces.md#interrupts) irq for interrupt driven I/O (e.g. "FIFO empty", "FIFO at the watermark level", or "ready for next command segment").
+- The `EVENT_ENABLE` register should be configured to select which classes of event assert the `SPI_EVENT` irq for interrupt driven I/O (e.g. "FIFO empty", "FIFO at the watermark level", or "ready for next command segment").
 At reset all fields in this register are cleared, meaning all event interrupts are disabled, and thus all transactions must be managed by polling the status register.
-   - When using the FIFO watermarks to send interrupts, the watermark levels must be set via the [`CONTROL.RX_WATERMARK`](registers.md#control) and [`CONTROL.TX_WATERMARK`](registers.md#control) fields.
-   - **N.B.** While the interrupt is named `SPI_EVENT`, it is signalled as [CIP Status-Type](../../../../doc/contributing/hw/comportability/README.md#cip-interrupt-types) for the purpose of software handling.
+   - When using the FIFO watermarks to send interrupts, the watermark levels must be set via the `CONTROL.RX_WATERMARK` and `CONTROL.TX_WATERMARK` fields.
+   - **N.B.** While the interrupt is named `SPI_EVENT`, it behaves like a
+     status-style interrupt for the purpose of software handling.
 
-- The event and error interrupts must finally be enabled using the [`INTR_ENABLE`](registers.md#intr_enable) register.
+- The event and error interrupts must finally be enabled using the `INTR_ENABLE` register.
 
 ### Enabling the SPI_HOST
 
-The IP must be enabled before sending the first command by asserting the [`CONTROL.SPIEN`](registers.md#control) bit.
+The IP must be enabled before sending the first command by asserting the `CONTROL.SPIEN` bit.
 
 ## Issuing Transactions
 
@@ -62,7 +64,7 @@ In this instance, the programming sequence will consist of at least four iterati
 ### Loading TX data
 
 SPI transactions expect each command to start with some command sequence from the host, and so usually data will be transmitted at least in the first command segment.
-The [`TXDATA`](registers.md#txdata) window provides a simple interface to the TX FIFO.
+The `TXDATA` window provides a simple interface to the TX FIFO.
 Data can be written to the window using 8-, 16- or 32-bit instructions.
 
 Some attention, however, should be paid to byte-ordering and segmenting conventions.
@@ -71,16 +73,16 @@ Some attention, however, should be paid to byte-ordering and segmenting conventi
 
 For SPI flash applications, it is generally assumed that most of the *payload* data will be directly copied from embedded SRAM to the flash device.
 
-If this data is to copied to the [`TXDATA`](registers.md#txdata) window using 32-bit instructions, the SPI_HOST should be parameterized such that the `ByteOrder` parameter matches the byte order of the embedded CPU (i.e., for Ibex, `ByteOrder` should be left set to `1` to indicate a Little-Endian CPU).
+If this data is to copied to the `TXDATA` window using 32-bit instructions, the SPI_HOST should be parameterized such that the `ByteOrder` parameter matches the byte order of the embedded CPU (i.e., for main processor, `ByteOrder` should be left set to `1` to indicate a Little-Endian CPU).
 This will ensure that data is transmitted to the flash (and thus also stored in flash) in address-ascending order.
-For example, consider the transfer of four bytes, `D[3:0][7:0]`, to SPI via the [`TXDATA`](registers.md#txdata) window.
+For example, consider the transfer of four bytes, `D[3:0][7:0]`, to SPI via the `TXDATA` window.
 - It is assumed for this example that all four bytes are contiguously stored in SRAM at a word-aligned address, with `D[0]` at the lowest byte-address.
-- When these bytes are loaded into the Ibex CPU they are arranged as the 32-bit word: `W[31:0] = {D[3][7:0], D[2][7:0], D[1][7:0], D[0][7:0]}`.
-- After this word are loaded into the [`TXDATA`](registers.md#txdata) window, the LSB (i.e., `W[7:0] = D[0][7:0]`) is transmitted first, by virtue of the `ByteOrder == 1` configuration.
+- When these bytes are loaded into the main processor CPU they are arranged as the 32-bit word: `W[31:0] = {D[3][7:0], D[2][7:0], D[1][7:0], D[0][7:0]}`.
+- After this word are loaded into the `TXDATA` window, the LSB (i.e., `W[7:0] = D[0][7:0]`) is transmitted first, by virtue of the `ByteOrder == 1` configuration.
 
 In this way, configuring `ByteOrder` to match the CPU ensures that data is transmitted in memory-address order.
 
-The value of the `ByteOrder` parameter can be confirmed by firmware by reading the [`STATUS.BYTEORDER`](registers.md#status) register field.
+The value of the `ByteOrder` parameter can be confirmed by firmware by reading the `STATUS.BYTEORDER` register field.
 
 Not all data to the SPI device will come from memory however.
 In many cases the transaction command codes or headers will be constructed or packed on the fly in CPU registers.
@@ -88,7 +90,7 @@ The order these register bytes are transmitted on the bus will depend on the val
 
 For example, SPI flash devices generally expect flash addresses (or any other multi-byte values) to be transmitted MSB-first.
 This is illustrated in the following figure, which depicts a Fast Quad Read I/O command.
-Assuming that `ByteOrder` is set to `1` for Little-Endian devices such as Ibex, byte-swapping will be required for these addresses, otherwise the device will receive the addresses LSB first.
+Assuming that `ByteOrder` is set to `1` for Little-Endian devices such as main processor, byte-swapping will be required for these addresses, otherwise the device will receive the addresses LSB first.
 
 ```wavejson
 { signal: [
@@ -112,14 +114,14 @@ Assuming that `ByteOrder` is set to `1` for Little-Endian devices such as Ibex, 
  foot: {text: "Addresses are transmitted MSB first, and data is returned in order of increasing peripheral byte address."}}
 ```
 
-Byte ordering on the bus can also be managed by writing [`TXDATA`](registers.md#txdata) as a sequence of discrete bytes using 8-bit transactions, since partially-filled data-words are always sent in the order they are received.
+Byte ordering on the bus can also be managed by writing `TXDATA` as a sequence of discrete bytes using 8-bit transactions, since partially-filled data-words are always sent in the order they are received.
 
 A few examples related to using SPI flash devices on a Little-Endian platform:
 - A 4-byte address can be loaded into the TX FIFO as four individual bytes using 8-bit I/O instructions.
-- The above read command (with 4-byte address) can be loaded into the FIFO by first loading the command code into [`TXDATA`](registers.md#txdata) as a single byte, and the address can be loaded into [`TXDATA`](registers.md#txdata) using 32-bit instructions, provided the byte order is swapped before loading.
+- The above read command (with 4-byte address) can be loaded into the FIFO by first loading the command code into `TXDATA` as a single byte, and the address can be loaded into `TXDATA` using 32-bit instructions, provided the byte order is swapped before loading.
 - Flash transactions with 3-byte addressing require some care, as there are no 24-bit I/O instructions, though there are a several options:
     - After the 8-bit command code is sent, the address can either be sent in several I/O operations (e.g., the MSB is sent as an 8-bit command, and the remaining 16-bits can be sent after swapping)
-    - If bandwidth efficiency is a priority, the address, `A[23:0]`, and command code, `C[7:0]`, can all be packed together into a single 4-byte quantity `W[31:0] = {A[7:0], A[15:8], A[23:16], C[7:0]}`, which when loaded into [`TXDATA`](registers.md#txdata) will ensure that the command code is sent first, followed by the address in MSB-first order.
+    - If bandwidth efficiency is a priority, the address, `A[23:0]`, and command code, `C[7:0]`, can all be packed together into a single 4-byte quantity `W[31:0] = {A[7:0], A[15:8], A[23:16], C[7:0]}`, which when loaded into `TXDATA` will ensure that the command code is sent first, followed by the address in MSB-first order.
 
 #### Segmenting Considerations
 
@@ -130,36 +132,36 @@ For the next TX segment, the transmitted data will start with the following *wor
 #### Refilling the TX FIFO
 
 For extremely long transactions, the TX FIFO may not have enough capacity to hold all the data being transmitted.
-In this case software can either poll the [`STATUS.TXQD`](registers.md#status) register to determine the number of elements in the TX FIFO, or enable the SPI_HOST IP to send an interrupt when the FIFO drains to a certain level.
-If [`INTR_ENABLE.spi_event`](registers.md#intr_enable) and [`EVENT_ENABLE.TXWM`](registers.md#event_enable) are both asserted, the IP will send an interrupt whenever the number of elements in the TX FIFO falls below [`CONTROL.TX_WATERMARK`](registers.md#control).
+In this case software can either poll the `STATUS.TXQD` register to determine the number of elements in the TX FIFO, or enable the SPI_HOST IP to send an interrupt when the FIFO drains to a certain level.
+If `INTR_ENABLE.spi_event` and `EVENT_ENABLE.TXWM` are both asserted, the IP will send an interrupt whenever the number of elements in the TX FIFO falls below `CONTROL.TX_WATERMARK`.
 
 ### Specifying the Segments
 
-Each write to the [`COMMAND`](registers.md#command) register corresponds to a single command segment.
-The length, CSAAT flag, direction and speed settings for that segment should all be packed into a single 32-bit register and written simultaneously to [`COMMAND`](registers.md#command).
+Each write to the `COMMAND` register corresponds to a single command segment.
+The length, CSAAT flag, direction and speed settings for that segment should all be packed into a single 32-bit register and written simultaneously to `COMMAND`.
 
-The [`COMMAND`](registers.md#command) should only be written when [`STATUS.READY`](registers.md#status) is asserted.
+The `COMMAND` should only be written when `STATUS.READY` is asserted.
 
 While each command segment is being processed, the SPI_HOST has room to queue up exactly one additional segment descriptor in the Command Clock Domain Crossing.
 Once a second command segment descriptor has been submitted, software must wait for the state machine to finish processing the current segment before submitting more.
-Software can poll the [`STATUS.READY`](registers.md#status) field to determine when it is safe to insert another segment descriptor.
-Otherwise the [`EVENT_ENABLE.IDLE`](registers.md#event_enable) bit can be enabled (along with [`INTR_ENABLE.spi_event`](registers.md#intr_enable)) to trigger an event interrupt whenever [`STATUS.READY`](registers.md#status) is asserted.
+Software can poll the `STATUS.READY` field to determine when it is safe to insert another segment descriptor.
+Otherwise the `EVENT_ENABLE.IDLE` bit can be enabled (along with `INTR_ENABLE.spi_event`) to trigger an event interrupt whenever `STATUS.READY` is asserted.
 
 ### Reading Back the Device Response
 
 Once an RX segment descriptor has been submitted to the SPI_HOST, the received data will be available in the RX FIFO after the first word has been received.
 
-The number of words in the FIFO can be polled by reading the [`STATUS.RXQD`](registers.md#status) field.
-The SPI_HOST IP can also configured to generate watermark event interrupts whenever the number of words received reaches (or exceeds) [`CONTROL.RX_WATERMARK`](registers.md#control).
-To enable interrupts when ever the RX FIFO reaches the watermark, assert [`EVENT_ENABLE.RXWM`](registers.md#event_enable) along with [`INTR_ENABLE.spi_event`](registers.md#intr_enable).
+The number of words in the FIFO can be polled by reading the `STATUS.RXQD` field.
+The SPI_HOST IP can also configured to generate watermark event interrupts whenever the number of words received reaches (or exceeds) `CONTROL.RX_WATERMARK`.
+To enable interrupts when ever the RX FIFO reaches the watermark, assert `EVENT_ENABLE.RXWM` along with `INTR_ENABLE.spi_event`.
 
 ## Exception Handling
 
-The SPI_HOST will assert one of the [`ERROR_STATUS`](registers.md#error_status) bits in the event of a firmware programming error, and will become unresponsive until firmware acknowledges the error by clearing the corresponding error bit.
+The SPI_HOST will assert one of the `ERROR_STATUS` bits in the event of a firmware programming error, and will become unresponsive until firmware acknowledges the error by clearing the corresponding error bit.
 
-The SPI_HOST interrupt handler should clear any bits in [`ERROR_STATUS`](registers.md#error_status) bit before clearing [`INTR_STATE.error`](registers.md#intr_state).
+The SPI_HOST interrupt handler should clear any bits in `ERROR_STATUS` bit before clearing `INTR_STATE.error`.
 
-In addition to clearing the [`ERROR_STATUS`](registers.md#error_status) register, firmware can also trigger a complete software reset via the [`CONTROL.SW_RST`](registers.md#control) bit, as described in the next section.
+In addition to clearing the `ERROR_STATUS` register, firmware can also trigger a complete software reset via the `CONTROL.SW_RST` bit, as described in the next section.
 
 Other system-level errors may arise due to improper programming of the target device (e.g., due to violations in the device programming model, or improper configuration of the SPI_HOST timing registers).
 Given that the SPI protocol provides no mechanism for the target device to stall the bus, the SPI_HOST will continue to function even if the remote device becomes unresponsive.
@@ -169,12 +171,8 @@ In case of an unresponsive device, the RX FIFO will still accumulate data from t
 
 In the event of an error the SPI_HOST IP can be reset under software control using the following procedure:
 
-1. Set [`CONTROL.SW_RST`](registers.md#control).
+1. Set `CONTROL.SW_RST`.
 2. Poll IP status registers for confirmation of successful state machine reset:
-   - Wait for [`STATUS.ACTIVE`](registers.md#status) to clear.
-   - Wait for both FIFOs to completely drain by polling [`STATUS.TXQD`](registers.md#status) and [`STATUS.RXQD`](registers.md#status) until they reach zero.
-3. Clear [`CONTROL.SW_RST`](registers.md#control).
-
-## Device Interface Functions (DIFs)
-
-- [Device Interface Functions](../../../../sw/device/lib/dif/dif_spi_host.h)
+   - Wait for `STATUS.ACTIVE` to clear.
+   - Wait for both FIFOs to completely drain by polling `STATUS.TXQD` and `STATUS.RXQD` until they reach zero.
+3. Clear `CONTROL.SW_RST`.

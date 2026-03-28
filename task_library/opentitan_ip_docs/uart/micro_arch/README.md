@@ -1,10 +1,11 @@
 # UART Microarchitecture Profile
 
-This directory defines the first deep-DV microarchitecture profile for the OpenTitan `uart` task.
+This directory defines the public microarchitecture ABI for the `uart` task.
 
-The functional task is still the public top-level `uart` interface from `task.json`.
-However, if you want the generated RTL to be compatible with deeper OpenTitan-style verification,
-it must also satisfy the SV microarchitecture ABI in this directory.
+The functional task is still the public top-level `uart` interface from
+`task.json`. However, if you want the generated RTL to be compatible with
+deeper reference-derived verification, it must also satisfy the SV
+microarchitecture ABI in this directory.
 
 ## Required ABI
 
@@ -22,7 +23,8 @@ The DUT must drive the following signals on that interface:
 - `rx_enable`
 
 These are observability points used by deeper UART verification.
-They do not change the public top-level interface, but they provide a stable contract for adapted OpenTitan tests.
+They do not change the public top-level interface, but they provide a stable
+contract for adapted deep-DV checks.
 
 ## Expected Use
 

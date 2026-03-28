@@ -1,61 +1,59 @@
-# Hardware Interfaces
+# Interface Summary
 
-<!-- BEGIN CMDGEN util/regtool.py --interfaces ./hw/ip/i2c/data/i2c.hjson -->
-Referring to the [Comportable guideline for peripheral device functionality](https://opentitan.org/book/doc/contributing/hw/comportability), the module **`i2c`** has the following hardware interfaces defined
-- Primary Clock: **`clk_i`**
-- Other Clocks: *none*
-- Bus Device Interfaces (TL-UL): **`tl`**
-- Bus Host Interfaces (TL-UL): *none*
+The canonical machine-readable interface for `i2c` is defined in `spec/interface/`.
+Use the SystemVerilog files there as the source of truth for port directions, packed types, parameters, and modports.
 
-## Peripheral Pins for Chip IO
+## Parameters
 
-| Pin name   | Direction   | Description            |
-|:-----------|:------------|:-----------------------|
-| sda        | inout       | Serial input data bit  |
-| scl        | inout       | Serial input clock bit |
+| Name | Default |
+| --- | --- |
+| `AlertAsyncOn` | `1'b1` |
+| `AlertSkewCycles` | `1` |
+| `InputDelayCycles` | `0` |
+| `EnableRacl` | `1'b0` |
+| `RaclErrorRsp` | `EnableRacl` |
+| `RaclPolicySelVec` | `'0` |
 
-## [Inter-Module Signals](https://opentitan.org/book/doc/contributing/hw/comportability/index.html#inter-signal-handling)
+## Ports
 
-| Port Name     | Package::Struct                 | Type    | Act   |   Width | Description                                                                                                                              |
-|:--------------|:--------------------------------|:--------|:------|--------:|:-----------------------------------------------------------------------------------------------------------------------------------------|
-| ram_cfg       | prim_ram_1p_pkg::ram_1p_cfg     | uni     | rcv   |       1 |                                                                                                                                          |
-| ram_cfg_rsp   | prim_ram_1p_pkg::ram_1p_cfg_rsp | uni     | req   |       1 |                                                                                                                                          |
-| lsio_trigger  | logic                           | uni     | req   |       1 | Self-clearing status trigger for the DMA. Set when RX TX FIFO is past their configured watermark matching watermark interrupt behaviour. |
-| racl_policies | top_racl_pkg::racl_policy_vec   | uni     | rcv   |       1 | Incoming RACL policy vector from a racl_ctrl instance. The policy selection vector (parameter) selects the policy for each register.     |
-| racl_error    | top_racl_pkg::racl_error_log    | uni     | req   |       1 | RACL error log information of this module.                                                                                               |
-| tl            | tlul_pkg::tl                    | req_rsp | rsp   |       1 |                                                                                                                                          |
+| Direction | Name | Type |
+| --- | --- | --- |
+| `input` | `clk_i` | `logic` |
+| `input` | `rst_ni` | `logic` |
+| `input` | `ram_cfg_i` | `i2c_public_types_pkg::i2c_ram_cfg_i_t` |
+| `input` | `tl_i` | `i2c_public_types_pkg::i2c_tl_i_t` |
+| `input` | `alert_rx_i` | `i2c_public_types_pkg::i2c_alert_rx_i_t` |
+| `input` | `racl_policies_i` | `i2c_public_types_pkg::i2c_racl_policies_i_t` |
+| `input` | `cio_scl_i` | `logic` |
+| `input` | `cio_sda_i` | `logic` |
+| `output` | `ram_cfg_rsp_o` | `i2c_public_types_pkg::i2c_ram_cfg_rsp_o_t` |
+| `output` | `tl_o` | `i2c_public_types_pkg::i2c_tl_o_t` |
+| `output` | `alert_tx_o` | `i2c_public_types_pkg::i2c_alert_tx_o_t` |
+| `output` | `racl_error_o` | `i2c_public_types_pkg::i2c_racl_error_o_t` |
+| `output` | `cio_scl_o` | `logic` |
+| `output` | `cio_scl_en_o` | `logic` |
+| `output` | `cio_sda_o` | `logic` |
+| `output` | `cio_sda_en_o` | `logic` |
+| `output` | `lsio_trigger_o` | `logic` |
+| `output` | `intr_fmt_threshold_o` | `logic` |
+| `output` | `intr_rx_threshold_o` | `logic` |
+| `output` | `intr_acq_threshold_o` | `logic` |
+| `output` | `intr_rx_overflow_o` | `logic` |
+| `output` | `intr_controller_halt_o` | `logic` |
+| `output` | `intr_scl_interference_o` | `logic` |
+| `output` | `intr_sda_interference_o` | `logic` |
+| `output` | `intr_stretch_timeout_o` | `logic` |
+| `output` | `intr_sda_unstable_o` | `logic` |
+| `output` | `intr_cmd_complete_o` | `logic` |
+| `output` | `intr_tx_stretch_o` | `logic` |
+| `output` | `intr_tx_threshold_o` | `logic` |
+| `output` | `intr_acq_stretch_o` | `logic` |
+| `output` | `intr_unexp_stop_o` | `logic` |
+| `output` | `intr_host_timeout_o` | `logic` |
 
-## Interrupts
+## Supporting SV Files
 
-| Interrupt Name   | Type   | Description                                                                                                                                                                                                                                                                                                    |
-|:-----------------|:-------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| fmt_threshold    | Status | host mode interrupt: asserted whilst the FMT FIFO level is below the low threshold. This is a level status interrupt.                                                                                                                                                                                          |
-| rx_threshold     | Status | host mode interrupt: asserted whilst the RX FIFO level is above the high threshold. This is a level status interrupt.                                                                                                                                                                                          |
-| acq_threshold    | Status | target mode interrupt: asserted whilst the ACQ FIFO level is above the high threshold. This is a level status interrupt.                                                                                                                                                                                       |
-| rx_overflow      | Event  | host mode interrupt: raised if the RX FIFO has overflowed.                                                                                                                                                                                                                                                     |
-| controller_halt  | Status | host mode interrupt: raised if the controller FSM is halted, such as on an unexpected NACK or lost arbitration. Check [`CONTROLLER_EVENTS`](registers.md#controller_events) for the reason. The interrupt will be released when the bits in [`CONTROLLER_EVENTS`](registers.md#controller_events) are cleared. |
-| scl_interference | Event  | host mode interrupt: raised if the SCL line drops early (not supported without clock synchronization).                                                                                                                                                                                                         |
-| sda_interference | Event  | host mode interrupt: raised if the SDA line goes low when host is trying to assert high                                                                                                                                                                                                                        |
-| stretch_timeout  | Event  | host mode interrupt: raised if target stretches the clock beyond the allowed timeout period                                                                                                                                                                                                                    |
-| sda_unstable     | Event  | host mode interrupt: raised if the target does not assert a constant value of SDA during transmission.                                                                                                                                                                                                         |
-| cmd_complete     | Event  | host and target mode interrupt. In host mode, raised if the host issues a repeated START or terminates the transaction by issuing STOP. In target mode, raised if the external host issues a STOP or repeated START.                                                                                           |
-| tx_stretch       | Status | target mode interrupt: raised if the target is stretching clocks for a read command. This is a level status interrupt.                                                                                                                                                                                         |
-| tx_threshold     | Status | target mode interrupt: asserted whilst the TX FIFO level is below the low threshold. This is a level status interrupt.                                                                                                                                                                                         |
-| acq_stretch      | Status | target mode interrupt: raised if the target is stretching clocks due to full ACQ FIFO or zero count in [`TARGET_ACK_CTRL.NBYTES`](registers.md#target_ack_ctrl) (if enabled). This is a level status interrupt.                                                                                                |
-| unexp_stop       | Event  | target mode interrupt: raised if STOP is received without a preceding NACK during an external host read.                                                                                                                                                                                                       |
-| host_timeout     | Event  | target mode interrupt: raised if the host stops sending the clock during an ongoing transaction.                                                                                                                                                                                                               |
-
-## Security Alerts
-
-| Alert Name   | Description                                                                       |
-|:-------------|:----------------------------------------------------------------------------------|
-| fatal_fault  | This fatal alert is triggered when a fatal TL-UL bus integrity fault is detected. |
-
-## Security Countermeasures
-
-| Countermeasure ID   | Description                      |
-|:--------------------|:---------------------------------|
-| I2C.BUS.INTEGRITY   | End-to-end bus integrity scheme. |
-
-
-<!-- END CMDGEN -->
+- `spec/interface/i2c_public_if.sv`
+- `spec/interface/i2c_public_regs_pkg.sv`
+- `spec/interface/i2c_public_tlul_pkg.sv`
+- `spec/interface/i2c_public_types_pkg.sv`

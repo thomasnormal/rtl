@@ -1,44 +1,43 @@
-# Interfaces
+# Interface Summary
 
-<!-- BEGIN CMDGEN util/regtool.py --interfaces ./hw/ip/aon_timer/data/aon_timer.hjson -->
-Referring to the [Comportable guideline for peripheral device functionality](https://opentitan.org/book/doc/contributing/hw/comportability), the module **`aon_timer`** has the following hardware interfaces defined
-- Primary Clock: **`clk_i`**
-- Other Clocks: **`clk_aon_i`**
-- Bus Device Interfaces (TL-UL): **`tl`**
-- Bus Host Interfaces (TL-UL): *none*
-- Peripheral Pins for Chip IO: *none*
+The canonical machine-readable interface for `aon_timer` is defined in `spec/interface/`.
+Use the SystemVerilog files there as the source of truth for port directions, packed types, parameters, and modports.
 
-## [Inter-Module Signals](https://opentitan.org/book/doc/contributing/hw/comportability/index.html#inter-signal-handling)
+## Parameters
 
-| Port Name           | Package::Struct               | Type    | Act   |   Width | Description                                                                                                                          |
-|:--------------------|:------------------------------|:--------|:------|--------:|:-------------------------------------------------------------------------------------------------------------------------------------|
-| nmi_wdog_timer_bark | logic                         | uni     | req   |       1 |                                                                                                                                      |
-| wkup_req            | logic                         | uni     | req   |       1 |                                                                                                                                      |
-| aon_timer_rst_req   | logic                         | uni     | req   |       1 |                                                                                                                                      |
-| lc_escalate_en      | lc_ctrl_pkg::lc_tx            | uni     | rcv   |       1 |                                                                                                                                      |
-| sleep_mode          | logic                         | uni     | rcv   |       1 |                                                                                                                                      |
-| racl_policies       | top_racl_pkg::racl_policy_vec | uni     | rcv   |       1 | Incoming RACL policy vector from a racl_ctrl instance. The policy selection vector (parameter) selects the policy for each register. |
-| racl_error          | top_racl_pkg::racl_error_log  | uni     | req   |       1 | RACL error log information of this module.                                                                                           |
-| tl                  | tlul_pkg::tl                  | req_rsp | rsp   |       1 |                                                                                                                                      |
+| Name | Default |
+| --- | --- |
+| `AlertAsyncOn` | `1'b1` |
+| `AlertSkewCycles` | `1` |
+| `EnableRacl` | `1'b0` |
+| `RaclErrorRsp` | `EnableRacl` |
+| `RaclPolicySelVec` | `'0` |
 
-## Interrupts
+## Ports
 
-| Interrupt Name     | Type   | Description                                                 |
-|:-------------------|:-------|:------------------------------------------------------------|
-| wkup_timer_expired | Event  | Raised if the wakeup timer has hit the specified threshold. |
-| wdog_timer_bark    | Event  | Raised if the watchdog timer has hit the bark threshold.    |
+| Direction | Name | Type |
+| --- | --- | --- |
+| `input` | `clk_i` | `logic` |
+| `input` | `clk_aon_i` | `logic` |
+| `input` | `rst_ni` | `logic` |
+| `input` | `rst_aon_ni` | `logic` |
+| `input` | `tl_i` | `aon_timer_public_types_pkg::aon_timer_tl_i_t` |
+| `input` | `alert_rx_i` | `aon_timer_public_types_pkg::aon_timer_alert_rx_i_t` |
+| `input` | `racl_policies_i` | `aon_timer_public_types_pkg::aon_timer_racl_policies_i_t` |
+| `input` | `lc_escalate_en_i` | `aon_timer_public_types_pkg::aon_timer_lc_escalate_en_i_t` |
+| `input` | `sleep_mode_i` | `logic` |
+| `output` | `tl_o` | `aon_timer_public_types_pkg::aon_timer_tl_o_t` |
+| `output` | `alert_tx_o` | `aon_timer_public_types_pkg::aon_timer_alert_tx_o_t` |
+| `output` | `racl_error_o` | `aon_timer_public_types_pkg::aon_timer_racl_error_o_t` |
+| `output` | `intr_wkup_timer_expired_o` | `logic` |
+| `output` | `intr_wdog_timer_bark_o` | `logic` |
+| `output` | `nmi_wdog_timer_bark_o` | `logic` |
+| `output` | `wkup_req_o` | `logic` |
+| `output` | `aon_timer_rst_req_o` | `logic` |
 
-## Security Alerts
+## Supporting SV Files
 
-| Alert Name   | Description                                                                       |
-|:-------------|:----------------------------------------------------------------------------------|
-| fatal_fault  | This fatal alert is triggered when a fatal TL-UL bus integrity fault is detected. |
-
-## Security Countermeasures
-
-| Countermeasure ID       | Description                      |
-|:------------------------|:---------------------------------|
-| AON_TIMER.BUS.INTEGRITY | End-to-end bus integrity scheme. |
-
-
-<!-- END CMDGEN -->
+- `spec/interface/aon_timer_public_if.sv`
+- `spec/interface/aon_timer_public_regs_pkg.sv`
+- `spec/interface/aon_timer_public_tlul_pkg.sv`
+- `spec/interface/aon_timer_public_types_pkg.sv`

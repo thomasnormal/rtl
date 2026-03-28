@@ -2,19 +2,17 @@
 
 ## Block Diagram
 
-![DMA Block Diagram](block_diagram.svg)
-
 ## Defining Relevant Memory Regions
 
 |                       |     |
 |-----------------------|-----|
-| OT Private Memory     | Memory within the OpenTitan RoT secure perimeter
-|                       | This memory is allocated to the OT components like Ibex core for its secure code execution and data storage memory |
-| OT DMA Enabled Memory | Memory within the OpenTitan RoT secure perimeter. |
+| OT Private Memory     | Memory within the target device RoT secure perimeter
+|                       | This memory is allocated to the OT components like main processor for its secure code execution and data storage memory |
+| OT DMA Enabled Memory | Memory within the target device RoT secure perimeter. |
 |                       | This memory is allocated as a staging area while moving data using the DMA controller |
 |                       | DMA operation is allowed to touch this memory |
 |                       | DMA controller shall provide configuration range registers to map OT internal memory as DMA enabled memory |
-| SoC memory            | Any memory outside the OpenTitan RoT secure perimeter |
+| SoC memory            | Any memory outside the target device RoT secure perimeter |
 |                       | This memory may be untrusted from the OT perspective or may be included in its trust boundary for certain cases by leveraging SoC defined security access control enforcement |
 
 ![](./secure_perimeter.svg)
@@ -36,12 +34,12 @@ Mode of operation & interactions with components considered external to
 the OT Trusted Compute Boundary
 
 -   External agents (e.g. System Host or other SoC Controllers) may
-    request certain security services from OpenTitan such as encryption,
+    request certain security services from target device such as encryption,
     digital signing etc. Such an operation is requested using the
     Mailbox interface and may involve bulk data movement.
 
     -   Please refer to the
-        [*mailbox specification*](../../mbx/doc/theory_of_operation.md) for
+        *mailbox specification* for
         further details on the mailbox structure.
 
 -   Through the mailbox interface following information may be passed:
@@ -76,7 +74,7 @@ the OT Trusted Compute Boundary
 
 ***Notes***:
 
--   *Please refer to the Integrated [*OpenTitan: Access to SoC address space document*]()
+-   *Please refer to the Integrated [*target device: Access to SoC address space document*]()
     for more details on the address spaces (OT internal, Control
     Register address space, System Address Space), corresponding
     identifiers & any involved address translation. Note that the
@@ -98,7 +96,7 @@ the OT Trusted Compute Boundary
 -   *DMA controller shall perform address checks against this configured
     range.*
 -   *Detailed list of hardware checks performed by the DMA controller
-    covered under* [*DMAC HW Enforced Security Checks*](#dmac-hw-enforced-security-checks).
+    covered under* *DMAC HW Enforced Security Checks*.
 -   *Note that the DMA enabled memory may be a physically separate SRAM
     structure or a partitioned and access controlled region of the OT
     SRAM memory.*
@@ -120,11 +118,11 @@ hardware handshake DMA operation.
 
 **Receiving data from LSIO**
 
--   [*Source address*](registers.md#src_addr_lo): address of the low speed IO
+-   *Source address*: address of the low speed IO
     receive FIFO read out register.
--   [*Destination address*](registers.md#dst_addr_lo): address to the memory
+-   *Destination address*: address to the memory
     buffer where received data is placed.
--   [*Address space ID*](registers.md#addr_space_id) (ASID): (OT Internal, CTN or System)
+-   *Address space ID* (ASID): (OT Internal, CTN or System)
 
     -   Source ASID: Specify the address space in which the LSIO FIFO is
         visible.
@@ -132,16 +130,16 @@ hardware handshake DMA operation.
     -   Destination ASID: Specify the address space in which the
         destination buffer resides.
 
--   [*Chunk Size*](registers.md#chunk_data_size): Size of each of the non-final chunks
+-   *Chunk Size*: Size of each of the non-final chunks
     of data making up the total transfer. Chunked transfers allowing the DMA controller
     to perform a transfer in a piecemeal fashion, incrementally moving chunks of data
     from the Low Speed IO peripheral FIFO as they become available.
--   [*Total Size*](registers.md#total_data_size): Total size of the data object to be popped
+-   *Total Size*: Total size of the data object to be popped
     from the FIFO (equivalent to the number of reads from the FIFO per
     interrupt times the FIFO read data width).
--   [*Transfer Width*](registers.md#transfer_width): Width of each transaction
+-   *Transfer Width*: Width of each transaction
     (equivalent to FIFO read data width).
--   [*Source Configuration*](registers.md#src_config): Source configuration specifying
+-   *Source Configuration*: Source configuration specifying
     the addressing mode to be used for the source of the data.
 
     -   Wrap: When set, the source address will wrap back to the programmed start address at
@@ -152,10 +150,10 @@ hardware handshake DMA operation.
         the source using consecutive addresses. If not set, all data reads within a single
         chunk are performed to/from a single address.
 
--   [*Destination Configuration*](registers.md#dst_config): Destination configuration
+-   *Destination Configuration*: Destination configuration
     specifying the addressing mode to be used for the data destination. Addressing modes are as
     per the Source Configuration description above.
--   [*DMAC Control register*](registers.md#control):
+-   *DMAC Control register*:
 
     -   Opcode: Type of operation requested. Typically set to copy
         operation in case of hardware handshake mode of operation.
@@ -182,11 +180,11 @@ hardware handshake DMA operation.
 
 **Sending data to LSIO**
 
--   [*Source address*](registers.md#src_addr_lo): Pointer to the head of the
+-   *Source address*: Pointer to the head of the
     memory buffer.
--   [*Destination address*](registers.md#dst_addr_lo): pointer to the FIFO
+-   *Destination address*: pointer to the FIFO
     register.
--   [*Address space ID*](registers.md#addr_space_id) (ASID): (OT Internal, CTN or System)
+-   *Address space ID* (ASID): (OT Internal, CTN or System)
 
     -   Source ASID: Specify the address space in which the source
         buffer resides.
@@ -194,18 +192,18 @@ hardware handshake DMA operation.
     -   Destination ASID: Specify the address space in which the LSIO
         FIFO is visible.
 
--   [*Chunk Size*](registers.md#chunk_data_size): Size of each of the non-final chunks
+-   *Chunk Size*: Size of each of the non-final chunks
     of data making up the total transfers. Chunked transfers allowing the DMA controller
     to perform a transfer in a piecemeal fashion, incrementally sending chunks of data
     to the Low Speed IO peripheral FIFO as space becomes available.
--   [*Total Size*](registers.md#total_data_size): Size of the data object to be pushed
+-   *Total Size*: Size of the data object to be pushed
     into the FIFO.
--   [*Transfer Width*](registers.md#transfer_width): Write Data width of the LSIO FIFO
+-   *Transfer Width*: Write Data width of the LSIO FIFO
     register. Each write transaction is equal to this size.
--   [*Source Configuration*](registers.md#src_config): Source configuration specifying
+-   *Source Configuration*: Source configuration specifying
     the addressing mode to be used for the source of the data. Addressing modes are as
     per the Destination Configuration description below.
--   [*Destination Configuration*](registers.md#dst_config): Destination configuration
+-   *Destination Configuration*: Destination configuration
     specifying the addressing mode to be used for the data destination.
 
     - Wrap: When set the destination address will return to its programmed start
@@ -219,7 +217,7 @@ hardware handshake DMA operation.
       that do not present a typical FIFO interface but rather, for example, a set of
       registers.
 
--   [*DMAC Control register*](registers.md#control)
+-   *DMAC Control register*
 
     -   Opcode: Type of operation requested. Typically set to copy
         operation in case of hardware handshake mode of operation.
@@ -251,7 +249,7 @@ The DMA controller provides the following security value:
 
 -   Separation of roles and responsibilities.
 
-    -   Ibex core involved in control / configuration, security
+    -   main processor involved in control / configuration, security
         monitoring operations.
 
     -   DMA controller involved in data movement & corresponding
@@ -259,28 +257,27 @@ The DMA controller provides the following security value:
 
 -   DMA engine acts as the boundary between OT secure components & the
     SoC for data movement.
--   While moving data from the SoC to OpenTitan, the DMA controller
-    protects the Ibex core by staging the moved data into a DMA enabled
+-   While moving data from the SoC to target device, the DMA controller
+    protects the main processor by staging the moved data into a DMA enabled
     memory location and providing an opportunity to perform additional
-    security checks on it, before it is touched by the Ibex core.
+    security checks on it, before it is touched by the main processor.
 -   Similarly, while moving data out of the OT secure perimeter,
     provides an opportunity to inspect it for information leakage within
     the DMA enabled memory, prior to moving it out of the secure
     perimeter.
 -   A read to an SoC address may have side effects causing the operation
-    to hang. Using the Ibex core directly to perform such a read
+    to hang. Using the main processor directly to perform such a read
     operation could risk hanging the core. Using the DMA controller to
-    perform such reads shields the Ibex core from such availability
+    perform such reads shields the main processor from such availability
     issues. The DMA controller must ensure that problems such as hanging
     transactions on the SoC interface do not lead to problems on any
-    OpenTitan-internal interfaces.
+    trusted-internal interfaces.
 
 Note that to ensure secure movement of data, the following assumptions must
-hold:
 
--   The DMA Controller configuration shall be under OpenTitan firmware
-    (Ibex core) control only.
--   External agents to the OpenTitan secure boundary *shall not* have
+-   The DMA Controller configuration shall be under target device firmware
+    (main processor) control only.
+-   External agents to the target device secure boundary *shall not* have
     access to the DMA registers.
 -   Following restrictions to data movement are observed and enforced by
     the DMA controller.
@@ -329,9 +326,9 @@ the data being transferred, using any of the following algorithms:
 - SHA-384 - SHA-2 hash with a 384-bit digest.
 - SHA-512 - SHA-2 hash with a 512-bit digest.
 
-This is achived simply by modifying the [*opcode*](registers.md#control--opcode)
-field of the [*CONTROL*](registers.md#control) and collecting the
-[digest](registers.md#sha2_digest) from the registers interface when the
+This is achived simply by modifying the *opcode*
+field of the *CONTROL* and collecting the
+digest from the registers interface when the
 transfer has completed.
 
 ## Extension: Inline Operations
@@ -355,7 +352,6 @@ use cases:
         controller.
 
 To implement such inline cryptographic operations, there are two main
-options:
 
 1.  Instantiating dedicated cryptographic hardware modules inside the
     DMA controller.
@@ -386,30 +382,29 @@ A single reset input provides an asynchronous reset of the entire IP block. Any 
 ### Clock gating
 
 As a power-saving measure - since it is anticipated that the DMA controller will only be used sporadically - the design includes a clock gate that is used to stop the clock to most of the IP block when it is not in active use.
-The `prim_clock_gating` clock gate is enabled by writes to the  `CONTROL` register - used to start a transfer - and remains enabled whilst the DMA controller is operating.
 The gating is handled automatically by the hardware and should not be software-visible.
 
 ## Integration into Systems On Chips (SoCs)
 
-In accordance with the [comportability specification](../../../../doc/contributing/hw/comportability) the DMA controller offers the following interfaces:
+In accordance with the comportability specification the DMA controller offers the following interfaces:
 
-- TileLink-UL interface to registers
+- control bus-UL interface to registers
 - Interrupts
 - Alerts
-- [RACL](../../../../doc/contributing/hw/racl)
+- register access control
 
 The DMA controller also has up to three host interfaces, permitting it to transfer data to/from a number of devices.
-Two of these interfaces are TL-UL (TileLink Uncached Light) as per the register interface:
+Two of these interfaces are control bus (control bus) as per the register interface:
 
-- host_tl_h_i|o: TL-UL host connection to the RoT-private memory.
+- host_tl_h_i|o: control bus host connection to the RoT-private memory.
 - ctn_tl_d2h_i|h2d_o: Host connection to the ConTrol Network of the SoC.
 
 The third host interface of the DMA controller uses a different bus specification which is described below.
 
 ### SoC System Bus
 
-Unlike the TL-UL ports, the SoC System Bus requires a 64-bit address space.
-The signaling is similar to that of the TL-UL bus except that read and write channels are separated.
+Unlike the control bus ports, the SoC System Bus requires a 64-bit address space.
+The signaling is similar to that of the control bus bus except that read and write channels are separated.
 The DMA controller, however, presently issues only a single read or a single write request at a time.
 
 #### SoC System Bus Request
@@ -420,7 +415,7 @@ The DMA controller, however, presently issues only a single read or a single wri
 | metadata_vec[cmd] | Constant, indicating the source |
 | opcode_vec[cmd]   | Opcode indicating request type  |
 | iova_vec[cmd]     | Requested address (64 bits)     |
-| racl_vec[cmd]     | RACL role of DMA controller     |
+| racl_vec[cmd]     | register access control role of DMA controller     |
 | write_data[cmd]   | Data for write commands         |
 | write_be[cmd]     | Byte enables for write commands |
 | read_be[cmd]      | Byte enables for read commands  |
@@ -438,18 +433,16 @@ The DMA controller, however, presently issues only a single read or a single wri
 
 ## Sub-word extraction and replication
 
-The DMA controller supports sub-word transfers on the bus, e.g. for a 32-bit TL-UL implementation it is also capable of transferring 1-byte and 2-byte quantities.
+The DMA controller supports sub-word transfers on the bus, e.g. for a 32-bit control bus implementation it is also capable of transferring 1-byte and 2-byte quantities.
 This may be useful for lower-speed peripherals with narrower FIFOs/registers.
 Since the `tlul_adapter_host` only issues reads of full bus words the device should normally ignore the least significant bit(s) of the address, which will be zero.
 Such a device is normally expected to replicate the sub-word across the width of the returned bus word, making its behavior compatible with that of a regular memory responding to word read requests.
 To operate seamlessly with either a memory or a peripheral, the DMA controller will extract the sub-word from the appropriate lane of the returned data word, based upon the least significant bit(s) of the source address.
 
 When writing less than a full bus word, the DMA controller will replicate the selected 8- or 16-bit sub-word across the width of the bus word before writing.
-It will also assert the appropriate bits of the `mask` field on the TL-UL A channel (or correspondingly the `write_be` strobes of the SoC System Bus), and a narrower peripheral may thus ascertain which part of the word is to be used.
+It will also assert the appropriate bits of the `mask` field on the control bus A channel (or correspondingly the `write_be` strobes of the SoC System Bus), and a narrower peripheral may thus ascertain which part of the word is to be used.
 
 The example below shows this behavior when performing 1-byte transfers from a source to a destination, with the two least significant address bits being 2'b01 (i.e. the source address is of the form '4n + 1').
-
-![Sub-word extraction and replication](sub_words.svg)
 
 The second byte within the 32-bit word ('b') is extracted from the 32-bit word read from the source, and then replicated at every byte position within the 32-bit data word that is written to the destination.
 

@@ -1,19 +1,11 @@
-# Timer HWIP Technical Specification
+# Timer Specification
 
-[`rv_timer`](https://reports.opentitan.org/hw/ip/rv_timer/dv/latest/report.html):
-![](https://dashboards.lowrisc.org/badges/dv/rv_timer/test.svg)
-![](https://dashboards.lowrisc.org/badges/dv/rv_timer/passing.svg)
-![](https://dashboards.lowrisc.org/badges/dv/rv_timer/functional.svg)
-![](https://dashboards.lowrisc.org/badges/dv/rv_timer/code.svg)
+This task is presented as a standalone hardware-design problem. Use `spec/interface/` as the canonical boundary for `rv_timer`, and use `spec/micro_arch/` only when deeper verification compatibility is required.
 
 # Overview
 
-This document specifies RISC-V Timer hardware IP functionality. This module
-conforms to the
-[Comportable guideline for peripheral functionality.](../../../doc/contributing/hw/comportability/README.md)
-See that document for integration overview within the broader top level
+This document specifies RISC-V Timer hardware IP functionality.
 system.
-
 
 ## Features
 
@@ -33,9 +25,6 @@ time relative to the reset or the system power-on.
 In this version, the timer doesn't consider low-power modes and
 assumes the clock is neither turned off nor changed during runtime.
 
-## Compatibility
-
 The timer IP provides memory-mapped registers equivalent to `mtime` and `mtimecmp` which can
 be used as the machine-mode timer registers defined in the RISC-V privileged
-spec. Additional features such as prescaler, step, and a configurable number of
 timers and harts have been added.

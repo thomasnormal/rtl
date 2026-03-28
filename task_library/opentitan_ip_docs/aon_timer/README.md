@@ -1,19 +1,10 @@
 # AON Timer Technical Specification
 
-[`aon_timer`](https://reports.opentitan.org/hw/ip/aon_timer/dv/latest/report.html):
-![](https://dashboards.lowrisc.org/badges/dv/aon_timer/test.svg)
-![](https://dashboards.lowrisc.org/badges/dv/aon_timer/passing.svg)
-![](https://dashboards.lowrisc.org/badges/dv/aon_timer/functional.svg)
-![](https://dashboards.lowrisc.org/badges/dv/aon_timer/code.svg)
-
-[`Opentitan Glossary`](../../../doc/glossary.md).
-
+This task is presented as a standalone hardware-design problem. Use `spec/interface/` as the canonical boundary for `aon_timer`, and use `spec/micro_arch/` only when deeper verification compatibility is required.
 
 # Overview
 
 This document specifies the Always-On ("AON") Timer IP functionality.
-This module conforms to the [Comportable guideline for peripheral functionality.](../../../doc/contributing/hw/comportability/README.md)
-See that document for an overview of how it is integrated into the top level system.
 
 ## Features
 
@@ -25,7 +16,6 @@ See that document for an overview of how it is integrated into the top level sys
 
 Note: the pause during escalation feature ensures either timer do not interfere with system escalation behavior.
 
-
 ## Description
 
 This IP provides two timers: a WKUP and WDOG counter which generate interrupts if their respective count register is greater than or equals to the threshold once enabled.
@@ -35,9 +25,9 @@ This IP provides two timers: a WKUP and WDOG counter which generate interrupts i
 The always-on wakeup timer operation is straightforward.
 Once the timer is enabled, the timer starts counting at the value of the register `wkup_count` and increases on each tick of AON clock (one tick every `N + 1` clock cycles, where `N` is the pre-scaler value).
 When it reaches / exceeds the wake threshold and the prescaler reaches the value written to `wkup_ctrl.prescaler`, if `wkup_ctrl.enable=1`  a level wakeup signal (`wkup_req_o` in AON domain) is sent to the power manager and a level IRQ (`intr_wkup_timer_expired_o` in SYS domain) is sent to the processor.
-The level wakeup signal (`wkup_req_o`) stays high until there's a system reset or it's explicitly acknowledged by software by writing a 0 to the [`WKUP_CAUSE`](doc/registers.md#wkup_cause) register.
-To clear the level interrupt (`intr_wkup_timer_expired_o`) write 1 to the field [`INTR_STATE.wkup_timer_expired`](doc/registers.md#intr_state).
-Note that if [`WKUP_COUNT`](doc/registers.md#wkup_count) is not zeroed and remains at or above the wake threshold and the wakeup timer isn't disabled, the wakeup and interrupt will trigger again at the next clock tick.
+The level wakeup signal (`wkup_req_o`) stays high until there's a system reset or it's explicitly acknowledged by software by writing a 0 to the `WKUP_CAUSE` register.
+To clear the level interrupt (`intr_wkup_timer_expired_o`) write 1 to the field `INTR_STATE.wkup_timer_expired`.
+Note that if `WKUP_COUNT` is not zeroed and remains at or above the wake threshold and the wakeup timer isn't disabled, the wakeup and interrupt will trigger again at the next clock tick.
 The wakeup timer can be used like a real-time clock for long periods in a low-power mode (though it does not give any guarantees of time-accuracy).
 
 ### AON Watchdog timer
@@ -60,7 +50,6 @@ The "pause in sleep" option controls whether the timer continues to increase in 
 This allows configurations where the watchdog timer can remain programmed and locked while the device is put to sleep for relatively long periods, controlled by the wakeup timer.
 Without this feature, the watchdog timer might wake up the core prematurely by triggering a watchdog bark.
 
-
 #### AON Watchdog bark
 
 Assuming `wdog_ctrl.enable=1` when the count reaches the bark threshold, a level wakeup signal (`wkup_req_o` in AON domain) is sent to the power manager.
@@ -68,8 +57,8 @@ Note `wkup_req_o` can get set by either counter once the threshold is surpassed.
 In addition, a level IRQ (`intr_wdog_timer_bark_o` in SYS domain) is also generated to the processor.
 If the system is in a low power state, `wkup_req_o` signal asks the power manager to wake the system so that the IRQ (`intr_wdog_timer_bark_o`) can be serviced.
 If the system is not in a low power mode, the IRQ is immediately serviced.
-The level wakeup signal (`wkup_req_o`) stays high until there's a system reset or it's explicitly acknowledged by software by writing a 0 to the [`WKUP_CAUSE`](doc/registers.md#wkup_cause) register.
-To clear the level interrupt (`intr_wdog_timer_bark_o`) write 1 to the field [`INTR_STATE.wdog_timer_bark`](doc/registers.md#intr_state).
+The level wakeup signal (`wkup_req_o`) stays high until there's a system reset or it's explicitly acknowledged by software by writing a 0 to the `WKUP_CAUSE` register.
+To clear the level interrupt (`intr_wdog_timer_bark_o`) write 1 to the field `INTR_STATE.wdog_timer_bark`.
 The condition of the count reaching the bark threshold is known as the watchdog bark.
 
 An extra interrupt output is available to connect the watchdog bark output to an NMI pin (`nmi_wdog_timer_bark_o`) if required.

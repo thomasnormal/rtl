@@ -30,11 +30,11 @@ upstream-specific noise that is irrelevant to implementing the design.
 
 ## Result Summary
 
-All 9 curated tasks now have a normalized public spec layer derived from the
-upstream OpenTitan docs.
+All 9 curated tasks now have a curated public spec layer derived from the
+upstream docs and checked in directly under the task library.
 
 The public bundles intentionally do **not** mirror every upstream file. Instead
-they keep the solver-facing material and strip or replace upstream-specific
+they keep the solver-facing material and remove or rewrite upstream-specific
 content such as:
 
 - repo-relative build instructions
@@ -50,15 +50,15 @@ separate `doc/programmers_guide.md` upstream.
 
 | Task | Public Spec Coverage | Public ABI Coverage | Confidence | Main Caveat |
 | --- | --- | --- | --- | --- |
-| `adc_ctrl` | Normalized README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | High | Mixed always-on / main clock domains add implementation complexity |
-| `aon_timer` | Normalized README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | High | Cross-domain interrupt timing remains subtle |
-| `dma` | Normalized README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | Medium | Most complex boundary in the pack; multiple bus/response channels |
-| `i2c` | Normalized README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | Medium | Protocol behavior is dense and timing-sensitive |
-| `pattgen` | Normalized README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | High | Dual-channel counter semantics still need careful reading |
-| `rv_timer` | Normalized README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | High | Public control-bus and alert semantics must be implemented precisely |
-| `spi_host` | Normalized README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | Medium | Command engine and FSM behavior are relatively complex |
-| `sysrst_ctrl` | Normalized README, interfaces, registers, theory, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | Medium | No separate upstream programmer guide; behavior is spread across README/theory/registers |
-| `uart` | Normalized README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | High | Interrupt and FIFO corner cases still require careful implementation |
+| `adc_ctrl` | Curated README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | High | Mixed always-on / main clock domains add implementation complexity |
+| `aon_timer` | Curated README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | High | Cross-domain interrupt timing remains subtle |
+| `dma` | Curated README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | Medium | Most complex boundary in the pack; multiple bus/response channels |
+| `i2c` | Curated README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | Medium | Protocol behavior is dense and timing-sensitive |
+| `pattgen` | Curated README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | High | Dual-channel counter semantics still need careful reading |
+| `rv_timer` | Curated README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | High | Public control-bus and alert semantics must be implemented precisely |
+| `spi_host` | Curated README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | Medium | Command engine and FSM behavior are relatively complex |
+| `sysrst_ctrl` | Curated README, interfaces, registers, theory, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | Medium | No separate upstream programmer guide; behavior is spread across README/theory/registers |
+| `uart` | Curated README, interfaces, registers, theory, programmer guide, DV notes, interface SV, micro-arch SV | Full `interface/` and `micro_arch/` | High | Interrupt and FIFO corner cases still require careful implementation |
 
 ## Conclusions
 

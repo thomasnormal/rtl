@@ -1,19 +1,21 @@
-# DMA Controller (dma)
+# DMA Controller
 
-The Direct Memory Access (DMA) controller is a peripheral within the OpenTitan system-on-chip (SoC).
+This task is presented as a standalone hardware-design problem. Use `spec/interface/` as the canonical boundary for `dma`, and use `spec/micro_arch/` only when deeper verification compatibility is required.
+
+The Direct Memory Access (DMA) controller is a peripheral within the target system-on-chip (SoC).
 It is designed to provide processor-independent data transfer capabilities between different locations in the system memory map and/or peripherals.
-Its primary purpose is to free the main processor (the Ibex core) from the overhead of large or slow data copy operations, thereby freeing up the CPU for other computational tasks.
+Its primary purpose is to free the main processor (the main processor) from the overhead of large or slow data copy operations, thereby freeing up the CPU for other computational tasks.
 
-The DMA controller is a single-channel device that processes one data transaction at a time. It acts as a master on the system's **TileLink Uncached Lightweight (TL-UL)** bus, allowing it to autonomously read from and write to any memory-mapped peripheral or memory region.
-The DMA enforces a hardware-based isolation mechanism to restrict the access to the OpenTitan internal memory.
+The DMA controller is a single-channel device that processes one data transaction at a time. It acts as a master on the system's **control-bus request/response** bus, allowing it to autonomously read from and write to any memory-mapped peripheral or memory region.
+The DMA enforces a hardware-based isolation mechanism to restrict the access to the trusted internal memory.
 
 ## Features
 
 The DMA controller's RTL implementation includes the following features:
 
 * Support for 3 bus interfaces:
-    1.  Private OpenTitan (OT) Address Space Interface (TL-UL)
-    2.  Control Network (CTN) Interface (TL-UL)
+    1.  Private target device (OT) Address Space Interface (control bus)
+    2.  Control Network (CTN) Interface (control bus)
     3.  64-bit System (sys) Interface (custom protocol)
 
 * **Flexible Data Transfer & Addressing Modes**:
@@ -43,9 +45,9 @@ This section describes possible use cases of the DMA controller.
 
 ### Bulk Data Transfer
 
-The services of an integrated OpenTitan require the movement of bulk data from SoC / system memory to the OpenTitan (OT) private memory and vice-versa.
-The DMA controller provides OpenTitan with the ability to move data blobs securely in and out of the OpenTitan memory while offloading the Ibex core to focus on security critical tasks.
-The DMA provides a hardware isolation layer between OpenTitan and the rest of the SoC.
+The services of an integrated target device require the movement of bulk data from SoC / system memory to the target device (OT) private memory and vice-versa.
+The DMA controller provides target device with the ability to move data blobs securely in and out of the trusted internal memory while offloading the main processor to focus on security critical tasks.
+The DMA provides a hardware isolation layer between target device and the rest of the SoC.
 It provides the hardware enforcement of security properties through well defined isolation & access control techniques, hardware based checking and other protection mechanisms.
 Note that depending upon the use case, it is expected that the SoC provides proper security mechanisms for code / data protections such as access control mechanisms, encrypted and integrity protected memory regions, etc.
 
@@ -63,7 +65,7 @@ Additional efficiency benefits are derived by supporting inline operations withi
 The DMA controller features a hardware-handshake mode that enables automatic data transfers with a peripheral's I/O FIFO.
 This mode offloads the main processor by allowing the DMA to read or write multiple data frames without software intervention, which is ideal for long-running I/O operations.
 
-The hardware-handshake mode is compatible with the following OpenTitan peripherals:
+The hardware-handshake mode is compatible with the following supported peripherals:
 * I2C
 * UART
 * SPI Device

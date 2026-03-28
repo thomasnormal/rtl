@@ -1,20 +1,19 @@
 # Registers
 
-<!-- BEGIN CMDGEN util/regtool.py -d ./hw/ip/rv_timer/data/rv_timer.hjson -->
 ## Summary
 
 | Name                                             | Offset   |   Length | Description              |
 |:-------------------------------------------------|:---------|---------:|:-------------------------|
-| rv_timer.[`ALERT_TEST`](#alert_test)             | 0x0      |        4 | Alert Test Register      |
-| rv_timer.[`CTRL`](#ctrl)                         | 0x4      |        4 | Control register         |
-| rv_timer.[`INTR_ENABLE0`](#intr_enable0)         | 0x100    |        4 | Interrupt Enable         |
-| rv_timer.[`INTR_STATE0`](#intr_state0)           | 0x104    |        4 | Interrupt Status         |
-| rv_timer.[`INTR_TEST0`](#intr_test0)             | 0x108    |        4 | Interrupt test register  |
-| rv_timer.[`CFG0`](#cfg0)                         | 0x10c    |        4 | Configuration for Hart 0 |
-| rv_timer.[`TIMER_V_LOWER0`](#timer_v_lower0)     | 0x110    |        4 | Timer value Lower        |
-| rv_timer.[`TIMER_V_UPPER0`](#timer_v_upper0)     | 0x114    |        4 | Timer value Upper        |
-| rv_timer.[`COMPARE_LOWER0_0`](#compare_lower0_0) | 0x118    |        4 | Timer value Lower        |
-| rv_timer.[`COMPARE_UPPER0_0`](#compare_upper0_0) | 0x11c    |        4 | Timer value Upper        |
+| rv_timer.`ALERT_TEST`             | 0x0      |        4 | Alert Test Register      |
+| rv_timer.`CTRL`                         | 0x4      |        4 | Control register         |
+| rv_timer.`INTR_ENABLE0`         | 0x100    |        4 | Interrupt Enable         |
+| rv_timer.`INTR_STATE0`           | 0x104    |        4 | Interrupt Status         |
+| rv_timer.`INTR_TEST0`             | 0x108    |        4 | Interrupt test register  |
+| rv_timer.`CFG0`                         | 0x10c    |        4 | Configuration for Hart 0 |
+| rv_timer.`TIMER_V_LOWER0`     | 0x110    |        4 | Timer value Lower        |
+| rv_timer.`TIMER_V_UPPER0`     | 0x114    |        4 | Timer value Upper        |
+| rv_timer.`COMPARE_LOWER0_0` | 0x118    |        4 | Timer value Lower        |
+| rv_timer.`COMPARE_UPPER0_0` | 0x11c    |        4 | Timer value Upper        |
 
 ## ALERT_TEST
 Alert Test Register
@@ -183,6 +182,3 @@ Timer value Upper
 |  Bits  |  Type  |   Reset    | Name   | Description                 |
 |:------:|:------:|:----------:|:-------|:----------------------------|
 |  31:0  |   rw   | 0xffffffff | v      | Timer compare value [63:32] |
-
-
-<!-- END CMDGEN -->

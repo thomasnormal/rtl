@@ -1,45 +1,39 @@
-# Hardware Interfaces
+# Interface Summary
 
-<!-- BEGIN CMDGEN util/regtool.py --interfaces ./hw/ip/pattgen/data/pattgen.hjson -->
-Referring to the [Comportable guideline for peripheral device functionality](https://opentitan.org/book/doc/contributing/hw/comportability), the module **`pattgen`** has the following hardware interfaces defined
-- Primary Clock: **`clk_i`**
-- Other Clocks: *none*
-- Bus Device Interfaces (TL-UL): **`tl`**
-- Bus Host Interfaces (TL-UL): *none*
+The canonical machine-readable interface for `pattgen` is defined in `spec/interface/`.
+Use the SystemVerilog files there as the source of truth for port directions, packed types, parameters, and modports.
 
-## Peripheral Pins for Chip IO
+## Parameters
 
-| Pin name   | Direction   | Description                                                |
-|:-----------|:------------|:-----------------------------------------------------------|
-| pda0_tx    | output      | Serial output data bit for pattern generation on Channel 0 |
-| pcl0_tx    | output      | Clock corresponding to pattern data on Channel 0           |
-| pda1_tx    | output      | Serial output data bit for pattern generation on Channel 1 |
-| pcl1_tx    | output      | Clock corresponding to pattern data on Channel 1           |
+| Name | Default |
+| --- | --- |
+| `AlertAsyncOn` | `1'b1` |
+| `AlertSkewCycles` | `1` |
 
-## [Inter-Module Signals](https://opentitan.org/book/doc/contributing/hw/comportability/index.html#inter-signal-handling)
+## Ports
 
-| Port Name   | Package::Struct   | Type    | Act   |   Width | Description   |
-|:------------|:------------------|:--------|:------|--------:|:--------------|
-| tl          | tlul_pkg::tl      | req_rsp | rsp   |       1 |               |
+| Direction | Name | Type |
+| --- | --- | --- |
+| `input` | `clk_i` | `logic` |
+| `input` | `rst_ni` | `logic` |
+| `input` | `tl_i` | `pattgen_public_types_pkg::pattgen_tl_i_t` |
+| `input` | `alert_rx_i` | `pattgen_public_types_pkg::pattgen_alert_rx_i_t` |
+| `output` | `tl_o` | `pattgen_public_types_pkg::pattgen_tl_o_t` |
+| `output` | `alert_tx_o` | `pattgen_public_types_pkg::pattgen_alert_tx_o_t` |
+| `output` | `cio_pda0_tx_o` | `logic` |
+| `output` | `cio_pcl0_tx_o` | `logic` |
+| `output` | `cio_pda1_tx_o` | `logic` |
+| `output` | `cio_pcl1_tx_o` | `logic` |
+| `output` | `cio_pda0_tx_en_o` | `logic` |
+| `output` | `cio_pcl0_tx_en_o` | `logic` |
+| `output` | `cio_pda1_tx_en_o` | `logic` |
+| `output` | `cio_pcl1_tx_en_o` | `logic` |
+| `output` | `intr_done_ch0_o` | `logic` |
+| `output` | `intr_done_ch1_o` | `logic` |
 
-## Interrupts
+## Supporting SV Files
 
-| Interrupt Name   | Type   | Description                                          |
-|:-----------------|:-------|:-----------------------------------------------------|
-| done_ch0         | Event  | raise if pattern generation on Channel 0 is complete |
-| done_ch1         | Event  | raise if pattern generation on Channel 1 is complete |
-
-## Security Alerts
-
-| Alert Name   | Description                                                                       |
-|:-------------|:----------------------------------------------------------------------------------|
-| fatal_fault  | This fatal alert is triggered when a fatal TL-UL bus integrity fault is detected. |
-
-## Security Countermeasures
-
-| Countermeasure ID     | Description                      |
-|:----------------------|:---------------------------------|
-| PATTGEN.BUS.INTEGRITY | End-to-end bus integrity scheme. |
-
-
-<!-- END CMDGEN -->
+- `spec/interface/pattgen_public_if.sv`
+- `spec/interface/pattgen_public_regs_pkg.sv`
+- `spec/interface/pattgen_public_tlul_pkg.sv`
+- `spec/interface/pattgen_public_types_pkg.sv`
