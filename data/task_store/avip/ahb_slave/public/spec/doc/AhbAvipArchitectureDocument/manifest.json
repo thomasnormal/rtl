@@ -1,0 +1,17 @@
+{
+  "files": [
+    "00_front_matter.md",
+    "01_introduction.md",
+    "02_architecture.md",
+    "03_implementation.md",
+    "04_directory_structure.md",
+    "05_configuration.md",
+    "06_verification_plan.md",
+    "07_assertion_plan.md",
+    "08_coverage_plan.md",
+    "09_test_cases.md",
+    "10_simulation_results.md",
+    "11_references.md"
+  ],
+  "page_count": 77
+}
