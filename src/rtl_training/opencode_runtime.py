@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
+import time
+from typing import TextIO
 
 
 class OpenCodeUnavailable(RuntimeError):
@@ -27,6 +31,7 @@ class OpenCodeRunResult:
     returncode: int
     stdout: str
     stderr: str
+    completed_via_result_file: bool = False
 
 
 def ensure_opencode_available() -> None:
@@ -63,6 +68,25 @@ def build_run_environment(request: OpenCodeRunRequest) -> dict[str, str]:
         env["GIT_CEILING_DIRECTORIES"] = os.pathsep.join([ceiling, existing_ceiling])
     else:
         env["GIT_CEILING_DIRECTORIES"] = ceiling
+
+    workspace_home = workspace_root / ".home"
+    xdg_config_home = workspace_root / ".xdg_config"
+    xdg_data_home = workspace_root / ".xdg_data"
+    xdg_cache_home = workspace_root / ".xdg_cache"
+    for path in (workspace_home, xdg_config_home, xdg_data_home, xdg_cache_home):
+        path.mkdir(parents=True, exist_ok=True)
+
+    env["HOME"] = str(workspace_home)
+    env["XDG_CONFIG_HOME"] = str(xdg_config_home)
+    env["XDG_DATA_HOME"] = str(xdg_data_home)
+    env["XDG_CACHE_HOME"] = str(xdg_cache_home)
+
+    config_path = workspace_root / "opencode.json"
+    if config_path.exists():
+        env["OPENCODE_CONFIG"] = str(config_path)
+    config_dir = workspace_root / ".opencode"
+    if config_dir.exists():
+        env["OPENCODE_CONFIG_DIR"] = str(config_dir)
     return env
 
 
@@ -70,22 +94,106 @@ def run_opencode(
     request: OpenCodeRunRequest,
     *,
     timeout_s: int = 600,
+    result_settle_s: float = 2.0,
+    poll_interval_s: float = 0.2,
+    terminate_grace_s: float = 5.0,
 ) -> OpenCodeRunResult:
     ensure_opencode_available()
     command = build_run_command(request)
     env = build_run_environment(request)
-    completed = subprocess.run(
-        command,
-        cwd=request.workspace_root,
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=timeout_s,
-        check=False,
-    )
+    result_path = request.workspace_root / "result" / "result.json"
+    start_time = time.monotonic()
+    stable_since: float | None = None
+    last_result_state: tuple[int, int] | None = None
+
+    with (
+        tempfile.TemporaryFile(mode="w+", encoding="utf-8") as stdout_file,
+        tempfile.TemporaryFile(mode="w+", encoding="utf-8") as stderr_file,
+        subprocess.Popen(
+            command,
+            cwd=request.workspace_root,
+            env=env,
+            stdout=stdout_file,
+            stderr=stderr_file,
+            text=True,
+        ) as process,
+    ):
+        while True:
+            if process.poll() is not None:
+                break
+
+            current_state = _result_file_state(result_path)
+            if current_state is not None:
+                if current_state == last_result_state:
+                    if stable_since is None:
+                        stable_since = time.monotonic()
+                else:
+                    last_result_state = current_state
+                    stable_since = time.monotonic()
+                if (
+                    stable_since is not None
+                    and (time.monotonic() - stable_since) >= result_settle_s
+                ):
+                    _terminate_process(process, grace_s=terminate_grace_s)
+                    stdout_text = _read_captured_output(stdout_file)
+                    stderr_text = _read_captured_output(stderr_file)
+                    return OpenCodeRunResult(
+                        command=command,
+                        returncode=0,
+                        stdout=stdout_text,
+                        stderr=stderr_text,
+                        completed_via_result_file=True,
+                    )
+            else:
+                stable_since = None
+                last_result_state = None
+
+            if (time.monotonic() - start_time) >= timeout_s:
+                _terminate_process(process, grace_s=terminate_grace_s)
+                stdout_text = _read_captured_output(stdout_file)
+                stderr_text = _read_captured_output(stderr_file)
+                raise subprocess.TimeoutExpired(
+                    command,
+                    timeout_s,
+                    output=stdout_text,
+                    stderr=stderr_text,
+                )
+            time.sleep(poll_interval_s)
+
+        stdout_text = _read_captured_output(stdout_file)
+        stderr_text = _read_captured_output(stderr_file)
     return OpenCodeRunResult(
         command=command,
-        returncode=completed.returncode,
-        stdout=completed.stdout,
-        stderr=completed.stderr,
+        returncode=process.returncode,
+        stdout=stdout_text,
+        stderr=stderr_text,
     )
+
+
+def _read_captured_output(file_obj: TextIO) -> str:
+    file_obj.seek(0)
+    return file_obj.read()
+
+
+def _result_file_state(path: Path) -> tuple[int, int] | None:
+    try:
+        stat_result = path.stat()
+    except FileNotFoundError:
+        return None
+    try:
+        json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    return (stat_result.st_size, stat_result.st_mtime_ns)
+
+
+def _terminate_process(process: subprocess.Popen[str], *, grace_s: float) -> None:
+    if process.poll() is not None:
+        return
+    process.terminate()
+    deadline = time.monotonic() + grace_s
+    while process.poll() is None and time.monotonic() < deadline:
+        time.sleep(0.05)
+    if process.poll() is None:
+        process.kill()
+        process.wait()

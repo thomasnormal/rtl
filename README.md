@@ -20,7 +20,7 @@ That keeps deterministic validation available to the training framework without 
 - `configs/verifier_smoke.json`: a first-pass verifier-training config.
 - `src/rtl_training/`: task-store, OpenCode runtime, hidden-oracle validation, and RL helpers.
 - `task_library/opentitan_ip_docs/`: manually ingested OpenTitan spec bundles for `adc_ctrl`, `aon_timer`, `uart`, `i2c`, `spi_host`, `pattgen`, `dma`, `rv_timer`, and `sysrst_ctrl`, copied from the local checkout with their original doc layout.
-- `task_library/riscv_hardware_specs/`: the first checked-in spec-only public corpus, currently with official RISC-V External Debug and Advanced Interrupt Architecture PDFs.
+- `task_library/riscv_hardware_specs/`: the first checked-in spec-only public corpus, currently with an External Debug task plus bounded IMSIC and APLIC IDC tasks, and the raw checked-in AIA source transcription used to carve future sub-tasks.
 - `opencode.json` and `.opencode/`: checked-in OpenCode prompts and hardware-tool skills.
 - `tests/`: regression tests for public/oracle separation, OpenCode workspaces, and reward/config logic.
 - `docs/`: project plan, dataset notes, and an engineering log.
@@ -78,7 +78,7 @@ store_riscv_hardware_specs_tasks("data/task_store")
 PY
 ```
 
-This pack carries public PDFs only. There is no hidden oracle or private source bundle; it exists to validate the public-only ingest path before adding larger spec corpora.
+This pack carries public PDFs only. There is no hidden oracle or private source bundle; it exists to validate the public-only ingest path before adding larger spec corpora. The checked-in `doc/` trees are manual `gpt-5.4-mini` conversions of those public PDFs and materialize alongside the source documents.
 
 The task metadata also points at a shared hidden source bundle under `data/shared_sources/registry.json` for upstream `rtl/` and `dv/` paths. Those private assets are not staged into agent workspaces.
 

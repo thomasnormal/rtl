@@ -48,6 +48,18 @@ The first OpenTitan medium-tier pack is now checked in as curated task bundles f
 
 These are manually ingested spec bundles copied from the local `~/opentitan` checkout, not rewritten summaries and not an automated ingest pipeline. The public task metadata is curated, the spec content itself is the upstream OpenTitan documentation with its original directory structure preserved, and the materialized task store references a shared hidden source bundle for upstream `rtl/` and `dv/` paths needed by future oracle work.
 
+### 4a. First spec-only public corpus
+
+The first checked-in `spec-only` pack is now `riscv_hardware_specs`, with public-only task bundles for:
+
+- `external_debug`
+- `imsic_interrupt_file`
+- `aplic_idc`
+
+These are copied directly from the official RISC-V International PDFs and intentionally have no hidden oracle assets. Each task also carries a checked-in `doc/` tree with a manual `gpt-5.4-mini` markdown conversion of the public spec so generator and verifier episodes can consume text instead of raw PDFs only.
+
+The current lesson from validation is that "whole architecture manual" is too broad for a first spec-only task. `imsic_interrupt_file` and `aplic_idc` are bounded extractions from the broader AIA corpus with explicit normalized public interfaces, while the full checked-in AIA transcription remains available as source material for future smaller tasks.
+
 ### 5. RTL-Repo
 
 Use RTL-Repo for scale and repository context, not as the main RL reward source. It broadens code exposure and can help later with generator pretraining or repository-conditioned tasks.
@@ -96,6 +108,7 @@ Target roughly 30-300 page manuals.
 
 Best public sources:
 
+- checked-in official RISC-V hardware/control PDFs such as the current `riscv_hardware_specs` pack
 - OpenTitan top-level datasheets and integration docs
 - CVA6 user manual
 - CORE-V-MCU user manual
@@ -128,11 +141,12 @@ Properties:
 
 If the goal is “more data soon” without getting blocked on licensing, the next best sequence is:
 
-1. OpenTitan IP docs as the first medium tier
-2. OpenHW single-core manuals as the second medium tier
-3. OpenTitan top-level docs, CVA6, CORE-V-MCU, and NVDLA as the first large tier
-4. ONFI as the first open memory/protocol large tier
-5. JEDEC DDR3 / DDR6 only after the private/licensed pipeline exists
+1. RISC-V public hardware specs as the first spec-only tier
+2. OpenTitan IP docs as the first oracle-backed medium tier
+3. OpenHW single-core manuals as the second medium tier
+4. OpenTitan top-level docs, CVA6, CORE-V-MCU, and NVDLA as the first large tier
+5. ONFI as the first open memory/protocol large tier
+6. JEDEC DDR3 / DDR6 only after the private/licensed pipeline exists
 
 ## Task Store Record
 

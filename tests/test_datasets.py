@@ -16,6 +16,11 @@ def test_manifest_anchor_counts_and_order() -> None:
     assert manifest.ordered_recommendations()[0].name == "rtllm_v1_1"
     assert manifest.total_example_count("anchor_seed") == 235
     assert manifest.by_name("asserteval").has_formal_oracle is True
+    assert manifest.by_name("riscv_hardware_specs").status == "ready"
+    assert manifest.by_name("riscv_hardware_specs").example_count == 3
+    assert manifest.by_name("riscv_hardware_specs").has_testbench is False
+    assert manifest.by_name("riscv_hardware_specs").has_gold_rtl is False
+    assert manifest.by_name("riscv_hardware_specs").default_tier == "large"
     assert manifest.by_name("opentitan_ip_docs").default_tier == "medium"
     assert manifest.by_name("opentitan_ip_docs").status == "ready"
     assert manifest.by_name("opentitan_ip_docs").example_count == 9

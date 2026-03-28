@@ -575,6 +575,7 @@ def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path
     written = store_riscv_hardware_specs_tasks(tmp_path / "task_store")
 
     assert sorted(path.name for path in written) == [
+        "aplic_idc",
         "external_debug",
         "imsic_interrupt_file",
     ]
@@ -618,9 +619,11 @@ def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path
     assert (imsic_task.spec_dir / "riscv-interrupts-aia-v1.0.pdf").exists()
     assert (imsic_task.spec_dir / "doc" / "README.md").exists()
     assert (imsic_task.spec_dir / "doc" / "manifest.json").exists()
+    assert (imsic_task.spec_dir / "doc" / "registers.md").exists()
     assert (imsic_task.spec_dir / "doc" / "04_p025_p032.md").exists()
     assert (imsic_task.spec_dir / "doc" / "figures" / "02_p009_p016_figure-001.png").exists()
     assert imsic_task.public_top_module == "riscv_imsic"
+    assert "eidelivery = 0x4000_0000" in (imsic_task.spec_dir / "doc" / "registers.md").read_text()
 
     imsic_public_metadata = json.loads(imsic_task.public_task_path.read_text())
     assert imsic_public_metadata == {
@@ -643,6 +646,44 @@ def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path
     assert imsic_task_metadata["source"]["origin"] == "curated_task_pack"
     assert imsic_task_metadata["source"]["spec_subdir"] == "imsic_interrupt_file"
     assert imsic_task_metadata["source"]["source_docs"] == [
+        "https://docs.riscv.org/reference/hardware/aia/_attachments/riscv-interrupts.pdf",
+    ]
+
+    aplic_task = load_stored_task(tmp_path / "task_store" / "riscv_hardware_specs" / "aplic_idc")
+    assert aplic_task.tier == "small"
+    assert aplic_task.oracle is None
+    assert (aplic_task.spec_dir / "riscv-interrupts-aia-v1.0.pdf").exists()
+    assert (aplic_task.spec_dir / "doc" / "README.md").exists()
+    assert (aplic_task.spec_dir / "doc" / "manifest.json").exists()
+    assert (aplic_task.spec_dir / "doc" / "registers.md").exists()
+    assert (aplic_task.spec_dir / "doc" / "07_p049_p056.md").exists()
+    assert aplic_task.public_top_module == "riscv_aplic_idc"
+
+    aplic_public_metadata = json.loads(aplic_task.public_task_path.read_text())
+    assert aplic_public_metadata == {
+        "dataset_name": "riscv_hardware_specs",
+        "deliverables": {
+            "rtl": "submission/",
+            "summary": "result/result.json",
+        },
+        "task_id": "aplic_idc",
+        "top_module": "riscv_aplic_idc",
+        "tier": "small",
+    }
+    aplic_if = (aplic_task.spec_dir / "interface" / "riscv_aplic_idc_public_if.sv").read_text()
+    assert "interface riscv_aplic_idc_public_if;" in aplic_if
+    assert "logic [255:0] src_prio_i;" in aplic_if
+    assert "logic claim_pulse_o;" in aplic_if
+    assert "logic [9:0] claim_id_o;" in aplic_if
+    assert "modport dut (" in aplic_if
+    assert "models one APLIC interrupt delivery control (IDC) block for one hart" in (
+        aplic_task.spec_dir / "doc" / "registers.md"
+    ).read_text()
+
+    aplic_task_metadata = json.loads((aplic_task.root / "task.json").read_text())
+    assert aplic_task_metadata["source"]["origin"] == "curated_task_pack"
+    assert aplic_task_metadata["source"]["spec_subdir"] == "aplic_idc"
+    assert aplic_task_metadata["source"]["source_docs"] == [
         "https://docs.riscv.org/reference/hardware/aia/_attachments/riscv-interrupts.pdf",
     ]
 

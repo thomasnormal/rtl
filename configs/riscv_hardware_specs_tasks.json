@@ -1,0 +1,183 @@
+{
+  "dataset_name": "riscv_hardware_specs",
+  "tasks": [
+    {
+      "task_id": "external_debug",
+      "candidate_top_module": "riscv_debug_module",
+      "tier": "large",
+      "spec_subdir": "external_debug",
+      "source_docs": [
+        "https://docs.riscv.org/reference/debug-trace-ras/debug/v0.13.2/_attachments/riscv-debug.pdf"
+      ]
+    },
+    {
+      "task_id": "imsic_interrupt_file",
+      "candidate_top_module": "riscv_imsic",
+      "tier": "medium",
+      "spec_subdir": "imsic_interrupt_file",
+      "source_docs": [
+        "https://docs.riscv.org/reference/hardware/aia/_attachments/riscv-interrupts.pdf"
+      ],
+      "interface": {
+        "top_module": "riscv_imsic",
+        "ports": [
+          {
+            "name": "clk_i",
+            "direction": "input",
+            "description": "Primary clock for the interrupt-file state."
+          },
+          {
+            "name": "rst_ni",
+            "direction": "input",
+            "description": "Active-low reset."
+          },
+          {
+            "name": "req_valid_i",
+            "direction": "input",
+            "description": "Request qualifier for the normalized local access port."
+          },
+          {
+            "name": "req_write_i",
+            "direction": "input",
+            "description": "High for writes, low for reads."
+          },
+          {
+            "name": "req_addr_i",
+            "direction": "input",
+            "width": "[11:0]",
+            "description": "Normalized local address. 0x000/0x004 model seteipnum_le/be, 0x070/0x072/0x080-0x0FF model the interrupt-file registers, and 0x140 models topei claim/read semantics."
+          },
+          {
+            "name": "req_wdata_i",
+            "direction": "input",
+            "width": "[31:0]",
+            "description": "Write payload for the normalized local access port."
+          },
+          {
+            "name": "rsp_valid_o",
+            "direction": "output",
+            "description": "Response qualifier for reads and accepted writes."
+          },
+          {
+            "name": "rsp_rdata_o",
+            "direction": "output",
+            "width": "[31:0]",
+            "description": "Read data from the normalized local access port."
+          },
+          {
+            "name": "irq_o",
+            "direction": "output",
+            "description": "Hart-facing external interrupt signal controlled by eidelivery, eithreshold, eie, and eip."
+          }
+        ],
+        "notes": [
+          "The staged public boundary is a normalized single-interrupt-file interface derived from AIA chapter 3, not a full hart CSR subsystem.",
+          "Reads from address 0x140 return the current top pending-and-enabled interrupt in AIA topei format; writes to 0x140 ignore wdata and claim that interrupt by clearing its pending bit.",
+          "Addresses not listed in the task README are reserved and must read as zero and ignore writes."
+        ]
+      }
+    },
+    {
+      "task_id": "aplic_idc",
+      "candidate_top_module": "riscv_aplic_idc",
+      "tier": "small",
+      "spec_subdir": "aplic_idc",
+      "source_docs": [
+        "https://docs.riscv.org/reference/hardware/aia/_attachments/riscv-interrupts.pdf"
+      ],
+      "interface": {
+        "top_module": "riscv_aplic_idc",
+        "ports": [
+          {
+            "name": "clk_i",
+            "direction": "input",
+            "description": "Primary clock for the IDC state."
+          },
+          {
+            "name": "rst_ni",
+            "direction": "input",
+            "description": "Active-low reset."
+          },
+          {
+            "name": "domain_ie_i",
+            "direction": "input",
+            "description": "Normalized copy of APLIC domaincfg.IE for the owning domain."
+          },
+          {
+            "name": "src_pending_i",
+            "direction": "input",
+            "width": "[31:0]",
+            "description": "Pending bits for the 32-source normalized direct-delivery view. Source 0 is reserved and ignored."
+          },
+          {
+            "name": "src_enable_i",
+            "direction": "input",
+            "width": "[31:0]",
+            "description": "Enable bits for the same 32 normalized sources. Source 0 is reserved and ignored."
+          },
+          {
+            "name": "src_prio_i",
+            "direction": "input",
+            "width": "[255:0]",
+            "description": "Flattened 32 x 8-bit priority numbers, one byte per source. Smaller nonzero values mean higher priority."
+          },
+          {
+            "name": "req_valid_i",
+            "direction": "input",
+            "description": "Request qualifier for the normalized IDC local access port."
+          },
+          {
+            "name": "req_write_i",
+            "direction": "input",
+            "description": "High for writes, low for reads."
+          },
+          {
+            "name": "req_addr_i",
+            "direction": "input",
+            "width": "[4:0]",
+            "description": "Normalized IDC-local register address."
+          },
+          {
+            "name": "req_wdata_i",
+            "direction": "input",
+            "width": "[31:0]",
+            "description": "Write payload for the normalized IDC local access port."
+          },
+          {
+            "name": "rsp_valid_o",
+            "direction": "output",
+            "description": "Response qualifier for reads and accepted writes."
+          },
+          {
+            "name": "rsp_rdata_o",
+            "direction": "output",
+            "width": "[31:0]",
+            "description": "Read data from the normalized IDC local access port."
+          },
+          {
+            "name": "irq_o",
+            "direction": "output",
+            "description": "Hart-facing external interrupt signal for this IDC."
+          },
+          {
+            "name": "claim_pulse_o",
+            "direction": "output",
+            "description": "One-cycle pulse when a read of claimi returns a nonzero winning source and requests that source to be claimed."
+          },
+          {
+            "name": "claim_id_o",
+            "direction": "output",
+            "width": "[9:0]",
+            "description": "Claimed source number when claim_pulse_o is asserted."
+          }
+        ],
+        "notes": [
+          "The staged public boundary is a normalized single-hart APLIC IDC block, not a full APLIC domain.",
+          "The task normalizes the direct-delivery candidate set down to 32 sources numbered 1..31, with source 0 reserved and ignored.",
+          "The environment supplies per-source pending, enable, and priority inputs; the IDC computes topi and claimi locally, applies ithreshold, and emits claim_pulse_o/claim_id_o when claimi reads a nonzero winner.",
+          "Addresses not listed in the task README are reserved and must read as zero and ignore writes."
+        ]
+      }
+    }
+  ]
+}

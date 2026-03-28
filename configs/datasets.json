@@ -31,6 +31,7 @@
     "verilogeval_v2_spec_to_rtl",
     "rtllm_v2_0",
     "asserteval",
+    "riscv_hardware_specs",
     "opentitan_ip_docs",
     "openhw_core_ip_manuals",
     "wishbone_b4",
@@ -122,6 +123,25 @@
       "access": "public",
       "notes": "Use this to train assertion and formal-task generation, not as the main generator benchmark. The current AssertLLM repo README says 20 designs; the later OpenLLM-RTL paper summary says 18, so verify the checkout you actually use.",
       "default_tier": "small"
+    },
+    {
+      "name": "riscv_hardware_specs",
+      "role": "spec_only_corpus",
+      "status": "ready",
+      "example_count": 3,
+      "has_spec": true,
+      "has_gold_rtl": false,
+      "has_testbench": false,
+      "has_formal_oracle": false,
+      "fields": [
+        "official PDF",
+        "version metadata",
+        "source URL"
+      ],
+      "license": "CC-BY-4.0",
+      "access": "public",
+      "notes": "First spec-only curated pack checked into the repo as official RISC-V hardware/control PDFs. The current bundle materializes the External Debug Specification v0.13.2 and bounded IMSIC / APLIC IDC tasks carved from the Advanced Interrupt Architecture v1.0 PDF as public-only task artifacts so the trainer can validate a no-oracle ingestion path before adding larger spec corpora.",
+      "default_tier": "large"
     },
     {
       "name": "opentitan_dv",
