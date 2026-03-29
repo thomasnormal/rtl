@@ -52,13 +52,12 @@ These are manually ingested spec bundles copied from the local `~/opentitan` che
 
 The first checked-in `spec-only` pack is now `riscv_hardware_specs`, with public-only task bundles for:
 
-- `debug_abstract_command_frontend`
 - `imsic_interrupt_file`
 - `aplic_idc`
 
 These are copied directly from the official RISC-V International PDFs and intentionally have no hidden oracle assets. Each task also carries a checked-in `doc/` tree with a manual `gpt-5.4-mini` markdown conversion of the public spec so generator and verifier episodes can consume text instead of raw PDFs only.
 
-The current lesson from validation is that "whole architecture manual" is too broad for a first spec-only task. The active pack therefore uses bounded extractions with explicit normalized public interfaces: `debug_abstract_command_frontend` from the External Debug spec, and `imsic_interrupt_file` / `aplic_idc` from the broader AIA corpus. The full checked-in External Debug and AIA transcriptions remain available as source material for future smaller tasks.
+The current lesson from validation is that "whole architecture manual" is too broad for a first spec-only task. The active pack therefore uses bounded extractions with explicit normalized public interfaces: `imsic_interrupt_file` and `aplic_idc` from the broader AIA corpus. The full checked-in External Debug and AIA transcriptions remain available as source material for future smaller tasks, but only standalone RTL-from-spec tasks should be active task-pack entries.
 
 ### 5. RTL-Repo
 

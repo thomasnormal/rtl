@@ -576,51 +576,8 @@ def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path
 
     assert sorted(path.name for path in written) == [
         "aplic_idc",
-        "debug_abstract_command_frontend",
         "imsic_interrupt_file",
     ]
-
-    debug_task = load_stored_task(
-        tmp_path / "task_store" / "riscv_hardware_specs" / "debug_abstract_command_frontend"
-    )
-    assert debug_task.tier == "small"
-    assert debug_task.oracle is None
-    assert debug_task.private_dir is None
-    assert debug_task.shared_private_ref is None
-    assert (debug_task.spec_dir / "riscv-debug-spec-v0.13.2.pdf").exists()
-    assert (debug_task.spec_dir / "doc" / "README.md").exists()
-    assert (debug_task.spec_dir / "doc" / "manifest.json").exists()
-    assert (debug_task.spec_dir / "doc" / "registers.md").exists()
-    assert (debug_task.spec_dir / "doc" / "05_p033_p040.md").exists()
-    assert debug_task.public_top_module == "riscv_debug_abstract_cmd"
-
-    debug_public_metadata = json.loads(debug_task.public_task_path.read_text())
-    assert debug_public_metadata == {
-        "dataset_name": "riscv_hardware_specs",
-        "deliverables": {
-            "rtl": "submission/",
-            "summary": "result/result.json",
-        },
-        "task_id": "debug_abstract_command_frontend",
-        "top_module": "riscv_debug_abstract_cmd",
-        "tier": "small",
-    }
-    debug_if = (debug_task.spec_dir / "interface" / "riscv_debug_abstract_cmd_public_if.sv").read_text()
-    assert "interface riscv_debug_abstract_cmd_public_if;" in debug_if
-    assert "logic cmd_start_o;" in debug_if
-    assert "logic [2:0] cmd_cmderr_i;" in debug_if
-    assert "modport dut (" in debug_if
-    assert "normalized `riscv_debug_abstract_cmd` public" in (
-        debug_task.spec_dir / "doc" / "registers.md"
-    ).read_text()
-
-    debug_task_metadata = json.loads((debug_task.root / "task.json").read_text())
-    assert debug_task_metadata["source"]["origin"] == "curated_task_pack"
-    assert debug_task_metadata["source"]["spec_subdir"] == "debug_abstract_command_frontend"
-    assert debug_task_metadata["source"]["source_docs"] == [
-        "https://docs.riscv.org/reference/debug-trace-ras/debug/v0.13.2/_attachments/riscv-debug.pdf",
-    ]
-    assert "oracle" not in debug_task_metadata
 
     imsic_task = load_stored_task(
         tmp_path / "task_store" / "riscv_hardware_specs" / "imsic_interrupt_file"

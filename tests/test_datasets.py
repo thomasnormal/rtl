@@ -17,7 +17,7 @@ def test_manifest_anchor_counts_and_order() -> None:
     assert manifest.total_example_count("anchor_seed") == 235
     assert manifest.by_name("asserteval").has_formal_oracle is True
     assert manifest.by_name("riscv_hardware_specs").status == "ready"
-    assert manifest.by_name("riscv_hardware_specs").example_count == 3
+    assert manifest.by_name("riscv_hardware_specs").example_count == 2
     assert manifest.by_name("riscv_hardware_specs").has_testbench is False
     assert manifest.by_name("riscv_hardware_specs").has_gold_rtl is False
     assert manifest.by_name("riscv_hardware_specs").default_tier == "large"

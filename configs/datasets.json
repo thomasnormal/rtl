@@ -128,7 +128,7 @@
       "name": "riscv_hardware_specs",
       "role": "spec_only_corpus",
       "status": "ready",
-      "example_count": 3,
+      "example_count": 2,
       "has_spec": true,
       "has_gold_rtl": false,
       "has_testbench": false,
@@ -140,7 +140,7 @@
       ],
       "license": "CC-BY-4.0",
       "access": "public",
-      "notes": "First spec-only curated pack checked into the repo as official RISC-V hardware/control PDFs. The current bundle materializes the External Debug Specification v0.13.2 and bounded IMSIC / APLIC IDC tasks carved from the Advanced Interrupt Architecture v1.0 PDF as public-only task artifacts so the trainer can validate a no-oracle ingestion path before adding larger spec corpora.",
+      "notes": "First spec-only curated pack checked into the repo as official RISC-V hardware/control PDFs. The active bundle materializes bounded IMSIC / APLIC IDC tasks carved from the Advanced Interrupt Architecture v1.0 PDF as public-only task artifacts so the trainer can validate a no-oracle ingestion path before adding larger spec corpora. External Debug remains checked in only as raw source material for future standalone RTL tasks.",
       "default_tier": "large"
     },
     {
