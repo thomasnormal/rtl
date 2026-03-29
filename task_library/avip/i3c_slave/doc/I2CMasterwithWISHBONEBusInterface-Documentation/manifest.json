@@ -1,4 +1,19 @@
 {
-  "files": ["spec.md"],
+  "files": [
+    "00_front_matter.md",
+    "01_introduction.md",
+    "02_features.md",
+    "03_functional_description.md",
+    "04_design_module_description.md",
+    "05_byte_command_controller_module.md",
+    "06_bit_command_controller_module.md",
+    "07_miscellaneous_features.md",
+    "08_common_operation_sequence.md",
+    "09_hdl_simulation_and_verification.md",
+    "10_implementation.md",
+    "11_references.md",
+    "12_technical_support_assistance.md",
+    "13_revision_history.md"
+  ],
   "page_count": 12
 }

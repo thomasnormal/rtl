@@ -1,1 +1,17 @@
-{"files": ["spec.md"], "page_count": 40}
+{
+  "files": [
+    "00_front_matter.md",
+    "01_introduction.md",
+    "02_features.md",
+    "03_architecture.md",
+    "04_signal_descriptions.md",
+    "05_clock_and_reset.md",
+    "06_operation_modes.md",
+    "07_configuration_registers.md",
+    "08_register_map.md",
+    "09_timing_diagrams.md",
+    "10_verification.md",
+    "11_revision_history.md"
+  ],
+  "page_count": 40
+}

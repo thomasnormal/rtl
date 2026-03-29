@@ -26,7 +26,10 @@ _OUTPUT_SETTLE_S = 3.0
 _TERMINATE_GRACE_S = 10.0
 _FULL_PAGE_DIMENSION_RATIO = 0.95
 _PAGE_IMAGE_RE = re.compile(r"^page-(\d+)\.png$")
+_PAGE_ARTIFACT_RE = re.compile(r"^page-\d+\.png$")
 _READ_LOG_RE = re.compile(r"permission permission=read pattern=(\S+page-(\d+)\.png)")
+_SECTION_MARKDOWN_RE = re.compile(r"^\d{2}_.+\.md$")
+_CHUNK_MANIFEST_RE = re.compile(r"^chunk_\d{3}/")
 
 
 def _markdown_files(output_dir: Path) -> tuple[Path, ...]:
@@ -208,6 +211,83 @@ def _assert_no_full_page_figure_copies(*, output_dir: Path, pages_dir: Path) -> 
         "converter agent produced figure assets that look like full-page copies instead "
         f"of cropped figures: {formatted}"
     )
+
+
+def _page_png_artifacts(output_dir: Path) -> tuple[str, ...]:
+    artifacts = [
+        str(path.relative_to(output_dir))
+        for path in sorted(output_dir.rglob("*.png"))
+        if _PAGE_ARTIFACT_RE.match(path.name)
+    ]
+    return tuple(artifacts)
+
+
+def _chunk_manifest_entries(output_dir: Path) -> tuple[str, ...]:
+    return tuple(path for path in _manifest_files(output_dir) if _CHUNK_MANIFEST_RE.match(path))
+
+
+def _markdown_layout_violations(
+    output_dir: Path,
+    *,
+    page_count: int,
+) -> tuple[str, ...]:
+    violations: list[str] = []
+    manifest_files = _manifest_files(output_dir)
+    if not manifest_files:
+        return ("manifest.json does not list any markdown files",)
+
+    markdown_files = [path for path in manifest_files if path.endswith(".md")]
+    if not markdown_files:
+        return ("manifest.json does not list any markdown files",)
+
+    for rel_path in markdown_files:
+        path = Path(rel_path)
+        if path.parent != Path("."):
+            violations.append(
+                f"markdown file must live at the output root, found nested path: {rel_path}"
+            )
+            continue
+        if not _SECTION_MARKDOWN_RE.match(path.name):
+            violations.append(
+                "markdown file does not follow the required section/chapter naming "
+                f"`NN_title.md`: {rel_path}"
+            )
+
+    if page_count > 1 and len(markdown_files) < 2:
+        violations.append(
+            "multi-page PDFs must be split into chapter/high-level section markdown files, "
+            f"not a single file: {', '.join(markdown_files)}"
+        )
+
+    return tuple(violations)
+
+
+def assert_converted_spec_layout(
+    output_dir: str | Path,
+    *,
+    page_count: int,
+) -> None:
+    out = Path(output_dir).resolve()
+
+    page_artifacts = _page_png_artifacts(out)
+    if page_artifacts:
+        formatted = ", ".join(page_artifacts)
+        raise RuntimeError(
+            "converter agent left rendered page artifacts in the final output instead of "
+            f"only section markdown and figure crops: {formatted}"
+        )
+
+    chunk_entries = _chunk_manifest_entries(out)
+    if chunk_entries:
+        formatted = ", ".join(chunk_entries)
+        raise RuntimeError(
+            "converter agent output is chunked by arbitrary page ranges instead of chapter/"
+            f"section files: {formatted}"
+        )
+
+    violations = _markdown_layout_violations(out, page_count=page_count)
+    if violations:
+        raise RuntimeError("invalid converted spec layout:\n- " + "\n- ".join(violations))
 
 
 def _process_group_id(process: subprocess.Popen[str]) -> int | None:
@@ -446,6 +526,7 @@ def convert_pdf_to_spec_dir(
     )
     agent_output = episode.workspace.output_dir
     _render_pdf_page_images(episode.workspace.pdf_path, episode.workspace.pages_dir)
+    page_count = len(_rendered_page_numbers(episode.workspace.pages_dir))
     try:
         result = run_converter_opencode(
             episode.request,
@@ -463,6 +544,7 @@ def convert_pdf_to_spec_dir(
                 output_dir=agent_output,
                 pages_dir=episode.workspace.pages_dir,
             )
+            assert_converted_spec_layout(agent_output, page_count=page_count)
             return _copy_agent_output(agent_output, out)
         raise RuntimeError(
             f"converter agent timed out after {timeout_s}s for {pdf}"
@@ -484,5 +566,6 @@ def convert_pdf_to_spec_dir(
         output_dir=agent_output,
         pages_dir=episode.workspace.pages_dir,
     )
+    assert_converted_spec_layout(agent_output, page_count=page_count)
 
     return _copy_agent_output(agent_output, out)

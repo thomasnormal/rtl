@@ -24,6 +24,8 @@ Process:
 3. Transcribe the document into markdown.
    - Produce one markdown file per chapter or other high-level section.
    - Choose file boundaries that match the document structure, not arbitrary page boundaries.
+   - Do not split a single chapter or high-level section across multiple markdown files just because it spans multiple pages.
+   - Do not emit `spec.md` or `full.md` for a multi-page PDF; filenames must reflect the actual section titles.
    - Every source page must still be covered somewhere in the output, even if a page is mostly a figure, mostly a table, or mostly whitespace around a diagram.
    - Preserve section numbering, headings, tables, signal names, parameter names, register maps, formulas, and code blocks.
    - Render tables as markdown tables when practical.

@@ -21,7 +21,7 @@ DEFAULT_CONVERTER_PROMPT = (
     "Read TASK.md and convert the PDF in input/source.pdf to markdown. "
     "Pre-rendered page images are available under input/pages/. Use the read tool on each page image at least once, inspect the PDF page by page with the multimodal model, "
     "extract figures into output/figures/ when needed, and write exhaustive markdown split by chapter "
-    "or other high-level section, with figures referenced using paths like ![Figure ...](figures/figure-042.png). "
+    "or other high-level section, with figures referenced using paths like ![Figure ...](figures/figure-042.png). Do not split chapters by page range or collapse a multi-page PDF into spec.md or full.md. "
     "Write output/manifest.json when done."
 )
 

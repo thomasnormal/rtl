@@ -13,6 +13,7 @@ from rtl_training.runtime import DEFAULT_CONVERTER_PROMPT
 from rtl_training.runtime import prepare_converter_episode
 from rtl_training.pdf_convert import (
     _assert_all_rendered_pages_read,
+    assert_converted_spec_layout,
     _assert_no_full_page_figure_copies,
     _missing_read_page_numbers,
     _suspicious_full_page_figures,
@@ -66,6 +67,8 @@ def test_converter_prompt_documents_figure_contract() -> None:
     assert "01_overview.md" in prompt
     assert "Exhaustiveness is mandatory" in prompt
     assert "Do not copy a full rendered page into `output/figures/`" in prompt
+    assert "Do not split a single chapter or high-level section across multiple markdown files" in prompt
+    assert "Do not emit `spec.md` or `full.md` for a multi-page PDF" in prompt
     assert "Read TASK.md" in DEFAULT_CONVERTER_PROMPT
     assert "Use the read tool on each page image at least once" in DEFAULT_CONVERTER_PROMPT
 
@@ -84,8 +87,8 @@ def test_convert_pdf_to_spec_dir_copies_agent_output(tmp_path: Path, monkeypatch
     def fake_run_opencode(request, *, output_dir, pages_dir, timeout_s):
         del pages_dir, timeout_s
         out = request.workspace_root / "output"
-        (out / "spec.md").write_text("# My Spec\n\nConverted content.")
-        (out / "manifest.json").write_text(json.dumps({"files": ["spec.md"], "page_count": 1}))
+        (out / "01_overview.md").write_text("# My Spec\n\nConverted content.")
+        (out / "manifest.json").write_text(json.dumps({"files": ["01_overview.md"], "page_count": 1}))
         log_dir = request.workspace_root / ".xdg_data" / "opencode" / "log"
         log_dir.mkdir(parents=True, exist_ok=True)
         page_path = request.workspace_root / "input" / "pages" / "page-1.png"
@@ -109,7 +112,7 @@ def test_convert_pdf_to_spec_dir_copies_agent_output(tmp_path: Path, monkeypatch
     )
 
     assert result == output_dir.resolve()
-    assert (output_dir / "spec.md").read_text() == "# My Spec\n\nConverted content."
+    assert (output_dir / "01_overview.md").read_text() == "# My Spec\n\nConverted content."
     assert (output_dir / "manifest.json").exists()
 
 
@@ -185,8 +188,8 @@ def test_convert_pdf_to_spec_dir_salvages_existing_markdown_after_agent_failure(
     def fake_run_opencode(request, *, output_dir, pages_dir, timeout_s):
         del pages_dir, timeout_s
         out = request.workspace_root / "output"
-        (out / "spec.md").write_text("# Salvaged\n\nConverted content.")
-        (out / "manifest.json").write_text(json.dumps({"files": ["spec.md"], "page_count": 1}))
+        (out / "01_overview.md").write_text("# Salvaged\n\nConverted content.")
+        (out / "manifest.json").write_text(json.dumps({"files": ["01_overview.md"], "page_count": 1}))
         log_dir = request.workspace_root / ".xdg_data" / "opencode" / "log"
         log_dir.mkdir(parents=True, exist_ok=True)
         page_path = request.workspace_root / "input" / "pages" / "page-1.png"
@@ -210,8 +213,8 @@ def test_convert_pdf_to_spec_dir_salvages_existing_markdown_after_agent_failure(
     )
 
     assert result == output_dir.resolve()
-    assert (output_dir / "spec.md").read_text() == "# Salvaged\n\nConverted content."
-    assert json.loads((output_dir / "manifest.json").read_text())["files"] == ["spec.md"]
+    assert (output_dir / "01_overview.md").read_text() == "# Salvaged\n\nConverted content."
+    assert json.loads((output_dir / "manifest.json").read_text())["files"] == ["01_overview.md"]
 
 
 def test_missing_read_page_numbers_uses_workspace_logs(tmp_path: Path) -> None:
@@ -275,6 +278,56 @@ def test_assert_no_full_page_figure_copies_rejects_page_sized_assets(tmp_path: P
 
     with pytest.raises(RuntimeError, match="full-page copies"):
         _assert_no_full_page_figure_copies(output_dir=output_dir, pages_dir=pages_dir)
+
+
+def test_assert_converted_spec_layout_rejects_single_markdown_for_multi_page(tmp_path: Path) -> None:
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "spec.md").write_text("# Spec")
+    (output_dir / "manifest.json").write_text(
+        json.dumps({"files": ["spec.md"], "page_count": 3})
+    )
+
+    with pytest.raises(RuntimeError, match="single file"):
+        assert_converted_spec_layout(output_dir, page_count=3)
+
+
+def test_assert_converted_spec_layout_rejects_page_png_artifacts(tmp_path: Path) -> None:
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "01_overview.md").write_text("# Overview")
+    (output_dir / "02_architecture.md").write_text("# Architecture")
+    (output_dir / "page-01.png").write_bytes(b"png")
+    (output_dir / "manifest.json").write_text(
+        json.dumps({"files": ["01_overview.md", "02_architecture.md"], "page_count": 2})
+    )
+
+    with pytest.raises(RuntimeError, match="rendered page artifacts"):
+        assert_converted_spec_layout(output_dir, page_count=2)
+
+
+def test_assert_converted_spec_layout_rejects_chunked_manifest_entries(tmp_path: Path) -> None:
+    output_dir = tmp_path / "output"
+    (output_dir / "chunk_001").mkdir(parents=True)
+    (output_dir / "chunk_001" / "01_overview.md").write_text("# Overview")
+    (output_dir / "manifest.json").write_text(
+        json.dumps({"files": ["chunk_001/01_overview.md"], "page_count": 2})
+    )
+
+    with pytest.raises(RuntimeError, match="chunked by arbitrary page ranges"):
+        assert_converted_spec_layout(output_dir, page_count=2)
+
+
+def test_assert_converted_spec_layout_accepts_section_markdown_layout(tmp_path: Path) -> None:
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    (output_dir / "01_overview.md").write_text("# Overview")
+    (output_dir / "02_architecture.md").write_text("# Architecture")
+    (output_dir / "manifest.json").write_text(
+        json.dumps({"files": ["01_overview.md", "02_architecture.md"], "page_count": 2})
+    )
+
+    assert_converted_spec_layout(output_dir, page_count=2)
 
 
 def test_terminate_process_tree_kills_child_holding_stdio(tmp_path: Path) -> None:

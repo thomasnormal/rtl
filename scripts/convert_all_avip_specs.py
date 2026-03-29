@@ -101,6 +101,7 @@ def _chunked_convert(
     work_root: Path,
     model: str,
     timeout_s: int,
+    allow_page_chunks: bool,
     chunk_threshold: int,
     pages_per_chunk: int,
 ) -> Path:
@@ -113,7 +114,7 @@ def _chunked_convert(
     if temp_final.exists():
         shutil.rmtree(temp_final)
 
-    if page_count <= chunk_threshold:
+    if not allow_page_chunks or page_count <= chunk_threshold:
         temp_output = job_root / "single_output"
         if temp_output.exists():
             shutil.rmtree(temp_output)
@@ -172,6 +173,14 @@ def main() -> int:
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--timeout-s", type=int, default=DEFAULT_TIMEOUT_S)
     parser.add_argument("--work-root", type=Path, default=DEFAULT_WORK_ROOT)
+    parser.add_argument(
+        "--allow-page-chunks",
+        action="store_true",
+        help=(
+            "Allow fallback chunking by arbitrary page ranges for very large PDFs. "
+            "This is structurally worse than chapter-based conversion and is disabled by default."
+        ),
+    )
     parser.add_argument("--chunk-threshold", type=int, default=DEFAULT_CHUNK_THRESHOLD)
     parser.add_argument("--pages-per-chunk", type=int, default=DEFAULT_PAGES_PER_CHUNK)
     parser.add_argument(
@@ -208,6 +217,7 @@ def main() -> int:
                 work_root=work_root,
                 model=args.model,
                 timeout_s=args.timeout_s,
+                allow_page_chunks=args.allow_page_chunks,
                 chunk_threshold=args.chunk_threshold,
                 pages_per_chunk=args.pages_per_chunk,
             )
