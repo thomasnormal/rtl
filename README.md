@@ -32,6 +32,8 @@ That keeps deterministic validation available to the training framework without 
 | Dataset | Tasks | Tier | Oracle | Gold | Gen pass | Description |
 |---|---|---|---|---|---|---|
 | `rtllm_v1_1` | 27 | small | simulation | 27/27 | 57% pass@5 | Hand-written designs with testbenches and verified RTL references |
+| `rtllm_v2_0` | 48 | small | simulation | -- | -- | Expanded RTLLM with categorized tasks |
+| `verilogeval_v2_spec_to_rtl` | 156 | micro | simulation | -- | -- | Spec-to-RTL benchmark with VerilogEval v2 harness |
 | `chipbench` | 45 | small | simulation | 44/45 | -- | VerilogEval-style harness; 30 self-contained + 6 non-self-contained + 9 CPU IP |
 | `resbench` | 56 | small | simulation | 56/56 | -- | FPGA resource-aware problems; self-checking testbenches, no gold RTL |
 | `realbench` | 60 | medium | simulation | 56/60 | -- | Real IP cores (AES, SD card, E203 RISC-V) with markdown specs |
@@ -62,7 +64,7 @@ That keeps deterministic validation available to the training framework without 
 
 These are defined in `configs/datasets.json` but not yet ingested into the task store:
 
-`rtllm_v2_0` (50), `verilogeval_v2_spec_to_rtl` (156), `asserteval` (20), `rtl_repo` (4000, pretraining only — no oracle).
+`asserteval` (20, needs store function + formal oracle), `rtl_repo` (4000, pretraining only — no oracle).
 
 ### Oracle types
 
