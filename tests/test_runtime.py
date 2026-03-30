@@ -233,6 +233,8 @@ def test_prepare_verifier_episode_instructions_call_for_native_sva_and_uvm(tmp_p
     assert "`xrun -uvm`" in instructions
     assert "After changing DUT inputs in a bench" in instructions
     assert "delta cycle" in instructions
+    assert "edge-triggered register updates" in instructions
+    assert "separate read transaction for readback" in instructions
     assert "generated bus helper package" in instructions
     assert "source, size, param, and user" in instructions
     assert "complete public problem statement" in instructions
@@ -256,6 +258,8 @@ def test_verifier_prompt_mentions_xrun_sva_and_uvm() -> None:
     assert "For UVM environments that import `uvm_pkg`, prefer:" in prompt
     assert "After changing DUT inputs in a bench" in prompt
     assert "delta cycle" in prompt
+    assert "edge-triggered register updates" in prompt
+    assert "separate read transaction for readback" in prompt
     assert "generated bus helper package" in prompt
     assert "source / size / param / user fields" in prompt
     assert "complete public problem statement" in prompt

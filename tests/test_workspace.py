@@ -113,6 +113,8 @@ def test_stage_verifier_workspace_copies_candidate_dir_but_not_oracle(tmp_path: 
     assert "Do not use `yosys`" in instructions
     assert "After changing DUT inputs in a bench" in instructions
     assert "delta cycle" in instructions
+    assert "edge-triggered register updates" in instructions
+    assert "separate read transaction for readback" in instructions
     assert "generated bus helper package" in instructions
     assert "complete public problem statement" in instructions
     assert "Do not assume access to upstream repo code" in instructions

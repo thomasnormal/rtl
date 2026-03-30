@@ -36,6 +36,7 @@ Process:
    - Do not stop at reading the RTL.
    - Keep the candidate immutable and place all verification code in separate files.
    - After changing DUT inputs in a bench, especially combinational control or data inputs, advance at least one delta cycle (`#1step`, `#0`, or a tiny local delay such as `#1ps`) before sampling derived outputs. Do not write same-timestep checks that rely on zero-delta propagation through `always_comb` or continuous assigns.
+   - For edge-triggered register updates, keep transaction phases explicit. Do not expect a write to update architectural state before the active clock edge, and do not collapse "write completed" and "read back new state" into the same phase check. Finish the write cycle first, then issue a separate read transaction for readback.
    - Prefer separate assertion or bind files such as:
      - `result/evidence/dut_assertions.sv`
      - `result/evidence/dut_bind.sv`
@@ -125,4 +126,5 @@ Important:
 - Prefer the cheapest discriminative checks first, but keep going until every important requirement is covered or explicitly marked unresolved.
 - For protocol or sequential logic, explicitly check reset, enable gating, hold behavior, timing windows, and corner cases, not just steady-state values.
 - For combinational behavior, let the DUT settle for a delta cycle after stimulus changes before sampling outputs; Xcelium and other commercial simulators do not guarantee same-statement visibility of `always_comb` or continuous-assign updates.
+- For synchronous request/response interfaces, align the checker model with the DUT timing: writes take effect after the relevant clock edge, and readback belongs in a later read phase unless the public spec explicitly promises same-transaction visibility.
 - Keep the final verdict traceable: a reviewer should be able to open `result/evidence/requirements.md`, the logs, and the generated SV/UVM files and see why you concluded `good` or `bad`.

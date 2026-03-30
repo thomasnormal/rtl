@@ -162,6 +162,7 @@ def stage_verifier_workspace(
             "- Use the available tools to gather evidence.",
             "- Do not stop at code inspection. Write executable checks: prefer native SVAs, bind files, and self-checking SystemVerilog benches under `xrun`, use cocotb when a Python reference model or scoreboard is clearer, and escalate to native UVM under `xrun -uvm` when the protocol is non-trivial.",
             "- After changing DUT inputs in a bench, especially combinational control or data inputs, advance at least one delta cycle (`#1step`, `#0`, or a tiny local delay such as `#1ps`) before sampling derived outputs. Do not write same-timestep checks that rely on zero-delta propagation through `always_comb` or continuous assigns.",
+            "- For edge-triggered register updates, keep transaction phases explicit. Do not expect a write to update architectural state before the active clock edge, and do not collapse a completed write and a readback of new state into the same phase check. Finish the write cycle first, then issue a separate read transaction for readback.",
             "- Do not use `yosys`; use `xrun`/Xcelium for compile, elaboration, SVA, and smoke-test checks.",
             "- Save the requirement checklist and the generated verification artifacts under `result/evidence/`.",
             "- If a reproducible executable check shows a concrete critical spec violation, that is already sufficient evidence for `verdict: bad`; update `result/result.json` immediately instead of continuing to search for more failures.",
