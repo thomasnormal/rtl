@@ -33,6 +33,9 @@ def test_stage_generator_workspace_exposes_only_public_task_material(tmp_path: P
     assert json.loads(workspace.public_task_path.read_text())["top_module"] == "adder_8bit"
     assert workspace.submission_dir == workspace.root / "submission"
     assert workspace.result_path == workspace.root / "result" / "result.json"
+    result_stub = json.loads(workspace.result_path.read_text())
+    assert result_stub["status"] == "in_progress"
+    assert result_stub["agent"] == "generator"
     assert not (workspace.root / "oracle").exists()
     assert (workspace.root / ".opencode" / "skills" / "xrun" / "SKILL.md").exists()
     assert (workspace.root / "AGENTS.md").exists()
@@ -54,11 +57,21 @@ def test_stage_generator_workspace_exposes_only_public_task_material(tmp_path: P
     assert "task-local SV packages or typedef files" in instructions
     assert "generated bus helper package" in instructions
     assert "source, size, param, and user fields" in instructions
+    assert "task/spec/micro_arch/README.md" in instructions
+    assert "exported microarchitecture signal" in instructions
+    assert "Do not infer a signal's meaning from its name alone" in instructions
+    assert "masking, gating, latching, or pulse generation" in instructions
+    assert "forces those values to differ" in instructions
     assert "complete public problem statement" in instructions
     assert "Do not assume access to upstream repo code" in instructions
     assert "`submission/` must be a self-contained deliverable set" in instructions
     assert "Do not use `` `include `` paths that reach into `task/`" in instructions
     assert "compile check only counts if it elaborates the DUT top module" in instructions
+    assert "If `vcdcat` is unavailable or broken" in instructions
+    assert "fall back to another simulator" in instructions
+    assert "every high-risk requirement and every exported microarchitecture signal" in instructions
+    assert "Do not silently redefine the meaning of a public microarchitecture signal" in instructions
+    assert "Update the existing `result/result.json`" in instructions
 
     config = json.loads((workspace.root / "opencode.json").read_text())
     assert config["permission"]["*"] == "allow"
@@ -83,6 +96,9 @@ def test_stage_verifier_workspace_copies_candidate_dir_but_not_oracle(tmp_path: 
     staged_files = collect_candidate_files(workspace.candidate_input_dir)
     assert len(staged_files) == 2
     assert (workspace.candidate_input_dir / "top.sv").read_text() == "module adder_8bit; endmodule\n"
+    result_stub = json.loads(workspace.result_path.read_text())
+    assert result_stub["status"] == "in_progress"
+    assert result_stub["agent"] == "verifier"
     assert not (workspace.root / "oracle").exists()
     instructions = workspace.instructions_path.read_text()
     assert "task/task.json" in instructions
@@ -94,6 +110,9 @@ def test_stage_verifier_workspace_copies_candidate_dir_but_not_oracle(tmp_path: 
     assert "generated bus helper package" in instructions
     assert "complete public problem statement" in instructions
     assert "Do not assume access to upstream repo code" in instructions
+    assert "Update the existing `result/result.json`" in instructions
+    assert "concrete critical spec violation" in instructions
+    assert "sufficient evidence for `verdict: bad`" in instructions
 
 
 def test_stage_verifier_workspace_accepts_single_file(tmp_path: Path) -> None:

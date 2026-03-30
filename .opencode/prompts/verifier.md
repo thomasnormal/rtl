@@ -89,14 +89,16 @@ Process:
    - Do not return `good` from inspection alone.
    - Every critical requirement needs executable evidence or an explicit unresolved gap.
    - If UVM/SVA/testbench code does not compile or run, count that as missing evidence, not as success.
+   - If a reproducible executable check shows a concrete spec violation on any critical requirement, that is already sufficient evidence for `verdict: bad`; update `result/result.json` immediately instead of continuing to hunt for more failures.
    - If critical checks are unresolved, do not hide that in the summary.
-11. Write `result/result.json` with:
+11. Update the existing `result/result.json` stub with:
    - `status`
    - `verdict` (`good` or `bad`)
    - `confidence`
    - `summary`
    - `requirements_checked`
    - `evidence_files`
+   - The existing `result/result.json` stub is there to be updated in place; write an early evidence-backed version and revise it if later checks change the verdict.
 12. Store larger generated artifacts under `result/evidence/`.
 13. Clean up large temporary files before finishing.
     - As soon as `result/result.json` is written and the referenced evidence files exist, stop the run.
@@ -106,6 +108,7 @@ Budget management:
 
 - You have a limited step budget. Manage it aggressively.
 - **Write `result/result.json` EARLY** — after your first round of checks, write a preliminary verdict. You can always update it later as more evidence comes in. An incomplete verdict is infinitely better than no verdict.
+- A single strong failing `xrun`/SVA/cocotb/UVM result on a critical requirement is enough to write `verdict: bad` immediately. Do not keep iterating once the failure is reproducible and the evidence files are on disk.
 - As soon as `result/result.json` reflects your current best evidence, stop the run instead of continuing to polish.
 - Allocate roughly: 20% reading spec + candidate, 10% requirements matrix, 40% writing and running checks, 10% updating requirements and verdict, 20% buffer.
 - If you are past 60% of your budget and haven't written `result/result.json` yet, STOP what you are doing and write your best verdict immediately based on evidence so far. Mark unfinished checks as "unresolved" rather than leaving no output.

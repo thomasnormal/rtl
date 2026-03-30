@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import stat
 from pathlib import Path
 import shutil
@@ -70,6 +71,7 @@ def stage_generator_workspace(
             "- Interface and microarchitecture are necessary but not sufficient. The candidate must implement the full functional behavior described by the spec, not just a stub that satisfies ports or shallow ABI checks.",
             "- Do not depend on upstream or OpenTitan repository packages just to satisfy the public task boundary. If the task leaks repo-specific package types, treat that as a task-definition problem rather than patching `submission/` with package scaffolding.",
             "- Do not spend the whole run in analysis. After the first requirement pass, start writing RTL and executable checks early so you can iterate with evidence.",
+            "- Immediately after the first requirement pass, update the existing `result/result.json` stub with the current best evidence-backed status, output file plan, summary, and assumptions.",
             "- Write candidate RTL files to `submission/`. The top module must match `task/task.json` field `top_module` exactly.",
             "- You may produce one or more `.sv`/`.v` files under `submission/`.",
             "- `submission/` must be a self-contained deliverable set. Do not use `` `include `` paths that reach into `task/` from the submission RTL.",
@@ -88,7 +90,9 @@ def stage_generator_workspace(
             "- If `vcdcat` is unavailable or broken in the workspace, record the exact failure and use a small local parser or script to inspect the same focused signals instead of skipping waveform review.",
             "- If the task exposes a documented CSR/register map, do not stop at a happy-path smoke test. Add at least one executable check for documented side effects such as write-only registers, RW1C behavior, interrupt-clear behavior, or bad-access error handling before claiming `status: pass`.",
             "- If `xrun` runtime simulation is unavailable and you fall back to another simulator, that evidence only supports `status: pass` if the fallback tests explicitly cover every high-risk requirement and every exported microarchitecture signal. Otherwise record the gaps and do not claim `pass`.",
-            "- Write a machine-readable summary to `result/result.json`.",
+            "- Update the existing `result/result.json` stub with a machine-readable summary.",
+            "- Write `result/result.json` early once you have a first evidence-backed implementation state, and update it later if additional checks materially change the conclusion.",
+            "- If you are past roughly 60% of your step budget and `result/result.json` does not exist yet, stop and write the best truthful summary bundle you can from the current evidence.",
             "- As soon as `result/result.json` is written and matches the evidence on disk, stop the run.",
             "- Do not spend extra steps on optional cleanup, disk-usage inspection, or prose polish after `result/result.json` exists unless that work is required to keep the result bundle truthful.",
             "- If the compile check fails, `result/result.json` must not claim `status: pass`.",
@@ -155,7 +159,8 @@ def stage_verifier_workspace(
             "- Do not stop at code inspection. Write executable checks: prefer native SVAs, bind files, and self-checking SystemVerilog benches under `xrun`, use cocotb when a Python reference model or scoreboard is clearer, and escalate to native UVM under `xrun -uvm` when the protocol is non-trivial.",
             "- Do not use `yosys`; use `xrun`/Xcelium for compile, elaboration, SVA, and smoke-test checks.",
             "- Save the requirement checklist and the generated verification artifacts under `result/evidence/`.",
-            "- Write the final verdict bundle to `result/result.json`.",
+            "- If a reproducible executable check shows a concrete critical spec violation, that is already sufficient evidence for `verdict: bad`; update `result/result.json` immediately instead of continuing to search for more failures.",
+            "- Update the existing `result/result.json` stub with the final verdict bundle.",
             "- As soon as `result/result.json` is written and the referenced evidence files exist, stop the run.",
             "- Put larger evidence artifacts under `result/evidence/`.",
             "- There is no hidden oracle in this workspace.",
@@ -272,6 +277,8 @@ def _stage_public_workspace(
     submission_dir.mkdir(parents=True, exist_ok=True)
     result_dir = workspace_path / "result"
     result_dir.mkdir(parents=True, exist_ok=True)
+    result_path = result_dir / "result.json"
+    _write_initial_result_stub(result_path, agent_name=agent_name)
 
     _copy_opencode_templates(template_root=Path(template_root) if template_root else project_root(), workspace_root=workspace_path)
     instructions_path = workspace_path / "TASK.md"
@@ -283,9 +290,34 @@ def _stage_public_workspace(
         public_task_path=task_dir / task.public_task_path.name,
         submission_dir=submission_dir,
         result_dir=result_dir,
-        result_path=result_dir / "result.json",
+        result_path=result_path,
         instructions_path=instructions_path,
     )
+
+
+def _write_initial_result_stub(path: Path, *, agent_name: str) -> None:
+    payload = {
+        "status": "in_progress",
+        "agent": agent_name,
+        "summary": "Update this file with the current evidence-backed status before finishing.",
+    }
+    if agent_name == "generator":
+        payload.update(
+            {
+                "output_file": "",
+                "assumptions": [],
+            }
+        )
+    elif agent_name == "verifier":
+        payload.update(
+            {
+                "verdict": "",
+                "confidence": "",
+                "requirements_checked": [],
+                "evidence_files": [],
+            }
+        )
+    path.write_text(json.dumps(payload, indent=2) + "\n")
 
 
 def _copy_opencode_templates(*, template_root: Path, workspace_root: Path) -> None:

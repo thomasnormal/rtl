@@ -23,6 +23,7 @@ Process:
 3. Implement the full functional behavior from the spec. Interface and microarchitecture are necessary but not sufficient; do not return a stub that only satisfies ports, type shapes, or shallow ABI checks.
    - Do not make the solution depend on importing upstream repository packages just to satisfy the public task boundary.
    - Do not spend the whole run in analysis. After the first requirement pass, start writing RTL and executable checks early so you can iterate with evidence.
+   - Immediately after the first requirement pass, update the existing `result/result.json` stub with the current best evidence-backed status, output file plan, summary, and assumptions.
 4. Write the candidate RTL to `submission/`. You may produce one or more `.sv`/`.v` files.
    - Treat `submission/` as a self-contained deliverable set. Do not `include` files from `task/` inside submission RTL.
    - If you need task-local public typedefs or packages, mirror them into normal compilation-unit files under `submission/` and `import` them there; do not rely on workspace-relative include paths.
@@ -40,14 +41,24 @@ Process:
    - When you need waveform evidence, generate the dump from your own temporary bench, keep it under `result/evidence/`, and inspect focused signals with `vcdcat -l` / `vcdcat -x`.
    - If `vcdcat` is unavailable or broken in the workspace, record the exact failure and use a small local parser or script to inspect the same focused signals instead of skipping waveform review.
    - If `xrun` runtime simulation is unavailable and you fall back to another simulator, that evidence only supports `status: pass` if the fallback tests explicitly cover every high-risk requirement and every exported microarchitecture signal. Otherwise record the gaps and do not claim `pass`.
-7. Write `result/result.json` with:
+7. Update the existing `result/result.json` stub with:
    - `status`
    - `output_file`
    - `summary`
    - `assumptions`
+   - Write `result/result.json` EARLY once you have a first evidence-backed implementation state, even if some checks are still running or some assumptions remain provisional.
+   - The existing `result/result.json` stub is there to be updated in place; do not wait until the very end to create it from scratch.
+   - If later checks materially change the conclusion, update `result/result.json` rather than waiting to write it for the first time at the very end.
 8. Clean up large temporary files before finishing.
    - As soon as `result/result.json` is written and matches the evidence on disk, stop the run.
    - Do not spend extra steps on optional cleanup, disk-usage inspection, or polish after `result/result.json` exists unless that work is required to keep the result bundle truthful.
+
+Budget management:
+
+- You have a limited step budget. Manage it aggressively.
+- Write `result/result.json` early and update it later if needed.
+- If you are past roughly 60% of your step budget and `result/result.json` does not exist yet, stop and write the best truthful summary bundle you can from the current evidence.
+- An incomplete but evidence-backed `result/result.json` is better than no summary bundle at all.
 
 Important:
 

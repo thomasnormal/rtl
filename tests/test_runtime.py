@@ -130,6 +130,11 @@ def test_prepare_generator_episode_instructions_require_behavioral_spec_and_buil
     assert "As soon as `result/result.json` is written" in instructions
     assert "stop the run" in instructions
     assert "Do not spend extra steps on optional cleanup" in instructions
+    assert "Write `result/result.json` early" in instructions
+    assert "update it later" in instructions
+    assert "If you are past roughly 60% of your step budget" in instructions
+    assert "Immediately after the first requirement pass" in instructions
+    assert "update the existing `result/result.json` stub" in instructions
 
 
 def test_validate_generator_episode_dispatches_opentitan_oracle(
@@ -228,6 +233,8 @@ def test_prepare_verifier_episode_instructions_call_for_native_sva_and_uvm(tmp_p
     assert "field `top_module`" in instructions
     assert "As soon as `result/result.json` is written" in instructions
     assert "stop the run" in instructions
+    assert "concrete critical spec violation" in instructions
+    assert "sufficient evidence for `verdict: bad`" in instructions
 
 
 def test_verifier_prompt_mentions_xrun_sva_and_uvm() -> None:
@@ -283,12 +290,20 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     assert "As soon as `result/result.json` is written" in prompt
     assert "stop the run" in prompt
     assert "Do not spend extra steps on optional cleanup" in prompt
+    assert "Write `result/result.json` EARLY" in prompt
+    assert "update it later" in prompt
+    assert "If you are past roughly 60% of your step budget" in prompt
+    assert "existing `result/result.json` stub" in prompt
+    assert "Immediately after the first requirement pass" in prompt
 
 
 def test_verifier_prompt_requires_immediate_stop_after_result_bundle() -> None:
     prompt = (ROOT / ".opencode" / "prompts" / "verifier.md").read_text()
     assert "As soon as `result/result.json` is written" in prompt
     assert "stop the run" in prompt
+    assert "existing `result/result.json` stub" in prompt
+    assert "concrete spec violation" in prompt
+    assert "sufficient evidence for `verdict: bad`" in prompt
 
 
 def test_verifier_prompt_forbids_yosys() -> None:
