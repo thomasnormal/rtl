@@ -58,3 +58,15 @@ def test_ahb_architecture_figure_2_1_is_tightly_cropped() -> None:
     )
     width, height = Image.open(png).size
     assert width <= 1900 and height <= 950, f"{png.relative_to(REPO_ROOT)} {width}x{height}"
+
+
+def test_ahb_architecture_figure_2_1_has_visible_caption() -> None:
+    md = (
+        AVIP_DOC_ROOT
+        / "ahb_slave"
+        / "doc"
+        / "AhbAvipArchitectureDocument"
+        / "02_architecture.md"
+    )
+    text = md.read_text()
+    assert "*Figure 2.1: AHB-AVIP Architecture*" in text

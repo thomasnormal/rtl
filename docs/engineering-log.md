@@ -2,6 +2,9 @@
 
 ## 2026-03-30
 
+- GitHub markdown rendering does not surface image alt text as a visible caption. For AVIP docs,
+  important figure labels need explicit markdown caption lines under the image, otherwise a tighter
+  crop can make the figure text disappear entirely from the rendered page.
 - The earlier AVIP repair pass was strong enough to reject literal full-page renders, but not
   strong enough to reject page-like crops with excess whitespace. `AhbAvipArchitectureDocument`
   Figure 2.1 was the concrete miss: the right fix was a tighter crop plus chapter-level markdown

@@ -4,6 +4,8 @@
 
 ![Figure 2.1: AHB-AVIP Architecture](figures/figure-009.png)
 
+*Figure 2.1: AHB-AVIP Architecture*
+
 The Accelerated VIP (AVIP) for AHB is structured into two distinct top modules: `HVL TOP`
 and `HDL TOP`, as depicted in Figure 2.1. This division separates the synthesizable and
 unsynthesizable components of the testbench so the same environment works efficiently in both
