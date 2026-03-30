@@ -56,6 +56,7 @@
     "notsotiny",
     "caliptra",
     "verithoughts",
+    "protocolllm",
     "jedec_ddr3_private",
     "jedec_ddr6_private"
   ],
@@ -700,6 +701,25 @@
       "access": "public",
       "notes": "Caliptra RoT crypto: SHA-256/512, HMAC, ECC, DOE. Self-checking xrun TBs.",
       "default_tier": "medium"
+    },
+    {
+      "name": "protocolllm",
+      "role": "anchor_seed",
+      "status": "ready",
+      "example_count": 9,
+      "has_spec": true,
+      "has_gold_rtl": false,
+      "has_testbench": false,
+      "has_formal_oracle": false,
+      "fields": [
+        "NL prompt with module header",
+        "protocol spec PDF",
+        "interface/*.sv"
+      ],
+      "license": "see-repo",
+      "access": "public",
+      "notes": "SPI/I2C/UART/AXI4-Lite protocol implementation tasks with detailed NL specs and module interfaces. Lint-only oracle (no simulation TB). From UIUC/CISPA (arXiv 2506.07945).",
+      "default_tier": "small"
     }
   ]
 }
