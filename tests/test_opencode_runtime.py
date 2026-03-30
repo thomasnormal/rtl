@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 import stat
+import subprocess
+import sys
 import textwrap
 
 import pytest
@@ -154,6 +156,44 @@ def test_build_run_environment_uses_workspace_local_opencode_config(
     assert (workspace_root / ".xdg_config").is_dir()
     assert (workspace_root / ".xdg_data").is_dir()
     assert (workspace_root / ".xdg_cache").is_dir()
+
+
+def test_build_run_environment_preserves_python_userbase_for_user_site_tools(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    original_home = tmp_path / "original-home"
+    usersite = (
+        original_home
+        / ".local"
+        / "lib"
+        / f"python{sys.version_info.major}.{sys.version_info.minor}"
+        / "site-packages"
+    )
+    usersite.mkdir(parents=True)
+    (usersite / "dummyusersitepkg.py").write_text("VALUE = 7\n")
+    monkeypatch.setenv("HOME", str(original_home))
+    monkeypatch.delenv("PYTHONUSERBASE", raising=False)
+    request = OpenCodeRunRequest(
+        workspace_root=tmp_path / "episode",
+        agent="generator",
+        prompt="Read TASK.md.",
+    )
+
+    env = build_run_environment(request)
+
+    assert env["HOME"] == str((tmp_path / "episode" / ".home").resolve())
+    assert env["PYTHONUSERBASE"] == str((original_home / ".local").resolve())
+    output = subprocess.check_output(
+        [
+            sys.executable,
+            "-c",
+            "import dummyusersitepkg; print(dummyusersitepkg.VALUE)",
+        ],
+        env=env,
+        text=True,
+    )
+    assert output.strip() == "7"
 
 
 def test_run_opencode_stops_after_result_file_stabilizes(

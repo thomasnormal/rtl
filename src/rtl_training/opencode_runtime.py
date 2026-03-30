@@ -62,6 +62,8 @@ def build_run_command(request: OpenCodeRunRequest) -> tuple[str, ...]:
 def build_run_environment(request: OpenCodeRunRequest) -> dict[str, str]:
     workspace_root = request.workspace_root.resolve()
     env = os.environ.copy()
+    original_home = env.get("HOME")
+    original_python_userbase = env.get("PYTHONUSERBASE")
     ceiling = str(workspace_root.parent)
     existing_ceiling = env.get("GIT_CEILING_DIRECTORIES")
     if existing_ceiling:
@@ -80,6 +82,10 @@ def build_run_environment(request: OpenCodeRunRequest) -> dict[str, str]:
     env["XDG_CONFIG_HOME"] = str(xdg_config_home)
     env["XDG_DATA_HOME"] = str(xdg_data_home)
     env["XDG_CACHE_HOME"] = str(xdg_cache_home)
+    if original_python_userbase:
+        env["PYTHONUSERBASE"] = original_python_userbase
+    elif original_home:
+        env["PYTHONUSERBASE"] = str((Path(original_home).expanduser() / ".local").resolve())
 
     config_path = workspace_root / "opencode.json"
     if config_path.exists():
