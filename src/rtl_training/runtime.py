@@ -139,6 +139,17 @@ DEFAULT_VERIFIER_TIMEOUT_CLOSEOUT_PROMPT = (
     "candidate/ remains immutable input. As soon as result/result.json is updated, stop."
 )
 
+DEFAULT_GENERATOR_TIMEOUT_CLOSEOUT_PROMPT = (
+    "Time budget is exhausted. Do not start new long-running checks. "
+    "Read the existing files under submission/, result/evidence/, result/requirements.md, "
+    "and the current result/result.json stub, then immediately update result/result.json with a "
+    "terminal status, output_file, summary, and assumptions. "
+    "If the current evidence does not positively justify `status: pass`, choose a non-pass terminal "
+    "status and summarize the unresolved high-risk gaps or failing checks. "
+    "Use only the evidence already gathered in this workspace. "
+    "As soon as result/result.json is updated, stop."
+)
+
 
 @dataclass(frozen=True)
 class GeneratorEpisode:
@@ -199,6 +210,7 @@ def prepare_generator_episode(
         agent="generator",
         prompt=prompt,
         model=model,
+        timeout_closeout_prompt=DEFAULT_GENERATOR_TIMEOUT_CLOSEOUT_PROMPT,
     )
     return GeneratorEpisode(task=task, workspace=workspace, request=request)
 

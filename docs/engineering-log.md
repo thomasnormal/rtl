@@ -2,6 +2,20 @@
 
 ## 2026-03-30
 
+- The right upgrade path for the weakest RISC-V bundles was not to invent hidden infrastructure; it
+  was to surface the normalized public contract directly in the checked-in task library. `aplic_idc`
+  and `imsic_interrupt_file` already had manifest-backed public interfaces in the task-store path,
+  but until those `interface/` contracts and solver-facing README/dv docs were checked in beside the
+  source markdown, the bundles still looked like raw spec fragments rather than tasks.
+- The `riscv_hardware_specs` review also needed a sharper distinction between active tasks and raw
+  source packs. `external_debug` and `advanced_interrupt_architecture` are useful retained source
+  material, but scoring them as if they were benchmark tasks hid the real state of the active pack,
+  which is currently two marginal public tasks that are blocked mainly by missing oracles.
+- For the weak `uart_slave` AVIP task, the missing piece was public usability, not more hidden
+  oracle detail. The local package enums and named UVM tests already pinned down baud rates, parity,
+  framing, break behavior, payload widths, and oversampling modes; the fix was to summarize that
+  into a checked-in `protocol_summary.md` so solvers no longer have to reverse-engineer the public
+  contract from package files and test names.
 - The right way to repair older converted AVIP docs was not another blind translation pass; it was
   to keep the cleaned markdown, recover the original rendered PDF pages, and recrop the missing
   figures directly from those page images. That let the AHB document be rewritten into real
@@ -171,4 +185,5 @@
 - Picking the "latest" run by file mtime alone was too noisy once verifier shards and one-off smoke runs accumulated under `runs/`. A more useful scoreboard rank is "broadest completed coverage first, newest only as a tiebreaker", and merged verifier summaries must tolerate `examples_requested: null` so they still appear as the current dataset-level result.
 - The current `aplic_idc` generator miss exposed a real SystemVerilog gotcha rather than a task-specific semantic gap: a zero-argument helper function called from a continuous assign can leave derived combinational outputs stale under Xcelium because the hidden dependencies are not part of the assign sensitivity. The durable control-plane fix is to teach the generator to compute those values in `always_comb` or to pass every dependency as an explicit function argument, not to special-case APLIC.
 - The follow-on `aplic_idc` verifier miss showed the symmetric testbench gotcha: after a testbench changes combinational DUT inputs, sampling outputs in the same procedural instant is too strict for native SV scheduling. A candidate that settles correctly one delta later can be misclassified as bad if the bench does not wait at least `#0`, `#1step`, or a tiny local delay such as `#1ps` before checking derived outputs.
+- The same operational failure mode that motivated verifier timeout-closeout exists on the generator side too: a run can produce real RTL and evidence but never promote the stubbed `result/result.json` out of `in_progress`. The generic `run_opencode()` closeout path was already sufficient; the missing piece was setting a generator-specific timeout closeout prompt in `prepare_generator_episode()` so long generator runs can still terminate with a truthful best-effort summary.
 - The clean control-plane fix for verifier close-out is a second short OpenCode pass in the same workspace, not a heuristic wrapper verdict. When a verifier run hits its time budget, the runtime now terminates the long run and launches a dedicated timeout-closeout prompt that is only allowed to read existing evidence and update `result/result.json` with a mandatory best-effort `good`/`bad` verdict. A fake-OpenCode regression now covers the exact failure mode: first pass writes `in_progress` evidence and hangs, second pass writes the terminal verdict, and the wrapper returns a `forced_closeout` result instead of timing out.

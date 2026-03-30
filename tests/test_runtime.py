@@ -82,6 +82,8 @@ def test_prepare_generator_episode_points_opencode_at_staged_workspace(tmp_path:
     assert episode.request.workspace_root == episode.workspace.root
     assert episode.request.agent == "generator"
     assert episode.workspace.submission_dir == episode.workspace.root / "submission"
+    assert episode.request.timeout_closeout_prompt is not None
+    assert "Time budget is exhausted" in episode.request.timeout_closeout_prompt
 
 
 def test_prepare_generator_episode_instructions_require_behavioral_spec_and_build_check(tmp_path: Path) -> None:
