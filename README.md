@@ -25,6 +25,65 @@ That keeps deterministic validation available to the training framework without 
 - `tests/`: regression tests for public/oracle separation, OpenCode workspaces, and reward/config logic.
 - `docs/`: project plan, dataset notes, and an engineering log.
 
+## Datasets
+
+### Ready
+
+| Dataset | Tasks | Tier | Oracle | Gold RTL | License | Description |
+|---|---|---|---|---|---|---|
+| `rtllm_v1_1` | 29 | small | simulation | yes | MIT | Hand-written designs with testbenches and verified RTL references |
+| `rtllm_v2_0` | 50 | small | simulation | yes | MIT | Expanded RTLLM with categorized tasks |
+| `verilogeval_v2_spec_to_rtl` | 156 | micro | simulation | yes | MIT | Spec-to-RTL benchmark with VerilogEval v2 harness |
+| `chipbench` | 45 | small | simulation | yes | see-repo | VerilogEval-style harness; 30 self-contained + 6 non-self-contained + 9 CPU IP |
+| `resbench` | 56 | small | simulation | no | see-repo | FPGA resource-aware problems; self-checking testbenches, no gold RTL |
+| `realbench` | 60 | medium | simulation | yes | MIT | Real IP cores (AES, SD card, E203 RISC-V) with markdown specs |
+| `icrtl` | 6 | medium | simulation | yes | see-repo | Industry contest challenges (LBP, GEMM, convolution, Huffman, etc.) |
+| `asserteval` | 20 | small | formal | yes | see-repo | Assertion/formal oracle training; `fpv.tcl` based |
+| `opentitan` | 9 | medium | dvsim | yes | Apache-2.0 | Curated OpenTitan IPs: uart, i2c, spi_host, adc_ctrl, aon_timer, pattgen, dma, rv_timer, sysrst_ctrl |
+| `cvdp` | 169 | small | cocotb | no | see-repo | CVDP benchmark; cocotb testbenches with iverilog |
+| `verilog_axi` | 24 | medium | makefile cocotb | yes | MIT | AXI4 bus components (adapters, crossbars, DMA, FIFOs) |
+| `verilog_ethernet` | 33 | medium | makefile cocotb | yes | MIT | Ethernet MAC/PHY/UDP/IP stack (1G/10G/25G) |
+| `verilog_pcie` | 37 | medium | makefile cocotb | yes | MIT | PCIe DMA, TLP, MSI-X, configuration space |
+| `verilog_axis` | 21 | medium | makefile cocotb | yes | MIT | AXI-Stream infrastructure (FIFOs, muxes, switches, COBS codec) |
+| `verilog_uart` | 2 | small | makefile cocotb | yes | MIT | UART RX/TX modules |
+| `verilog_lfsr` | 6 | small | makefile cocotb | yes | MIT | LFSR, CRC, PRBS, scramble/descramble |
+| `pulp_common_cells` | 17 | small | xrun assert | yes | Solderpad-0.51 | PULP building blocks: CDC, FIFOs, arbiters, ECC, crossbars |
+| `veer_el2` | 22 | medium | cocotb+verilator | yes | Apache-2.0 | VeeR EL2 RISC-V blocks: PIC, DMA, ALU, decoder, PMP, IFU, LSU |
+| `notsotiny` | 1114 | micro | iverilog+eqy | yes | see-repo | TuRTLe benchmark; replace missing module, check compilation + equivalence |
+| `riscv_hardware_specs` | 2 | large | none | no | CC-BY-4.0 | Spec-only: IMSIC interrupt file, APLIC IDC (from RISC-V AIA PDF) |
+| `rtl_repo` | 4000 | -- | none | no | Apache-2.0 | Repository-level code exposure for pretraining, not reward |
+
+### Planned
+
+| Dataset | Tier | Description |
+|---|---|---|
+| `opentitan_dv` | large | Full OpenTitan DV suite for industrial-scale verification |
+| `openhw_core_ip_manuals` | medium | OpenHW single-core IP manuals |
+| `wishbone_b4` | medium | Open Wishbone B4 bus protocol spec |
+| `opentitan_top_docs` | large | Top-level OpenTitan SoC datasheets |
+| `cva6_user_manual` | large | CVA6 RISC-V CPU core manual |
+| `core_v_mcu_user_manual` | large | CORE-V-MCU SoC manual with peripherals |
+| `nvdla_docs` | large | NVIDIA Deep Learning Accelerator docs |
+| `onfi_specs` | large | ONFI NAND flash interface protocol specs |
+| `jedec_ddr3_private` | industrial | DDR3 JEDEC standard (license-gated) |
+| `jedec_ddr6_private` | industrial | DDR6 JEDEC standard (license-gated) |
+
+### Oracle types
+
+Each task group owns its oracle code in `task_library/<group>/helper.py`:
+
+| Oracle | Simulator | Used by |
+|---|---|---|
+| `simulation` | iverilog / xrun / verilator | rtllm, verilogeval, chipbench, realbench, resbench, icrtl |
+| `cocotb` | iverilog + cocotb | cvdp |
+| `makefile_cocotb` | upstream Makefile + icarus | verilog_axi, verilog_ethernet, verilog_pcie, verilog_axis, verilog_uart, verilog_lfsr |
+| `cocotb+verilator` | verilator + cocotb + pyuvm | veer_el2 |
+| `xrun_assert` | xrun | pulp_common_cells |
+| `iverilog+eqy` | iverilog + Yosys eqy | notsotiny |
+| `opentitan_dvsim` | xcelium via dvsim | opentitan |
+| `formal` | fpv.tcl | asserteval |
+| `none` | -- | riscv_hardware_specs, rtl_repo |
+
 ## Quickstart
 
 ```bash
