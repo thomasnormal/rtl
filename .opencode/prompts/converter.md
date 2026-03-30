@@ -16,6 +16,7 @@ Process:
 
 1. Use the pre-rendered page images first.
    - The control plane pre-renders the PDF under `input/pages/`.
+   - The control plane also provides gridded reference copies under `input/pages_grid/` to make crop coordinates easier to judge.
    - Use the `read` tool on every `input/pages/page-*.png` at least once before finishing. The control plane validates this.
    - If the pre-rendered page images are missing for some reason, render them yourself into `input/pages/` and then continue from those page images.
 2. Read the document page by page with the multimodal model.
@@ -36,12 +37,16 @@ Process:
    - Figures include block diagrams, timing diagrams, waveform sketches, annotated screenshots, large tables whose structure would be degraded in markdown, and other layout-heavy content.
 5. Extract figures manually when needed.
    - Use Python with PIL to crop figure regions from the rendered page images.
+   - Read the corresponding `input/pages_grid/page-XXX.png` copy first when you need help choosing crop coordinates.
    - Example workflow:
      - open `input/pages/page-042.png`
+     - open `input/pages_grid/page-042.png` to inspect the coordinate grid
      - identify the figure bounding box in image pixel coordinates
      - crop it with PIL using `(x1, y1, x2, y2)`
      - save it as something like `output/figures/figure-042.png`
    - Use loose crops rather than overly tight ones so captions and nearby labels are not accidentally dropped.
+   - A slightly undercropped image is better than an overcropped one.
+   - Crop the final figure from `input/pages/`, not from `input/pages_grid/`.
    - Do not copy a full rendered page into `output/figures/`. Crop the actual figure region. If a page is mostly one large figure, crop to the figure plus its caption/labels rather than keeping the whole page margins.
 6. Reference extracted figures clearly in markdown.
    - Use alt text that names the figure or briefly explains it.

@@ -19,9 +19,12 @@ from .workspace import (
 
 DEFAULT_CONVERTER_PROMPT = (
     "Read TASK.md and convert the PDF in input/source.pdf to markdown. "
-    "Pre-rendered page images are available under input/pages/. Use the read tool on each page image at least once, inspect the PDF page by page with the multimodal model, "
+    "Pre-rendered page images are available under input/pages/ and gridded reference copies are available under input/pages_grid/. "
+    "Use the read tool on each page image at least once, inspect the PDF page by page with the multimodal model, "
+    "use the gridded copies to choose conservative crop coordinates, crop actual figures from input/pages/, "
     "extract figures into output/figures/ when needed, and write exhaustive markdown split by chapter "
     "or other high-level section, with figures referenced using paths like ![Figure ...](figures/figure-042.png). Do not split chapters by page range or collapse a multi-page PDF into spec.md or full.md. "
+    "A slightly undercropped image is better than an overcropped one. "
     "Write output/manifest.json when done."
 )
 

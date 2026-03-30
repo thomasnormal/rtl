@@ -11,7 +11,7 @@ import signal
 import subprocess
 import time
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from .opencode_runtime import (
     OpenCodeRunResult,
@@ -98,6 +98,40 @@ def _render_pdf_page_images(
     if not page_images:
         raise RuntimeError(f"pdftoppm did not render any page images for {pdf_path}")
     return page_images
+
+
+def _render_page_grid_overlays(
+    pages_dir: Path,
+    pages_grid_dir: Path,
+    *,
+    step_px: int = 200,
+) -> tuple[Path, ...]:
+    if pages_grid_dir.exists():
+        shutil.rmtree(pages_grid_dir)
+    pages_grid_dir.mkdir(parents=True)
+
+    overlays: list[Path] = []
+    for page in sorted(pages_dir.glob("page-*.png")):
+        with Image.open(page) as image:
+            overlay = image.convert("RGB")
+        draw = ImageDraw.Draw(overlay)
+        width, height = overlay.size
+
+        for x in range(0, width, step_px):
+            draw.line(((x, 0), (x, height)), fill=(220, 0, 0), width=2)
+            label_x2 = min(x + 92, width - 1)
+            draw.rectangle((x + 4, 4, label_x2, 28), fill=(255, 255, 255))
+            draw.text((x + 8, 8), str(x), fill=(220, 0, 0))
+        for y in range(0, height, step_px):
+            draw.line(((0, y), (width, y)), fill=(220, 0, 0), width=2)
+            label_y2 = min(y + 28, height - 1)
+            draw.rectangle((4, y + 4, min(92, width - 1), label_y2), fill=(255, 255, 255))
+            draw.text((8, y + 8), str(y), fill=(220, 0, 0))
+
+        out_path = pages_grid_dir / page.name
+        overlay.save(out_path)
+        overlays.append(out_path)
+    return tuple(overlays)
 
 
 def _rendered_page_numbers(pages_dir: Path) -> tuple[int, ...]:
@@ -526,6 +560,10 @@ def convert_pdf_to_spec_dir(
     )
     agent_output = episode.workspace.output_dir
     _render_pdf_page_images(episode.workspace.pdf_path, episode.workspace.pages_dir)
+    _render_page_grid_overlays(
+        episode.workspace.pages_dir,
+        episode.workspace.pages_grid_dir,
+    )
     page_count = len(_rendered_page_numbers(episode.workspace.pages_dir))
     try:
         result = run_converter_opencode(

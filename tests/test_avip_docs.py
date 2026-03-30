@@ -70,6 +70,31 @@ def test_ahb_architecture_figure_2_1_has_visible_caption() -> None:
     assert "*Figure 2.1: AHB-AVIP Architecture*" in text
 
 
+def test_ahb_implementation_figures_are_not_overcropped() -> None:
+    minimum_sizes = {
+        "figure-015-1.png": (2200, 1000),
+        "figure-015-2.png": (2200, 1000),
+        "figure-016.png": (2200, 1200),
+        "figure-017.png": (2200, 1300),
+        "figure-019-1.png": (1700, 1200),
+        "figure-020-1.png": (2200, 750),
+        "figure-020-2.png": (2200, 1000),
+        "figure-020-3.png": (2200, 750),
+        "figure-020-4.png": (2200, 900),
+        "figure-027-2.png": (2300, 1650),
+        "figure-032-2.png": (2200, 1350),
+    }
+    problems: list[str] = []
+    for name, (min_width, min_height) in minimum_sizes.items():
+        width, height = Image.open(AHB_DOC_ROOT / "figures" / name).size
+        if width < min_width or height < min_height:
+            problems.append(
+                f"{(AHB_DOC_ROOT / 'figures' / name).relative_to(REPO_ROOT)} "
+                f"{width}x{height} below {min_width}x{min_height}"
+            )
+    assert not problems, "\n".join(problems)
+
+
 def test_ahb_chapters_have_no_page_dump_artifacts() -> None:
     problems: list[str] = []
     for md in sorted(AHB_DOC_ROOT.glob("[0-9][0-9]_*.md")):

@@ -16,6 +16,7 @@ from rtl_training.pdf_convert import (
     assert_converted_spec_layout,
     _assert_no_full_page_figure_copies,
     _missing_read_page_numbers,
+    _render_page_grid_overlays,
     _suspicious_full_page_figures,
     _terminate_process_tree,
     combine_chunk_output_dirs,
@@ -41,6 +42,7 @@ def test_prepare_converter_episode_stages_pdf(tmp_path: Path) -> None:
     assert episode.request.agent == "converter"
     assert episode.workspace.pdf_path.read_bytes() == b"%PDF-1.4 fake"
     assert episode.workspace.pages_dir.is_dir()
+    assert episode.workspace.pages_grid_dir.is_dir()
     assert episode.workspace.output_dir.is_dir()
     assert (episode.workspace.root / "TASK.md").exists()
     assert (episode.workspace.root / "opencode.json").exists()
@@ -48,16 +50,19 @@ def test_prepare_converter_episode_stages_pdf(tmp_path: Path) -> None:
     assert '"converter"' in staged_config
     instructions = (episode.workspace.root / "TASK.md").read_text()
     assert "input/pages/" in instructions
+    assert "input/pages_grid/" in instructions
     assert "read` tool on every `input/pages/page-*.png`" in instructions
     assert "output/figures/" in instructions
     assert "![Figure" in instructions
     assert "01_overview.md" in instructions
     assert "Be exhaustive" in instructions
+    assert "slightly undercropped" in instructions
 
 
 def test_converter_prompt_documents_figure_contract() -> None:
     prompt = (ROOT / ".opencode" / "prompts" / "converter.md").read_text()
     assert "input/pages/" in prompt
+    assert "input/pages_grid/" in prompt
     assert "Use the `read` tool on every `input/pages/page-*.png`" in prompt
     assert "output/figures/" in prompt
     assert "![Figure" in prompt
@@ -69,8 +74,10 @@ def test_converter_prompt_documents_figure_contract() -> None:
     assert "Do not copy a full rendered page into `output/figures/`" in prompt
     assert "Do not split a single chapter or high-level section across multiple markdown files" in prompt
     assert "Do not emit `spec.md` or `full.md` for a multi-page PDF" in prompt
+    assert "slightly undercropped image is better than an overcropped one" in prompt
     assert "Read TASK.md" in DEFAULT_CONVERTER_PROMPT
     assert "Use the read tool on each page image at least once" in DEFAULT_CONVERTER_PROMPT
+    assert "input/pages_grid/" in DEFAULT_CONVERTER_PROMPT
 
 
 def test_convert_pdf_to_spec_dir_copies_agent_output(tmp_path: Path, monkeypatch) -> None:
@@ -103,6 +110,10 @@ def test_convert_pdf_to_spec_dir_copies_agent_output(tmp_path: Path, monkeypatch
         )
 
     monkeypatch.setattr("rtl_training.pdf_convert._render_pdf_page_images", fake_render)
+    monkeypatch.setattr(
+        "rtl_training.pdf_convert._render_page_grid_overlays",
+        lambda pages_dir, pages_grid_dir, step_px=200: (pages_grid_dir / "page-1.png",),
+    )
     monkeypatch.setattr("rtl_training.pdf_convert.run_converter_opencode", fake_run_opencode)
 
     result = convert_pdf_to_spec_dir(
@@ -136,6 +147,10 @@ def test_convert_pdf_to_spec_dir_raises_on_agent_failure(tmp_path: Path, monkeyp
         )
 
     monkeypatch.setattr("rtl_training.pdf_convert._render_pdf_page_images", fake_render)
+    monkeypatch.setattr(
+        "rtl_training.pdf_convert._render_page_grid_overlays",
+        lambda pages_dir, pages_grid_dir, step_px=200: (pages_grid_dir / "page-1.png",),
+    )
     monkeypatch.setattr("rtl_training.pdf_convert.run_converter_opencode", fake_run_opencode)
 
     with pytest.raises(RuntimeError, match="converter agent failed"):
@@ -165,6 +180,10 @@ def test_convert_pdf_to_spec_dir_rejects_success_without_markdown(
         )
 
     monkeypatch.setattr("rtl_training.pdf_convert._render_pdf_page_images", fake_render)
+    monkeypatch.setattr(
+        "rtl_training.pdf_convert._render_page_grid_overlays",
+        lambda pages_dir, pages_grid_dir, step_px=200: (pages_grid_dir / "page-1.png",),
+    )
     monkeypatch.setattr("rtl_training.pdf_convert.run_converter_opencode", fake_run_opencode)
 
     with pytest.raises(RuntimeError, match="without producing any markdown output"):
@@ -204,6 +223,10 @@ def test_convert_pdf_to_spec_dir_salvages_existing_markdown_after_agent_failure(
         )
 
     monkeypatch.setattr("rtl_training.pdf_convert._render_pdf_page_images", fake_render)
+    monkeypatch.setattr(
+        "rtl_training.pdf_convert._render_page_grid_overlays",
+        lambda pages_dir, pages_grid_dir, step_px=200: (pages_grid_dir / "page-1.png",),
+    )
     monkeypatch.setattr("rtl_training.pdf_convert.run_converter_opencode", fake_run_opencode)
 
     result = convert_pdf_to_spec_dir(
@@ -265,6 +288,19 @@ def test_suspicious_full_page_figures_flags_page_sized_copies(tmp_path: Path) ->
     suspicious = _suspicious_full_page_figures(output_dir=output_dir, pages_dir=pages_dir)
 
     assert suspicious == ("figures/figure-001.png",)
+
+
+def test_render_page_grid_overlays_creates_gridded_copies(tmp_path: Path) -> None:
+    pages_dir = tmp_path / "input" / "pages"
+    pages_dir.mkdir(parents=True)
+    Image.new("RGB", (600, 800), "white").save(pages_dir / "page-1.png")
+
+    grid_dir = tmp_path / "input" / "pages_grid"
+    outputs = _render_page_grid_overlays(pages_dir, grid_dir, step_px=200)
+
+    assert outputs == (grid_dir / "page-1.png",)
+    assert outputs[0].is_file()
+    assert Image.open(outputs[0]).size == (600, 800)
 
 
 def test_assert_no_full_page_figure_copies_rejects_page_sized_assets(tmp_path: Path) -> None:

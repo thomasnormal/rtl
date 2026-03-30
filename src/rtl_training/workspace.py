@@ -173,6 +173,7 @@ class ConverterWorkspace:
     input_dir: Path
     pdf_path: Path
     pages_dir: Path
+    pages_grid_dir: Path
     output_dir: Path
     instructions_path: Path
 
@@ -193,6 +194,8 @@ def stage_converter_workspace(
     shutil.copy2(pdf_path, staged_pdf)
     pages_dir = input_dir / "pages"
     pages_dir.mkdir()
+    pages_grid_dir = input_dir / "pages_grid"
+    pages_grid_dir.mkdir()
 
     output_dir = workspace_path / "output"
     output_dir.mkdir()
@@ -207,12 +210,15 @@ def stage_converter_workspace(
         "# Converter Task\n\n"
         "- Convert the PDF in `input/source.pdf` to markdown.\n"
         "- Pre-rendered page images are available under `input/pages/`; inspect those images page by page.\n"
+        "- Gridded reference copies of the same pages are available under `input/pages_grid/`; use them to choose conservative crop coordinates.\n"
         "- Use the `read` tool on every `input/pages/page-*.png` at least once before finishing. The control plane validates this.\n"
         "- Write markdown files to `output/`, split by chapter or other high-level section.\n"
         "- Use descriptive ordered names such as `01_overview.md`, `02_architecture.md`, and `03_timing.md`.\n"
         "- Put extracted figure images under `output/figures/`.\n"
         "- Reference extracted figures from markdown with paths like `![Figure 3-2](figures/figure-042.png)`.\n"
         "- Use Python and PIL only when you need to crop figure regions from a pre-rendered page image.\n"
+        "- Read gridded page copies to decide crop boxes, but crop actual figure assets from the raw pages in `input/pages/`, not from the gridded copies.\n"
+        "- A slightly undercropped figure is better than an overcropped one. Keep captions, labels, and a little surrounding context when in doubt.\n"
         "- Be exhaustive. Do not skip any page content, even if it is repetitive, mostly visual, or mostly a caption/table.\n"
         "- Every source page must be covered somewhere in the markdown output, but the files should follow document structure rather than page boundaries.\n"
         "- See the converter agent prompt for the full conversion workflow.\n"
@@ -223,6 +229,7 @@ def stage_converter_workspace(
         input_dir=input_dir,
         pdf_path=staged_pdf,
         pages_dir=pages_dir,
+        pages_grid_dir=pages_grid_dir,
         output_dir=output_dir,
         instructions_path=instructions_path,
     )
