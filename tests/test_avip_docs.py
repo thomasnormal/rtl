@@ -45,3 +45,16 @@ def test_active_avip_markdown_uses_distinct_existing_figure_assets() -> None:
                 if not (doc_dir / ref).is_file():
                     problems.append(f"missing figure asset for {md.relative_to(REPO_ROOT)}: {ref}")
     assert not problems, "\n".join(problems)
+
+
+def test_ahb_architecture_figure_2_1_is_tightly_cropped() -> None:
+    png = (
+        AVIP_DOC_ROOT
+        / "ahb_slave"
+        / "doc"
+        / "AhbAvipArchitectureDocument"
+        / "figures"
+        / "figure-009.png"
+    )
+    width, height = Image.open(png).size
+    assert width <= 1900 and height <= 950, f"{png.relative_to(REPO_ROOT)} {width}x{height}"

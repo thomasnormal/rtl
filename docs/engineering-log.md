@@ -1,5 +1,12 @@
 # Engineering Log
 
+## 2026-03-30
+
+- The earlier AVIP repair pass was strong enough to reject literal full-page renders, but not
+  strong enough to reject page-like crops with excess whitespace. `AhbAvipArchitectureDocument`
+  Figure 2.1 was the concrete miss: the right fix was a tighter crop plus chapter-level markdown
+  cleanup around the figure so GitHub renders it like documentation instead of a page dump.
+
 ## 2026-03-28
 
 - The current generator failure mode on medium-tier tasks is no longer “missing public information,” but “analysis without executable evidence.” The generator prompt now explicitly requires the agent to write its own self-checking benches or directed tests under `result/evidence/`, dump focused waveforms when timing matters, and inspect them with `vcdcat` before claiming the RTL matches the spec.
