@@ -119,6 +119,8 @@ def test_prepare_generator_episode_instructions_require_behavioral_spec_and_buil
     assert "forces those values to differ" in instructions
     assert "zero-argument helper functions" in instructions
     assert "Use `always_comb`" in instructions
+    assert "actual request-valid handshake" in instructions
+    assert "raw address decode alone" in instructions
     assert "complete public problem statement" in instructions
     assert "Do not assume access to upstream repo code" in instructions
     assert "task/task.json" in instructions
@@ -289,6 +291,8 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     assert "forces those values to differ" in prompt
     assert "zero-argument helper functions" in prompt
     assert "Use `always_comb`" in prompt
+    assert "actual request-valid handshake" in prompt
+    assert "raw address decode alone" in prompt
     assert "complete public problem statement" in prompt
     assert "Do not assume access to upstream repo code" in prompt
     assert "Use `xrun`/Xcelium for compile and elaboration checks" in prompt

@@ -64,6 +64,8 @@ def test_stage_generator_workspace_exposes_only_public_task_material(tmp_path: P
     assert "forces those values to differ" in instructions
     assert "zero-argument helper functions" in instructions
     assert "Use `always_comb`" in instructions
+    assert "actual request-valid handshake" in instructions
+    assert "raw address decode alone" in instructions
     assert "complete public problem statement" in instructions
     assert "Do not assume access to upstream repo code" in instructions
     assert "`submission/` must be a self-contained deliverable set" in instructions
