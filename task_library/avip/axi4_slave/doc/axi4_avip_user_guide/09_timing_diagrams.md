@@ -1,52 +1,10 @@
-## 9. Timing Diagrams
+## 9. Debug and Configuration Examples
+The source pages available for this section of the user guide show debug-oriented examples rather than protocol waveforms. The material is still useful because it documents how the AXI4 AVIP environment is typically debugged and what master-agent configuration values the logs expose.
 
-### 9.1 Basic Write Transaction
+### 9.1 AXI4 Debugging Flow
+![Figure 4.1: AXI4 debugging flow](figures/figure-001.png)
+Figure 4.1 shows a recommended debug flow for the `axi4_blocking_32b_write_read_test` example. The flow starts from the run log, checks configuration values, validates transfer sizes for address/data/write-data, compares master and slave transaction values, checks the converter data packets, and finally compares data observed by the BFMs and monitor.
 
-![Write Transaction Timing](pages/page-23.png)
-
-The write transaction proceeds as follows:
-1. Write address valid (AWVALID) is asserted with valid address and attributes
-2. Slave acknowledges with AWREADY
-3. Write data (WVALID) is asserted with data
-4. Slave acknowledges with WREADY
-5. Slave responds with BVALID when write is complete
-
-### 9.2 Basic Read Transaction
-
-![Read Transaction Timing](pages/page-24.png)
-
-The read transaction proceeds as follows:
-1. Read address valid (ARVALID) is asserted with valid address and attributes
-2. Slave acknowledges with ARREADY
-3. Slave returns read data with RVALID when data is ready
-4. Master acknowledges with RREADY
-5. RLAST indicates final beat of burst
-
-### 9.3 Burst Types
-
-#### INCR (Incremental) Burst
-- Address increments by burst size for each beat
-- Used for sequential memory access
-
-#### WRAP (Wrapped) Burst
-- Address wraps within a boundary
-- Used for cache line accesses
-
-#### FIXED (Fixed) Burst
-- Address remains constant
-- Used for FIFO or register accesses
-
-### 9.4 Outstanding Transactions
-
-Up to 16 outstanding transactions can be supported, allowing the master to issue multiple transactions without waiting for responses.
-
-### 9.5 Channel Timing Relationships
-
-| Relationship | Description |
-|-------------|-------------|
-| AW to W | Write address must precede or be concurrent with write data |
-| AW to B | Write response occurs after last write data |
-| AR to R | Read address must precede read data |
-| RLAST | Indicates final beat of read burst |
-
----
+### 9.2 Example Master-Agent Configuration Values
+![Figure 4.2: master_agent_config values](figures/figure-002.png)
+Figure 4.2 captures an example master-agent configuration table and the corresponding log output. It highlights fields such as `is_active`, `has_coverage`, and the configured address-range array values that are useful when debugging an AXI4 AVIP run.
