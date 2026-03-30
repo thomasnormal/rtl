@@ -212,6 +212,13 @@ python -m rtl_training.verifier_benchmark \
 
 The verifier benchmark treats `candidate/` as immutable input. If the agent edits the staged RTL, the episode is marked incorrect even if it later emits a verdict.
 
+Generate a repo-local scoreboard from the dataset manifest, local task store, and the latest generator/verifier summaries under `runs/`:
+
+```bash
+python -m rtl_training.scoreboard --format markdown --output runs/scoreboard.md
+cat runs/scoreboard.md
+```
+
 ## Oracle Policy
 
 Not every task family has a hidden gold RTL.

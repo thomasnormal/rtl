@@ -9,6 +9,7 @@ __all__ = [
     "reward",
     "rl",
     "runtime",
+    "scoreboard",
     "task_store",
     "verifier_benchmark",
     "workspace",
