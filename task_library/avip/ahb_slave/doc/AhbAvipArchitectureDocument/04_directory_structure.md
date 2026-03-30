@@ -1,117 +1,31 @@
 # Chapter 4 - Directory Structure
 
-
-<!-- page 35 -->
+## 4.1 Package Content
 
 ![Figure 4.1: Package Structure of AHB_AVIP](figures/figure-035.png)
 
-Chapter 4
-                                Directory Structure
-4.1 Package Content
+*Figure 4.1: Package Structure of AHB_AVIP*
 
+The package structure diagram shows where the main documentation, source, testbench, and
+simulation collateral live inside the `ahb_avip` package.
 
-The package structure diagram navigates users to find out the file locations , where it is located
-and which folder.
-
-
-
-
-                                Fig 4.1 Package Structure of AHB_AVIP
-
-
-
-
-AHB_AVIP                                                                                      34
-
-
-
-<!-- page 36 -->
-
-Table 4: Directory Path
-
-
-                     Directory                                           Description
-
-                     ahb_avip/doc                   Contains test      bench      architecture     and   components
-                                                    description and verification plan and assertion plan
-
-
-                     ahb_avip/sim                   Contains all simulating tools and ahb_compile.f file which
-                                                    contain all directories and compiling files
-
-
-                  ahb_avip/src/globals              Contains global package parameters(names,modes)
-
-
-                  ahb_avip/src/hvlTop               Contains all tb component folders (environment, master
-                                                    agent, slave agent, tb)
-
-
-                  ahb_avip/src/hdlTop               Contains all bfm files and interface
-
-
-                                                    Contains master agent , driver and monitor bfm files, master
-        ahb_avip/src/hdlTop/masterAgentBFM
-                                                    coverproperty and assertion files.
-
-                                                    Contains slave agent, driver and monitor bfm files. Slave
-        ahb_avip/src/hdlTop/slaveAgentBFM
-                                                    coverproperty and assertion files.
-
-
-           ahb_avip/src/hdlTop/ahbInterface         Contains ahb interface file
-
-
-                ahb_avip/src/hvlTop/tb              Contains testbench for master and slave assertions,
-
-                                                    coverproperty and ahbAssertion.f file.       Additionally, it
-                                                    includes test files, test lists, and virtual sequences
-
-              ahb_avip/src/hvlTop/tb/test           Contains all the test files
-
-
-            ahb_avip/src/hvlTop/tb/testList         Contains test list for Regression test.
-
-
-       ahb_avip/src/hvlTop/tb/virtualSequences      Contain all virtual sequence test files
-
-                                                    Contains environment along with its config and package files
-           ahb_avip/src/hvlTop/environment
-                                                    and Scoreboard file and virtual sequencer folder
-
-                                                    Contains master and slave virtual sequencer and base virtual
- ahb_avip/src/hvlTop/environment/virtualSequencer
-                                                    sequencer
-
-                                                    Contains master agent, agent config, conifg converter,
-                                                    coverage, diver proxy, monitor proxy, package, sequence
-                src/hvlTop/masterAgent
-                                                    item converter, sequencer, transactions and a master sequence
-                                                    folder
-
-
- src/hvlTop/masterAgent/masterSequences             Contains all master test sequences
-
-
-
-
-AHB_AVIP                                                                                                            35
-
-
-
-<!-- page 37 -->
-
-                                        Contains slave agent, agent config, conifg converter,
-                                        coverage, diver proxy, monitor proxy, package, sequence
- src/hvlTop/slaveAgent
-                                        item converter, sequencer, transactions and a slave sequence
-                                        folder.
-
-
- src/hvlTop/slaveAgent/slaveSequences   Contains all slave test sequences
-
-
-
-
-AHB_AVIP                                                                                          36
-
+| Directory | Description |
+| --- | --- |
+| `ahb_avip/doc` | Testbench architecture, component descriptions, verification plan, and assertion plan documentation. |
+| `ahb_avip/sim` | Simulation collateral, including tool scripts and `ahb_compile.f`. |
+| `ahb_avip/src/globals` | Global package parameters, names, and mode definitions. |
+| `ahb_avip/src/hvlTop` | Top-level HVL testbench component folders, including environment, master agent, slave agent, and testbench code. |
+| `ahb_avip/src/hdlTop` | HDL-facing BFM files and the AHB interface. |
+| `ahb_avip/src/hdlTop/masterAgentBFM` | Master agent driver and monitor BFMs, along with master coverproperty and assertion files. |
+| `ahb_avip/src/hdlTop/slaveAgentBFM` | Slave agent driver and monitor BFMs, along with slave coverproperty and assertion files. |
+| `ahb_avip/src/hdlTop/ahbInterface` | The AHB interface definition. |
+| `ahb_avip/src/hvlTop/tb` | Testbench files for assertions and coverproperties, `ahbAssertion.f`, test files, test lists, and virtual sequences. |
+| `ahb_avip/src/hvlTop/tb/test` | Individual test files. |
+| `ahb_avip/src/hvlTop/tb/testList` | Regression test lists. |
+| `ahb_avip/src/hvlTop/tb/virtualSequences` | Virtual-sequence test files. |
+| `ahb_avip/src/hvlTop/environment` | Environment package, configuration objects, scoreboard, and virtual-sequencer support. |
+| `ahb_avip/src/hvlTop/environment/virtualSequencer` | Master and slave virtual sequencers plus the base virtual sequencer. |
+| `src/hvlTop/masterAgent` | Master agent sources: config, converter, coverage, driver proxy, monitor proxy, package, sequencer, transactions, and master sequences. |
+| `src/hvlTop/masterAgent/masterSequences` | Master-side test sequences. |
+| `src/hvlTop/slaveAgent` | Slave agent sources: config, converter, coverage, driver proxy, monitor proxy, package, sequencer, transactions, and slave sequences. |
+| `src/hvlTop/slaveAgent/slaveSequences` | Slave-side test sequences. |

@@ -1,29 +1,17 @@
 # Chapter 1 - Introduction
 
+The Advanced High-Performance Bus (AHB) is part of ARM's Advanced Microcontroller Bus
+Architecture (AMBA) family. It defines a high-performance bus interface for efficient,
+high-speed communication between system components such as CPUs, memory controllers, and
+DMA engines.
 
-<!-- page 8 -->
+## 1.1 Key Features
 
-Chapter 1
-                                   Introduction
-The Advanced High-Performance Bus (AHB) is part of the Advanced Microcontroller Bus
-Architecture (AMBA) protocol family developed by ARM. It defines a high-performance bus
-interface that is designed for efficient communication and high-speed data transfer between
-system components. AHB is used to connect high-bandwidth, high-performance components
-like CPUs, memory controllers, and DMA controllers.
-
-1.1 Key features
-
-   ● Supports 32-bit and 64-bit address address bus.
-   ● Pipelined structure for high-performance data transfers.
-   ● Burst transfers for efficient block data movement.
-   ● Programmable wait states for slower slaves.
-   ● Error reporting using HRESP signal.
-   ● Separate address and data phases for improved efficiency.
-   ● Supports large data widths (32, 64 bits or more).
-   ● Suitable for high-speed peripherals like GPUs, memory, and accelerators.
-
-
-
-
-AHB_AVIP                                                                                7
-
+- Supports 32-bit and 64-bit address buses.
+- Uses a pipelined structure for high-performance data transfers.
+- Supports burst transfers for efficient block movement.
+- Allows programmable wait states for slower slaves.
+- Reports errors through the `HRESP` signal.
+- Separates address and data phases for improved bus efficiency.
+- Supports larger data widths, including 32-bit and 64-bit transfers.
+- Fits high-bandwidth peripherals such as GPUs, memory subsystems, and accelerators.

@@ -2,6 +2,11 @@
 
 ## 2026-03-30
 
+- The right way to repair older converted AVIP docs was not another blind translation pass; it was
+  to keep the cleaned markdown, recover the original rendered PDF pages, and recrop the missing
+  figures directly from those page images. That let the AHB document be rewritten into real
+  chapter markdown while restoring figure coverage for labels like `Fig 3.8`, `Fig 8.12`, and
+  `Fig 9.15` that had been left dangling as prose only.
 - GitHub markdown rendering does not surface image alt text as a visible caption. For AVIP docs,
   important figure labels need explicit markdown caption lines under the image, otherwise a tighter
   crop can make the figure text disappear entirely from the rendered page.
