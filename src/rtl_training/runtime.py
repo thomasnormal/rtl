@@ -3,9 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .opentitan_oracle import OpenTitanDvsimRunResult, validate_opentitan_candidate
+from task_library.opentitan.helper import OpenTitanDvsimRunResult, validate_opentitan_candidate
 from .opencode_runtime import OpenCodeRunRequest
-from .oracle import SimulationRunResult, validate_candidate, validate_candidate_cocotb
+from task_library.cvdp.helper import validate_candidate_cocotb
+from .oracle import SimulationRunResult, validate_candidate
 from .task_store import StoredTask, load_stored_task
 from .workspace import (
     ConverterWorkspace,
@@ -49,6 +50,8 @@ DEFAULT_GENERATOR_PROMPT = (
     "public task boundary. "
     "If task/spec/micro_arch/ exists, treat it as a mandatory SV microarchitecture ABI and ensure the "
     "candidate RTL compiles against it exactly, including required named instances or bind points. "
+    "If task/spec/micro_arch/README.md exists, read it and turn each exported microarchitecture signal "
+    "into an explicit requirement in result/requirements.md; do not infer a signal's meaning from its name alone. "
     "Treat `submission/` as a self-contained deliverable set and do not `include` files from `task/` "
     "inside submission RTL. If you need task-local public typedefs or packages, mirror them into "
     "normal compilation-unit files under `submission/` and `import` them there. "
@@ -59,18 +62,27 @@ DEFAULT_GENERATOR_PROMPT = (
     "DUT top and checks concrete behaviors from the requirement checklist. For timing-sensitive, "
     "sequential, or protocol behavior, dump a waveform under `result/evidence/` and inspect it with "
     "`vcdcat`; use waveform review as supporting evidence, not as a substitute for self-checking "
-    "tests or assertions. Record which requirements were covered by each generated test, bench, "
-    "assertion, or waveform review in `result/requirements.md`. "
+    "tests or assertions. If task/spec/micro_arch/ exists, include at least one executable check for "
+    "every exported microarchitecture signal. If a microarchitecture signal could differ from a public "
+    "pin, status bit, or other visible output because of masking, gating, latching, or pulse generation, "
+    "add a directed negative test that forces those values to differ and checks the distinction explicitly. "
+    "Record which requirements were covered by each generated test, bench, assertion, or waveform review "
+    "in `result/requirements.md`. "
     "Before finishing, run at least one compile sanity check when the workspace has enough context "
     "to do so. Use `xrun`/Xcelium for that compile sanity check. The compile "
     "check only counts if it elaborates the DUT top module named in task/task.json field `top_module`, or a smoke test "
     "that instantiates that DUT top; a helper interface or package alone does not count. If you use "
     "`xrun`, select the DUT top explicitly with `-top <dut>` or instantiate it in a tiny smoke bench. "
     "When you need waveform evidence, generate the dump from your own temporary bench, keep it under "
-    "`result/evidence/`, and inspect focused signals with `vcdcat -l` / `vcdcat -x`. "
+    "`result/evidence/`, and inspect focused signals with `vcdcat -l` / `vcdcat -x`. If `vcdcat` is "
+    "unavailable or broken, record the exact failure and use a small local parser or script to inspect "
+    "the same focused signals instead of skipping waveform review. "
     "If the task exposes a documented CSR/register map, do not stop at a happy-path smoke test. Add "
     "at least one executable check for documented side effects such as write-only registers, RW1C "
     "behavior, interrupt-clear behavior, or bad-access error handling before claiming `status: pass`. "
+    "If `xrun` runtime simulation is unavailable and you fall back to another simulator, that evidence "
+    "only supports `status: pass` if the fallback tests explicitly cover every high-risk requirement "
+    "and every exported microarchitecture signal; otherwise record the gaps and do not claim `pass`. "
     "If the compile check fails, or the implementation is intentionally partial, result/result.json "
     "must not claim `status: pass`. Then ensure at least one .sv or .v file exists under submission/ "
     "and result/result.json is present."

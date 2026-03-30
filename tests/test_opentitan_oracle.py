@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 
-from rtl_training.opentitan_oracle import (
+from task_library.opentitan.helper import (
     build_opentitan_candidate_validation_plan,
     build_opentitan_gold_selftest_plan,
     build_opentitan_mutant_plan,
@@ -93,7 +93,7 @@ def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: 
     (task_root / "public" / "task.json").write_text(
         json.dumps(
             {
-                "dataset_name": "opentitan_ip_docs",
+                "dataset_name": "opentitan",
                 "task_id": "uart",
                 "top_module": "uart",
                 "deliverables": {
@@ -114,7 +114,7 @@ def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: 
         bundles=(
             SharedSourceBundle(
                 bundle_id="opentitan-test",
-                name="opentitan_ip_docs",
+                name="opentitan",
                 root=repo_root.resolve(),
                 source_kind="directory",
                 git_commit=None,
@@ -126,7 +126,7 @@ def _write_fake_opentitan_task(task_root: Path, repo_root: Path, registry_path: 
     (task_root / "task.json").write_text(
         json.dumps(
             {
-                "dataset_name": "opentitan_ip_docs",
+                "dataset_name": "opentitan",
                 "task_id": "uart",
                 "public": {
                     "directory": "public",
@@ -302,7 +302,7 @@ def test_run_opentitan_dvsim_plan_invokes_dvsim_from_overlaid_repo(
         captured["overlay_text"] = (plan.repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").read_text()
         return subprocess.CompletedProcess(command, 0, stdout="PASS\n", stderr="")
 
-    monkeypatch.setattr("rtl_training.opentitan_oracle.subprocess.run", fake_run)
+    monkeypatch.setattr("task_library.opentitan.helper.subprocess.run", fake_run)
 
     result = run_opentitan_dvsim_plan(plan, timeout_s=30)
 

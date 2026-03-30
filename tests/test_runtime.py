@@ -26,13 +26,13 @@ def _create_task(tmp_path: Path) -> Path:
 
 
 def _create_minimal_opentitan_task(tmp_path: Path) -> Path:
-    task_root = tmp_path / "task_store" / "opentitan_ip_docs" / "rv_timer"
+    task_root = tmp_path / "task_store" / "opentitan" / "rv_timer"
     (task_root / "public" / "spec").mkdir(parents=True)
     (task_root / "public" / "spec" / "README.md").write_text("rv_timer spec\n")
     (task_root / "public" / "task.json").write_text(
         json.dumps(
             {
-                "dataset_name": "opentitan_ip_docs",
+                "dataset_name": "opentitan",
                 "task_id": "rv_timer",
                 "top_module": "rv_timer",
                 "deliverables": {
@@ -47,7 +47,7 @@ def _create_minimal_opentitan_task(tmp_path: Path) -> Path:
     (task_root / "task.json").write_text(
         json.dumps(
             {
-                "dataset_name": "opentitan_ip_docs",
+                "dataset_name": "opentitan",
                 "task_id": "rv_timer",
                 "public": {
                     "directory": "public",
@@ -110,6 +110,11 @@ def test_prepare_generator_episode_instructions_require_behavioral_spec_and_buil
     assert "task-local SV packages or typedef files" in instructions
     assert "generated bus helper package" in instructions
     assert "source, size, param, and user fields" in instructions
+    assert "task/spec/micro_arch/README.md" in instructions
+    assert "exported microarchitecture signal" in instructions
+    assert "Do not infer a signal's meaning from its name alone" in instructions
+    assert "masking, gating, latching, or pulse generation" in instructions
+    assert "forces those values to differ" in instructions
     assert "complete public problem statement" in instructions
     assert "Do not assume access to upstream repo code" in instructions
     assert "task/task.json" in instructions
@@ -117,6 +122,10 @@ def test_prepare_generator_episode_instructions_require_behavioral_spec_and_buil
     assert "`submission/` must be a self-contained deliverable set" in instructions
     assert "Do not use `` `include `` paths that reach into `task/`" in instructions
     assert "compile check only counts if it elaborates the DUT top module" in instructions
+    assert "If `vcdcat` is unavailable or broken" in instructions
+    assert "fall back to another simulator" in instructions
+    assert "every high-risk requirement and every exported microarchitecture signal" in instructions
+    assert "Do not silently redefine the meaning of a public microarchitecture signal" in instructions
     assert "helper interface or package alone does not count" in instructions
 
 
@@ -251,6 +260,11 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     assert "task-local SV packages or typedef files" in prompt
     assert "generated bus helper package" in prompt
     assert "source, size, param, and user fields" in prompt
+    assert "task/spec/micro_arch/README.md" in prompt
+    assert "exported microarchitecture signal" in prompt
+    assert "Do not infer a signal's meaning from its name alone" in prompt
+    assert "masking, gating, latching, or pulse generation" in prompt
+    assert "forces those values to differ" in prompt
     assert "complete public problem statement" in prompt
     assert "Do not assume access to upstream repo code" in prompt
     assert "Use `xrun`/Xcelium for compile and elaboration checks" in prompt
@@ -258,6 +272,9 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     assert "Do not `include` files from `task/` inside submission RTL" in prompt
     assert "compile check only counts if it elaborates the DUT top module" in prompt
     assert "If the compile check fails, `status` must not be `pass`" in prompt
+    assert "If `vcdcat` is unavailable or broken" in prompt
+    assert "fall back to another simulator" in prompt
+    assert "every high-risk requirement and every exported microarchitecture signal" in prompt
 
 
 def test_verifier_prompt_forbids_yosys() -> None:

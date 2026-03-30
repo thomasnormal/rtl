@@ -32,7 +32,7 @@
     "rtllm_v2_0",
     "asserteval",
     "riscv_hardware_specs",
-    "opentitan_ip_docs",
+    "opentitan",
     "openhw_core_ip_manuals",
     "wishbone_b4",
     "opentitan_top_docs",
@@ -41,6 +41,19 @@
     "nvdla_docs",
     "onfi_specs",
     "opentitan_dv",
+    "chipbench",
+    "realbench",
+    "resbench",
+    "icrtl",
+    "verilog_axi",
+    "verilog_ethernet",
+    "verilog_pcie",
+    "verilog_uart",
+    "verilog_axis",
+    "verilog_lfsr",
+    "pulp_common_cells",
+    "veer_el2",
+    "notsotiny",
     "rtl_repo",
     "jedec_ddr3_private",
     "jedec_ddr6_private"
@@ -125,6 +138,243 @@
       "default_tier": "small"
     },
     {
+      "name": "chipbench",
+      "role": "anchor_seed",
+      "status": "ready",
+      "example_count": 45,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "prompt.txt",
+        "ref.sv",
+        "test.sv"
+      ],
+      "license": "see-repo",
+      "access": "public",
+      "notes": "ChipBench Verilog generation subset (30 self-contained + 6 non-self-contained + 9 CPU IP). Uses VerilogEval-style TopModule/RefModule harness. Upstream uses iverilog v12-branch. Oracle uses verilator (42/45) + xrun fallback for BLKANDNBLK tasks (2/3). 44/45 gold selftests pass. 1 failure: Prob006_cpu_top uses '{default:0} which neither iverilog v12 nor verilator supports.",
+      "default_tier": "small"
+    },
+    {
+      "name": "realbench",
+      "role": "anchor_seed",
+      "status": "ready",
+      "example_count": 60,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": true,
+      "fields": [
+        "spec.md",
+        "ref.sv",
+        "testbench.sv",
+        "stimulus_gen.sv",
+        "dependency files"
+      ],
+      "license": "MIT",
+      "access": "public",
+      "notes": "Real IP cores (AES 6, SD card 14, E203 RISC-V 40) with markdown specs, testbenches, and formal equiv checking. Specs GPG-encrypted (passphrase: iprc-dip). Upstream uses verilator via per-task Makefiles. 56/60 gold selftests pass. 4 SDC failures: 2 upstream syntax bugs ($random[7:0]), 1 verilator version issue (VL_URANDOM_RANGE_Q), 1 passes with upstream Makefile but not our oracle (sd_data_master BD_EMPTY defined inside gold RTL).",
+      "default_tier": "medium"
+    },
+    {
+      "name": "resbench",
+      "role": "anchor_seed",
+      "status": "ready",
+      "example_count": 56,
+      "has_spec": true,
+      "has_gold_rtl": false,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "Problem",
+        "Module header",
+        "Testbench"
+      ],
+      "license": "see-repo",
+      "access": "public",
+      "notes": "56 FPGA resource-aware problems across 12 categories (combinational, FSM, crypto, ML, physics, etc). Self-checking testbenches without gold RTL. All 56 oracles compile and run correctly with iverilog. No gold RTL provided by benchmark; tested with GPT-4o solutions (51 pass) and generator agent (2 more pass).",
+      "default_tier": "small"
+    },
+    {
+      "name": "icrtl",
+      "role": "anchor_seed",
+      "status": "ready",
+      "example_count": 6,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "human.md",
+        "test.sv",
+        "data files",
+        "ref_solution"
+      ],
+      "license": "see-repo",
+      "access": "public",
+      "notes": "6 industry-scale design challenges from IC design contests (LBP, GEMM, 2D-conv, Huffman coding, job assignment, distance transform). All use TOP as the DUT module name. Testbenches use data files via ./00_TB/ relative paths. 4/6 gold selftests pass; conv/dt ref solutions are incomplete starting-point files (initial.sv), not passing gold RTL. Oracles/testbenches work correctly. From EvolVE (arXiv 2601.18067).",
+      "default_tier": "medium"
+    },
+    {
+      "name": "verilog_axi",
+      "role": "medium_spec_corpus",
+      "status": "ready",
+      "example_count": 24,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "README spec",
+        "module header",
+        "cocotb testbench",
+        "Makefile"
+      ],
+      "license": "MIT",
+      "access": "public",
+      "notes": "AXI4/AXI4-Lite bus components (adapters, crossbars, DMA, FIFOs, RAMs, registers). Cocotb testbenches using cocotbext-axi. Oracle runs upstream Makefile with icarus.",
+      "default_tier": "medium"
+    },
+    {
+      "name": "verilog_ethernet",
+      "role": "medium_spec_corpus",
+      "status": "ready",
+      "example_count": 33,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "README spec",
+        "module header",
+        "cocotb testbench",
+        "Makefile"
+      ],
+      "license": "MIT",
+      "access": "public",
+      "notes": "Ethernet MAC/PHY/UDP/IP stack components (1G/10G/25G). Cocotb testbenches using cocotbext-eth. Oracle runs upstream Makefile with icarus.",
+      "default_tier": "medium"
+    },
+    {
+      "name": "verilog_pcie",
+      "role": "medium_spec_corpus",
+      "status": "ready",
+      "example_count": 37,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "README spec",
+        "module header",
+        "cocotb testbench",
+        "Makefile"
+      ],
+      "license": "MIT",
+      "access": "public",
+      "notes": "PCIe DMA, TLP, MSI-X, configuration space components. Cocotb testbenches using cocotbext-pcie. Oracle runs upstream Makefile with icarus.",
+      "default_tier": "medium"
+    },
+    {
+      "name": "verilog_uart",
+      "role": "anchor_seed",
+      "status": "ready",
+      "example_count": 2,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "README spec",
+        "module header",
+        "cocotb testbench",
+        "Makefile"
+      ],
+      "license": "MIT",
+      "access": "public",
+      "notes": "UART RX and TX modules. Cocotb testbenches using cocotbext-uart. 2/2 oracle pass.",
+      "default_tier": "small"
+    },
+    {
+      "name": "verilog_axis",
+      "role": "medium_spec_corpus",
+      "status": "ready",
+      "example_count": 21,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "README spec",
+        "module header",
+        "cocotb testbench",
+        "Makefile"
+      ],
+      "license": "MIT",
+      "access": "public",
+      "notes": "AXI-Stream infrastructure components (adapters, FIFOs, muxes, demuxes, switches, rate limiters, cobs codec). Cocotb testbenches using cocotbext-axi.",
+      "default_tier": "medium"
+    },
+    {
+      "name": "verilog_lfsr",
+      "role": "anchor_seed",
+      "status": "ready",
+      "example_count": 6,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "README spec",
+        "module header",
+        "cocotb testbench",
+        "Makefile"
+      ],
+      "license": "MIT",
+      "access": "public",
+      "notes": "LFSR, CRC, PRBS generators/checkers, scramble/descramble modules. Cocotb testbenches.",
+      "default_tier": "small"
+    },
+    {
+      "name": "pulp_common_cells",
+      "role": "medium_spec_corpus",
+      "status": "ready",
+      "example_count": 17,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "module header",
+        "xrun testbench",
+        "assertion-based checking"
+      ],
+      "license": "Solderpad-0.51",
+      "access": "public",
+      "notes": "ETH Zurich PULP Platform common building blocks: CDC, clock dividers, FIFOs, arbiters, stream crossbars, ECC, address decoders. SystemVerilog assert-based TBs. Oracle uses xrun.",
+      "default_tier": "small"
+    },
+    {
+      "name": "veer_el2",
+      "role": "medium_spec_corpus",
+      "status": "ready",
+      "example_count": 22,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "module header",
+        "cocotb+pyuvm testbench",
+        "verilator simulation"
+      ],
+      "license": "Apache-2.0",
+      "access": "public",
+      "notes": "VeeR EL2 RISC-V core block-level components: PIC, DMA, ALU, multiplier, divider, decoder, PMP, IFU, LSU, AHB/AXI bridges. Production-quality cocotb+pyuvm testbenches from CHIPS Alliance. Oracle runs upstream Makefile with verilator.",
+      "default_tier": "medium"
+    },
+    {
       "name": "riscv_hardware_specs",
       "role": "spec_only_corpus",
       "status": "ready",
@@ -164,7 +414,7 @@
       "default_tier": "large"
     },
     {
-      "name": "opentitan_ip_docs",
+      "name": "opentitan",
       "role": "medium_spec_corpus",
       "status": "ready",
       "example_count": 9,

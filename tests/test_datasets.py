@@ -21,9 +21,9 @@ def test_manifest_anchor_counts_and_order() -> None:
     assert manifest.by_name("riscv_hardware_specs").has_testbench is False
     assert manifest.by_name("riscv_hardware_specs").has_gold_rtl is False
     assert manifest.by_name("riscv_hardware_specs").default_tier == "large"
-    assert manifest.by_name("opentitan_ip_docs").default_tier == "medium"
-    assert manifest.by_name("opentitan_ip_docs").status == "ready"
-    assert manifest.by_name("opentitan_ip_docs").example_count == 9
+    assert manifest.by_name("opentitan").default_tier == "medium"
+    assert manifest.by_name("opentitan").status == "ready"
+    assert manifest.by_name("opentitan").example_count == 9
     assert manifest.by_name("cva6_user_manual").default_tier == "large"
     assert manifest.by_name("jedec_ddr6_private").default_tier == "industrial"
 

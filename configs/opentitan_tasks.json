@@ -1,12 +1,12 @@
 {
-  "dataset_name": "opentitan_ip_docs",
+  "dataset_name": "opentitan",
   "default_public_interface_profile": "opentitan_self_contained_v1",
   "tasks": [
     {
       "task_id": "adc_ctrl",
       "tier": "medium",
       "candidate_top_module": "adc_ctrl",
-      "spec_subdir": "adc_ctrl",
+      "spec_subdir": "task_adc_ctrl",
       "source_docs": [
         "hw/ip/adc_ctrl/README.md",
         "hw/ip/adc_ctrl/doc/interfaces.md",
@@ -64,7 +64,7 @@
       "task_id": "aon_timer",
       "tier": "medium",
       "candidate_top_module": "aon_timer",
-      "spec_subdir": "aon_timer",
+      "spec_subdir": "task_aon_timer",
       "source_docs": [
         "hw/ip/aon_timer/README.md",
         "hw/ip/aon_timer/doc/interfaces.md",
@@ -130,7 +130,7 @@
       "task_id": "uart",
       "tier": "medium",
       "candidate_top_module": "uart",
-      "spec_subdir": "uart",
+      "spec_subdir": "task_uart",
       "source_docs": [
         "hw/ip/uart/README.md",
         "hw/ip/uart/doc/interfaces.md",
@@ -252,7 +252,7 @@
       "task_id": "i2c",
       "tier": "medium",
       "candidate_top_module": "i2c",
-      "spec_subdir": "i2c",
+      "spec_subdir": "task_i2c",
       "source_docs": [
         "hw/ip/i2c/README.md",
         "hw/ip/i2c/doc/interfaces.md",
@@ -334,7 +334,7 @@
       "task_id": "spi_host",
       "tier": "medium",
       "candidate_top_module": "spi_host",
-      "spec_subdir": "spi_host",
+      "spec_subdir": "task_spi_host",
       "source_docs": [
         "hw/ip/spi_host/README.md",
         "hw/ip/spi_host/doc/interfaces.md",
@@ -406,7 +406,7 @@
       "task_id": "pattgen",
       "tier": "medium",
       "candidate_top_module": "pattgen",
-      "spec_subdir": "pattgen",
+      "spec_subdir": "task_pattgen",
       "source_docs": [
         "hw/ip/pattgen/README.md",
         "hw/ip/pattgen/doc/interfaces.md",
@@ -468,7 +468,7 @@
       "task_id": "dma",
       "tier": "medium",
       "candidate_top_module": "dma",
-      "spec_subdir": "dma",
+      "spec_subdir": "task_dma",
       "source_docs": [
         "hw/ip/dma/README.md",
         "hw/ip/dma/doc/interfaces.md",
@@ -541,7 +541,7 @@
       "task_id": "rv_timer",
       "tier": "medium",
       "candidate_top_module": "rv_timer",
-      "spec_subdir": "rv_timer",
+      "spec_subdir": "task_rv_timer",
       "source_docs": [
         "hw/ip/rv_timer/README.md",
         "hw/ip/rv_timer/doc/interfaces.md",
@@ -599,7 +599,7 @@
       "task_id": "sysrst_ctrl",
       "tier": "medium",
       "candidate_top_module": "sysrst_ctrl",
-      "spec_subdir": "sysrst_ctrl",
+      "spec_subdir": "task_sysrst_ctrl",
       "source_docs": [
         "hw/ip/sysrst_ctrl/README.md",
         "hw/ip/sysrst_ctrl/doc/interfaces.md",

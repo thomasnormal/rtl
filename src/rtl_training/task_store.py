@@ -161,18 +161,18 @@ _CURATED_INTERFACE_MANIFESTS: dict[str, Path] = {
 }
 
 _CURATED_TASK_PACK_MANIFESTS: dict[str, Path] = {
-    "opentitan_ip_docs": Path(__file__).resolve().parents[2]
+    "opentitan": Path(__file__).resolve().parents[2]
     / "configs"
-    / "opentitan_ip_docs_tasks.json",
+    / "opentitan_tasks.json",
     "riscv_hardware_specs": Path(__file__).resolve().parents[2]
     / "configs"
     / "riscv_hardware_specs_tasks.json",
 }
 
 _CURATED_TASK_PACK_SPECS: dict[str, Path] = {
-    "opentitan_ip_docs": Path(__file__).resolve().parents[2]
+    "opentitan": Path(__file__).resolve().parents[2]
     / "task_library"
-    / "opentitan_ip_docs",
+    / "opentitan",
     "riscv_hardware_specs": Path(__file__).resolve().parents[2]
     / "task_library"
     / "riscv_hardware_specs",
@@ -1093,7 +1093,7 @@ def store_curated_task_pack(
     return tuple(written)
 
 
-def store_opentitan_ip_docs_tasks(
+def store_opentitan_tasks(
     output_root: str | Path,
     *,
     tier: Tier | None = None,
@@ -1101,10 +1101,11 @@ def store_opentitan_ip_docs_tasks(
 ) -> tuple[Path, ...]:
     return store_curated_task_pack(
         output_root,
-        dataset_name="opentitan_ip_docs",
+        dataset_name="opentitan",
         tier=tier,
         source_root=source_root,
     )
+
 
 
 def store_riscv_hardware_specs_tasks(
@@ -1726,6 +1727,381 @@ def store_icrtl_tasks(
                     oracle=None,
                     source_metadata=source_metadata,
                     tier="medium",
+                    raw_oracle_dir=oracle_dir,
+                    raw_oracle_metadata=oracle_metadata,
+                )
+            )
+
+    return tuple(written)
+
+
+def _extract_cocotb_behavioral_spec(test_file: Path) -> str:
+    """Extract behavioral specification from a cocotb test file.
+
+    Parses the test to identify which protocols are exercised,
+    what test scenarios are covered, and what assertions define
+    the behavioral contract.
+    """
+    import re as _re
+
+    source = test_file.read_text()
+    sections: list[str] = []
+
+    # 1. Identify protocols from imports/usage
+    protocol_checks = [
+        ("AxiMaster", "AXI4 master"),
+        ("AxiLiteMaster", "AXI4-Lite master"),
+        ("AxiStreamSource", "AXI-Stream source"),
+        ("AxiStreamSink", "AXI-Stream sink"),
+        ("AxiStreamFrame", "AXI-Stream frames"),
+        ("GmiiSource", "GMII source"), ("GmiiSink", "GMII sink"),
+        ("RgmiiSource", "RGMII source"), ("RgmiiSink", "RGMII sink"),
+        ("XgmiiSource", "XGMII source"), ("XgmiiSink", "XGMII sink"),
+        ("MiiSource", "MII source"), ("MiiSink", "MII sink"),
+        ("EthMacFrame", "Ethernet MAC frames"),
+        ("ArpFrame", "ARP frames"),
+        ("PtpClock", "PTP clock"),
+    ]
+    protocols = [desc for token, desc in protocol_checks if token in source]
+    if protocols:
+        sections.append(
+            "## Protocols Under Test\n\n" + "\n".join(f"- {p}" for p in protocols)
+        )
+
+    # 2. Extract test functions with their key operations
+    func_re = _re.compile(
+        r"^async def (run_test_\w+|run_stress_\w+)\(([^)]*)\):",
+        _re.MULTILINE,
+    )
+    test_descs: list[str] = []
+    for match in func_re.finditer(source):
+        name = match.group(1)
+        start = match.end()
+        # Find the end of this function
+        next_func = _re.search(r"\n(?:async )?def \w+\(", source[start:])
+        body = source[start : start + next_func.start()] if next_func else source[start:]
+
+        ops: list[str] = []
+        for line in body.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("assert "):
+                ops.append(f"  - Asserts: `{stripped}`")
+            elif _re.match(r".*\b(write|read|send|recv)\(", stripped) and "await" in stripped:
+                clean = stripped.split("await ")[-1].split("#")[0].strip()
+                ops.append(f"  - `{clean}`")
+            elif "log.info" in stripped:
+                ops.append(f"  - {stripped}")
+
+        test_descs.append(f"- **{name}**")
+        for op in ops[:8]:
+            test_descs.append(op)
+
+    if test_descs:
+        sections.append("## Behavioral Requirements (from test suite)\n\n" + "\n".join(test_descs))
+
+    # 3. Parameter sweeps from TestFactory
+    sweeps: list[str] = []
+    for line in source.splitlines():
+        if "add_option" in line:
+            sweeps.append(f"- `{line.strip()}`")
+    if sweeps:
+        sections.append(
+            "## Parameter Variations\n\nThe test suite sweeps these axes:\n\n"
+            + "\n".join(sweeps)
+        )
+
+    return "\n\n".join(sections) + "\n" if sections else ""
+
+
+def store_forencich_tasks(
+    source_root: str | Path,
+    output_root: str | Path,
+    *,
+    dataset_name: str,
+) -> tuple[Path, ...]:
+    """Ingest tasks from an Alex Forencich cocotb-tested Verilog repo.
+
+    Works for ``verilog-axi``, ``verilog-ethernet``, and similar repos
+    that follow the convention:
+
+    * ``rtl/<module>.v`` — RTL source
+    * ``tb/<module>/Makefile`` + ``test_<module>.py`` — cocotb test
+    * ``README.md`` — per-module documentation sections
+
+    Each testable module (one per ``tb/*/Makefile``) becomes a task.
+    The oracle stores the upstream Makefile + test script and all gold
+    RTL files; validation swaps the DUT source(s) for the candidate.
+    """
+    import re as _re
+
+    root = Path(source_root)
+    output = Path(output_root)
+    rtl_dir = root / "rtl"
+    tb_root = root / "tb"
+    readme_path = root / "README.md"
+    written: list[Path] = []
+
+    # Parse README for per-module descriptions
+    module_docs: dict[str, str] = {}
+    if readme_path.exists():
+        readme = readme_path.read_text()
+        sections = _re.split(r"^### `(\w+)` module", readme, flags=_re.MULTILINE)
+        for i in range(1, len(sections) - 1, 2):
+            name = sections[i]
+            desc = sections[i + 1].strip().split("\n##")[0].strip()
+            module_docs[name] = desc
+
+    for tb_dir in sorted(tb_root.iterdir()):
+        makefile = tb_dir / "Makefile"
+        if not makefile.exists() or not tb_dir.is_dir():
+            continue
+
+        makefile_text = makefile.read_text()
+
+        # Extract DUT name and VERILOG_SOURCES
+        dut_match = _re.search(r"^DUT\s*=\s*(\S+)", makefile_text, _re.MULTILINE)
+        if dut_match is None:
+            continue
+        dut = dut_match.group(1)
+
+        # Collect RTL source filenames (resolve $(DUT) references)
+        raw_sources = _re.findall(r"VERILOG_SOURCES\s*\+=\s*(\S+)", makefile_text)
+        source_files: list[str] = []
+        for s in raw_sources:
+            s = s.replace("$(DUT)", dut)
+            s = s.replace("../../rtl/", "")
+            if s == "iverilog_dump.v" or s.startswith("$("):
+                continue
+            source_files.append(s)
+
+        if not source_files:
+            continue
+
+        # Verify gold RTL exists for all sources
+        gold_paths: list[Path] = []
+        skip = False
+        for sf in source_files:
+            p = rtl_dir / sf
+            if p.exists():
+                gold_paths.append(p)
+            else:
+                skip = True
+                break
+        if skip or not gold_paths:
+            continue
+
+        # Extract module header from the DUT file
+        dut_rtl_path = gold_paths[0]
+        dut_rtl_text = dut_rtl_path.read_text()
+        header_match = _re.search(
+            r"(module\s+" + _re.escape(dut) + r"\s*(?:#\s*\(.*?\))?\s*\(.*?\)\s*;)",
+            dut_rtl_text,
+            _re.DOTALL,
+        )
+        header = header_match.group(1) if header_match else ""
+
+        # Build spec from README description + module header + test behavior
+        doc = module_docs.get(dut, f"Implement the `{dut}` module.")
+        spec = f"# {dut}\n\n{doc}\n\n## Module Header\n\n```verilog\n{header}\n```\n"
+
+        # Enrich with behavioral spec extracted from the cocotb test
+        test_py = tb_dir / f"test_{dut}.py"
+        if test_py.exists():
+            spec += "\n" + _extract_cocotb_behavioral_spec(test_py)
+
+        task_id = f"{dataset_name}_{dut}"
+
+        # Prepare oracle directory: Makefile + test_*.py + gold RTL
+        with tempfile.TemporaryDirectory() as tmp:
+            oracle_dir = Path(tmp) / "oracle"
+            test_dir = oracle_dir / "test"
+            gold_dir = oracle_dir / "rtl"
+            test_dir.mkdir(parents=True)
+            gold_dir.mkdir(parents=True)
+
+            # Copy Makefile and test scripts
+            shutil.copy2(makefile, test_dir / "Makefile")
+            for f in tb_dir.iterdir():
+                if f.name.endswith(".py") and f.is_file():
+                    shutil.copy2(f, test_dir / f.name)
+
+            # Copy ALL gold RTL files
+            for p in gold_paths:
+                shutil.copy2(p, gold_dir / p.name)
+
+            # Copy any generated wrapper files from the tb dir
+            for f in tb_dir.iterdir():
+                if f.suffix == ".v" and f.is_file():
+                    shutil.copy2(f, gold_dir / f.name)
+
+            oracle_metadata: dict[str, Any] = {
+                "kind": "makefile_cocotb",
+                "test_dir": "oracle/test",
+                "gold_rtl_dir": "oracle/rtl",
+                "dut": dut,
+                "dut_source_files": [source_files[0]],
+                "dep_source_files": source_files[1:],
+            }
+
+            public_metadata = _build_public_task_metadata(
+                dataset_name=dataset_name,
+                task_id=task_id,
+                top_module=dut,
+                tier="medium",
+            )
+
+            source_metadata_dict: dict[str, Any] = {
+                "origin": dataset_name,
+                "dut": dut,
+                "source_files": source_files,
+            }
+
+            written.append(
+                _write_task_bundle(
+                    output_root=output,
+                    dataset_name=dataset_name,
+                    task_id=task_id,
+                    spec_source=spec,
+                    candidate_top_module=dut,
+                    public_metadata=public_metadata,
+                    public_interface=None,
+                    oracle=None,
+                    source_metadata=source_metadata_dict,
+                    tier="medium",
+                    raw_oracle_dir=oracle_dir,
+                    raw_oracle_metadata=oracle_metadata,
+                )
+            )
+
+    return tuple(written)
+
+
+def store_pulp_common_cells_tasks(
+    source_root: str | Path,
+    output_root: str | Path,
+    *,
+    dataset_name: str = "pulp_common_cells",
+) -> tuple[Path, ...]:
+    """Ingest tasks from PULP Platform common_cells.
+
+    Each ``test/*_tb.sv`` file becomes a task.  The DUT is the primary
+    module tested, and its transitive dependencies are resolved from
+    ``src/``.  The oracle uses xrun with ``+incdir`` for assertion macros.
+    """
+    import re as _re
+
+    root = Path(source_root)
+    output = Path(output_root)
+    src_dir = root / "src"
+    test_dir = root / "test"
+    include_dir = root / "include"
+    written: list[Path] = []
+
+    # Build module/package -> file map
+    mod_files: dict[str, Path] = {}
+    for f in sorted(src_dir.glob("*.sv")):
+        for m in _re.finditer(r"(?:^|\s)(?:module|package)\s+(\w+)", f.read_text()):
+            mod_files[m.group(1)] = f
+
+    # Resolve transitive deps for a testbench
+    def _resolve_deps(tb_path: Path) -> list[Path]:
+        text = tb_path.read_text()
+        refs = set(_re.findall(r"\b(\w+)\s+(?:#\s*\(|i_)", text))
+        refs |= set(_re.findall(r"import\s+(\w+)::", text))
+        checked: set[str] = set()
+        queue = [mod_files[r].name for r in refs if r in mod_files]
+        while queue:
+            fname = queue.pop()
+            if fname in checked:
+                continue
+            checked.add(fname)
+            fpath = src_dir / fname
+            if fpath.exists():
+                ftext = fpath.read_text()
+                for inst in _re.findall(r"\b(\w+)\s+(?:#\s*\(|i_)", ftext):
+                    if inst in mod_files and mod_files[inst].name not in checked:
+                        queue.append(mod_files[inst].name)
+                for imp in _re.findall(r"import\s+(\w+)::", ftext):
+                    if imp in mod_files and mod_files[imp].name not in checked:
+                        queue.append(mod_files[imp].name)
+        return sorted(set(src_dir / n for n in checked if (src_dir / n).exists()))
+
+    for tb in sorted(test_dir.glob("*_tb.sv")):
+        tb_text = tb.read_text()
+        if "rand_verif_pkg" in tb_text:
+            continue
+
+        dut_name = tb.stem.replace("_tb", "")
+        if dut_name not in mod_files:
+            continue
+        dut_file = mod_files[dut_name]
+
+        all_deps = _resolve_deps(tb)
+        dep_files = [f for f in all_deps if f != dut_file]
+
+        dut_text = dut_file.read_text()
+        header_match = _re.search(
+            r"(module\s+" + _re.escape(dut_name) + r"\s*(?:#\s*\(.*?\))?\s*\(.*?\)\s*;)",
+            dut_text, _re.DOTALL,
+        )
+        header = header_match.group(1) if header_match else ""
+        spec = (
+            f"# {dut_name}\n\n"
+            f"PULP Platform common_cells component.\n\n"
+            f"## Module Header\n\n```systemverilog\n{header}\n```\n"
+        )
+
+        task_id = f"{dataset_name}_{dut_name}"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            oracle_dir = Path(tmp) / "oracle"
+            deps_dir = oracle_dir / "deps"
+            incl_dir = oracle_dir / "include" / "common_cells"
+            deps_dir.mkdir(parents=True)
+            incl_dir.mkdir(parents=True)
+
+            for f in dep_files:
+                shutil.copy2(f, deps_dir / f.name)
+            shutil.copy2(dut_file, deps_dir / dut_file.name)
+            shutil.copy2(tb, oracle_dir / tb.name)
+            for hdr in (include_dir / "common_cells").glob("*.svh"):
+                shutil.copy2(hdr, incl_dir / hdr.name)
+
+            oracle_metadata: dict[str, Any] = {
+                "kind": "pulp_xrun",
+                "testbench": f"oracle/{tb.name}",
+                "tb_top": tb.stem,
+                "dep_dir": "oracle/deps",
+                "include_dir": "oracle/include",
+                "dut": dut_name,
+                "dut_source_file": dut_file.name,
+            }
+
+            public_metadata = _build_public_task_metadata(
+                dataset_name=dataset_name,
+                task_id=task_id,
+                top_module=dut_name,
+                tier="small",
+            )
+
+            source_meta: dict[str, Any] = {
+                "origin": dataset_name,
+                "dut": dut_name,
+                "dep_files": [f.name for f in dep_files],
+            }
+
+            written.append(
+                _write_task_bundle(
+                    output_root=output,
+                    dataset_name=dataset_name,
+                    task_id=task_id,
+                    spec_source=spec,
+                    candidate_top_module=dut_name,
+                    public_metadata=public_metadata,
+                    public_interface=None,
+                    oracle=None,
+                    source_metadata=source_meta,
+                    tier="small",
                     raw_oracle_dir=oracle_dir,
                     raw_oracle_metadata=oracle_metadata,
                 )

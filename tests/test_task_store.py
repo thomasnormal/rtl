@@ -9,7 +9,7 @@ from rtl_training.shared_sources import SharedSourceRegistry
 from rtl_training.task_store import (
     load_stored_task,
     store_generic_task,
-    store_opentitan_ip_docs_tasks,
+    store_opentitan_tasks,
     store_riscv_hardware_specs_tasks,
     store_rtllm_tasks,
     store_verilog_eval_tasks,
@@ -394,8 +394,8 @@ def test_store_generic_task_overwrite_removes_stale_spec_files(tmp_path: Path) -
     assert not (spec_dir / "spec.md").exists()
 
 
-def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path) -> None:
-    written = store_opentitan_ip_docs_tasks(
+def test_store_opentitan_tasks_materializes_curated_specs(tmp_path: Path) -> None:
+    written = store_opentitan_tasks(
         tmp_path / "task_store",
         source_root="~/opentitan",
     )
@@ -412,7 +412,7 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
         "uart",
     ]
 
-    uart_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "uart")
+    uart_task = load_stored_task(tmp_path / "task_store" / "opentitan" / "uart")
     assert uart_task.tier == "medium"
     uart_readme = (uart_task.spec_dir / "README.md").read_text()
     assert uart_readme.startswith("# UART Specification")
@@ -425,7 +425,7 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
 
     public_metadata = json.loads(uart_task.public_task_path.read_text())
     assert public_metadata == {
-        "dataset_name": "opentitan_ip_docs",
+        "dataset_name": "opentitan",
         "deliverables": {
             "rtl": "submission/",
             "summary": "result/result.json",
@@ -466,10 +466,10 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
 
     task_metadata = json.loads((uart_task.root / "task.json").read_text())
     assert task_metadata["source"]["origin"] == "curated_task_pack"
-    assert task_metadata["source"]["spec_subdir"] == "uart"
+    assert task_metadata["source"]["spec_subdir"] == "task_uart"
     assert "hw/ip/uart/README.md" in task_metadata["source"]["source_docs"]
     assert task_metadata["source"]["source_root"].startswith(str(tmp_path.resolve()))
-    assert "/shared_sources/bundles/opentitan_ip_docs-" in task_metadata["source"]["source_root"]
+    assert "/shared_sources/bundles/opentitan-" in task_metadata["source"]["source_root"]
     assert task_metadata["source"]["source_checkout_root"] == str(
         Path("~/opentitan").expanduser().resolve()
     )
@@ -515,7 +515,7 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
         bundle.root / "hw/ip/uart/dv",
     )
 
-    adc_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "adc_ctrl")
+    adc_task = load_stored_task(tmp_path / "task_store" / "opentitan" / "adc_ctrl")
     adc_public_if = discover_public_interface_spec(adc_task.spec_dir)
     assert adc_public_if is not None
     assert list(adc_public_if.ports)[6] == {
@@ -529,13 +529,13 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
     adc_task_metadata = json.loads((adc_task.root / "task.json").read_text())
     assert adc_task_metadata["oracle"]["test"] == "adc_ctrl_smoke"
 
-    aon_timer_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "aon_timer")
+    aon_timer_task = load_stored_task(tmp_path / "task_store" / "opentitan" / "aon_timer")
     assert json.loads((aon_timer_task.root / "task.json").read_text())["oracle"]["test"] == "aon_timer_smoke"
 
-    pattgen_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "pattgen")
+    pattgen_task = load_stored_task(tmp_path / "task_store" / "opentitan" / "pattgen")
     assert json.loads((pattgen_task.root / "task.json").read_text())["oracle"]["test"] == "pattgen_smoke"
 
-    rv_timer_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "rv_timer")
+    rv_timer_task = load_stored_task(tmp_path / "task_store" / "opentitan" / "rv_timer")
     rv_timer_task_metadata = json.loads((rv_timer_task.root / "task.json").read_text())
     assert rv_timer_task_metadata["oracle"]["test"] == "rv_timer_random"
     assert rv_timer_task_metadata["oracle"]["cfg"] == "hw/ip/rv_timer/dv/rv_timer_sim_cfg.hjson"
@@ -549,7 +549,7 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
     ).read_text()
     assert "p_error_pulse_drives_alert" in rv_timer_micro_arch_checker
 
-    dma_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "dma")
+    dma_task = load_stored_task(tmp_path / "task_store" / "opentitan" / "dma")
     dma_task_metadata = json.loads((dma_task.root / "task.json").read_text())
     assert dma_task_metadata["oracle"]["kind"] == "opentitan_dvsim"
     assert dma_task_metadata["oracle"]["cfg"] == "hw/ip/dma/dv/dma_sim_cfg.hjson"
@@ -558,7 +558,7 @@ def test_store_opentitan_ip_docs_tasks_materializes_curated_specs(tmp_path: Path
     assert dma_task_metadata["oracle"]["overlay_rel_dir"] == "hw/ip/dma/rtl"
     assert (dma_task.root / "oracle" / "golden_rtl" / "dma.sv").exists()
 
-    sysrst_ctrl_task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / "sysrst_ctrl")
+    sysrst_ctrl_task = load_stored_task(tmp_path / "task_store" / "opentitan" / "sysrst_ctrl")
     sysrst_ctrl_task_metadata = json.loads((sysrst_ctrl_task.root / "task.json").read_text())
     assert sysrst_ctrl_task_metadata["oracle"]["kind"] == "opentitan_dvsim"
     assert (
@@ -612,7 +612,7 @@ def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path
 
     imsic_task_metadata = json.loads((imsic_task.root / "task.json").read_text())
     assert imsic_task_metadata["source"]["origin"] == "curated_task_pack"
-    assert imsic_task_metadata["source"]["spec_subdir"] == "imsic_interrupt_file"
+    assert imsic_task_metadata["source"]["spec_subdir"] == "task_imsic_interrupt_file"
     assert imsic_task_metadata["source"]["source_docs"] == [
         "https://docs.riscv.org/reference/hardware/aia/_attachments/riscv-interrupts.pdf",
     ]
@@ -650,7 +650,7 @@ def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path
 
     aplic_task_metadata = json.loads((aplic_task.root / "task.json").read_text())
     assert aplic_task_metadata["source"]["origin"] == "curated_task_pack"
-    assert aplic_task_metadata["source"]["spec_subdir"] == "aplic_idc"
+    assert aplic_task_metadata["source"]["spec_subdir"] == "task_aplic_idc"
     assert aplic_task_metadata["source"]["source_docs"] == [
         "https://docs.riscv.org/reference/hardware/aia/_attachments/riscv-interrupts.pdf",
     ]
@@ -658,7 +658,7 @@ def test_store_riscv_hardware_specs_tasks_materializes_public_pdf_specs(tmp_path
 
 def test_store_opentitan_tasks_all_publish_micro_arch_contracts(tmp_path: Path) -> None:
     source_root = Path("~/opentitan").expanduser().resolve()
-    written = store_opentitan_ip_docs_tasks(
+    written = store_opentitan_tasks(
         tmp_path / "task_store",
         source_root=source_root,
     )
@@ -677,7 +677,7 @@ def test_store_opentitan_tasks_all_publish_micro_arch_contracts(tmp_path: Path) 
     assert {path.name for path in written} == expected_tasks
 
     for task_name in sorted(expected_tasks):
-        task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / task_name)
+        task = load_stored_task(tmp_path / "task_store" / "opentitan" / task_name)
         micro_arch_dir = task.spec_dir / "micro_arch"
         assert micro_arch_dir.is_dir(), task_name
         assert (micro_arch_dir / "README.md").is_file(), task_name

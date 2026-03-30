@@ -15,11 +15,11 @@ That keeps deterministic validation available to the training framework without 
 
 - `configs/datasets.json`: dataset manifest and acquisition order.
 - `configs/rtllm_v1_1_interfaces.json`: curated manual interface contract for all RTLLM v1.1 tasks.
-- `configs/opentitan_ip_docs_tasks.json`: curated manual OpenTitan medium-tier task manifest.
+- `configs/opentitan_tasks.json`: curated manual OpenTitan medium-tier task manifest.
 - `configs/riscv_hardware_specs_tasks.json`: curated manual spec-only RISC-V hardware-spec task manifest.
 - `configs/verifier_smoke.json`: a first-pass verifier-training config.
 - `src/rtl_training/`: task-store, OpenCode runtime, hidden-oracle validation, and RL helpers.
-- `task_library/opentitan_ip_docs/`: manually ingested OpenTitan spec bundles for `adc_ctrl`, `aon_timer`, `uart`, `i2c`, `spi_host`, `pattgen`, `dma`, `rv_timer`, and `sysrst_ctrl`, copied from the local checkout with their original doc layout.
+- `task_library/opentitan/`: manually ingested OpenTitan spec bundles for `adc_ctrl`, `aon_timer`, `uart`, `i2c`, `spi_host`, `pattgen`, `dma`, `rv_timer`, and `sysrst_ctrl`, copied from the local checkout with their original doc layout. Oracle code lives in `task_library/opentitan/helper.py`.
 - `task_library/riscv_hardware_specs/`: the first checked-in spec-only public corpus, currently with bounded IMSIC and APLIC IDC tasks plus raw checked-in External Debug and AIA source transcriptions for future carving.
 - `opencode.json` and `.opencode/`: checked-in OpenCode prompts and hardware-tool skills.
 - `tests/`: regression tests for public/oracle separation, OpenCode workspaces, and reward/config logic.
@@ -57,9 +57,9 @@ Materialize the first curated OpenTitan medium-tier pack:
 
 ```bash
 python - <<'PY'
-from rtl_training.task_store import store_opentitan_ip_docs_tasks
+from rtl_training.task_store import store_opentitan_tasks
 
-store_opentitan_ip_docs_tasks(
+store_opentitan_tasks(
     "data/task_store",
     source_root="~/opentitan",
 )
@@ -88,10 +88,10 @@ Run the OpenTitan UART gold selftest:
 
 ```bash
 python - <<'PY'
-from rtl_training.opentitan_oracle import validate_opentitan_gold_reference
+from task_library.opentitan.helper import validate_opentitan_gold_reference
 from rtl_training.task_store import load_stored_task
 
-task = load_stored_task("data/task_store/opentitan_ip_docs/uart")
+task = load_stored_task("data/task_store/opentitan/uart")
 result = validate_opentitan_gold_reference(
     task,
     work_root="runs/oracle_eval",

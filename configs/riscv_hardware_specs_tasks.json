@@ -5,7 +5,7 @@
       "task_id": "imsic_interrupt_file",
       "candidate_top_module": "riscv_imsic",
       "tier": "medium",
-      "spec_subdir": "imsic_interrupt_file",
+      "spec_subdir": "task_imsic_interrupt_file",
       "source_docs": [
         "https://docs.riscv.org/reference/hardware/aia/_attachments/riscv-interrupts.pdf"
       ],
@@ -72,7 +72,7 @@
       "task_id": "aplic_idc",
       "candidate_top_module": "riscv_aplic_idc",
       "tier": "small",
-      "spec_subdir": "aplic_idc",
+      "spec_subdir": "task_aplic_idc",
       "source_docs": [
         "https://docs.riscv.org/reference/hardware/aia/_attachments/riscv-interrupts.pdf"
       ],

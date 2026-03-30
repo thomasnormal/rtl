@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from rtl_training.task_store import load_stored_task, store_opentitan_ip_docs_tasks
+from rtl_training.task_store import load_stored_task, store_opentitan_tasks
 
 
 _OPENTITAN_IPS = (
@@ -32,13 +32,13 @@ _FORBIDDEN_PUBLIC_PATTERNS = (
 
 def test_store_opentitan_tasks_materialize_task_facing_public_docs(tmp_path: Path) -> None:
     source_root = Path("~/opentitan").expanduser().resolve()
-    store_opentitan_ip_docs_tasks(
+    store_opentitan_tasks(
         tmp_path / "task_store",
         source_root=source_root,
     )
 
     for task_name in _OPENTITAN_IPS:
-        task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / task_name)
+        task = load_stored_task(tmp_path / "task_store" / "opentitan" / task_name)
         spec_dir = task.spec_dir
 
         assert (spec_dir / "README.md").is_file(), task_name
@@ -56,13 +56,13 @@ def test_store_opentitan_tasks_materialize_task_facing_public_docs(tmp_path: Pat
 
 def test_store_opentitan_tasks_strip_upstream_repo_noise_from_public_docs(tmp_path: Path) -> None:
     source_root = Path("~/opentitan").expanduser().resolve()
-    store_opentitan_ip_docs_tasks(
+    store_opentitan_tasks(
         tmp_path / "task_store",
         source_root=source_root,
     )
 
     for task_name in _OPENTITAN_IPS:
-        task = load_stored_task(tmp_path / "task_store" / "opentitan_ip_docs" / task_name)
+        task = load_stored_task(tmp_path / "task_store" / "opentitan" / task_name)
         for path in sorted(task.spec_dir.rglob("*")):
             if not path.is_file():
                 continue

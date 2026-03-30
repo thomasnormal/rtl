@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+from typing import Sequence
 
 from .task_store import PassCriteria, StoredTask
 
@@ -43,29 +44,58 @@ def detect_simulator(preferred: tuple[str, ...] = ("xrun", "iverilog")) -> str:
 
 def build_candidate_validation_plan(
     task: StoredTask,
-    candidate_rtl_path: str | Path,
+    candidate_rtl_paths: str | Path | Sequence[str | Path],
     *,
     work_root: str | Path,
     preferred_simulator: str | None = None,
 ) -> SimulationPlan:
     if task.oracle is None:
         raise ValueError(f"task {task.task_id} has no oracle")
-    candidate_path = Path(candidate_rtl_path).resolve()
-    work_dir = Path(work_root).resolve() / task.dataset_name / task.task_id / candidate_path.stem
+
+    # Normalise to a list of resolved file paths.
+    # A single directory is expanded to all RTL files within it.
+    if isinstance(candidate_rtl_paths, (str, Path)):
+        p = Path(candidate_rtl_paths).resolve()
+        if p.is_dir():
+            candidate_rtl_paths = sorted(
+                f for f in p.iterdir()
+                if f.is_file() and f.suffix in {".sv", ".v", ".svh", ".vh"}
+            )
+        else:
+            candidate_rtl_paths = [p]
+    resolved_candidates = [Path(p).resolve() for p in candidate_rtl_paths]
+
+    work_dir = Path(work_root).resolve() / task.dataset_name / task.task_id / "validation"
     work_dir.mkdir(parents=True, exist_ok=True)
 
-    source_files = [_stage_text_input(task.oracle.testbench_path, work_dir, "testbench")]
-    _stage_support_files(task, work_dir)
+    staged_support = _stage_support_files(task, work_dir)
+    # Defines/config files must be compiled before files that reference them.
+    # Put them at the front of source_files.
+    _DEFINES_NAMES = {"config.v", "e203_defines.v", "sd_defines.v"}
+    defines_first = [f for f in staged_support if f.name in _DEFINES_NAMES]
+    other_support = [f for f in staged_support if f.name not in _DEFINES_NAMES]
+    source_files: list[Path] = [*defines_first]
+    source_files.append(_stage_text_input(task.oracle.testbench_path, work_dir, "testbench"))
+    source_files.extend(other_support)
     if task.oracle.requires_reference_rtl:
         source_files.append(_stage_text_input(task.oracle.gold_rtl_path, work_dir, "gold_rtl"))
-    source_files.append(_stage_text_input(candidate_path, work_dir, "candidate"))
-    log_name = "xrun.log" if (preferred_simulator or "xrun") == "xrun" else "sim.log"
+
+    candidate_dir = work_dir / "candidate_src"
+    candidate_dir.mkdir(exist_ok=True)
+    for candidate_path in resolved_candidates:
+        dest = candidate_dir / candidate_path.name
+        shutil.copy2(candidate_path, dest)
+        source_files.append(dest)
+
+    # Use caller override > task oracle preference > default
+    effective_sim = preferred_simulator or getattr(task.oracle, "preferred_simulator", None)
+    log_name = "xrun.log" if (effective_sim or "xrun") == "xrun" else "sim.log"
     return SimulationPlan(
         task=task,
         source_files=tuple(source_files),
         work_dir=work_dir,
+        preferred_simulator=effective_sim,
         log_path=work_dir / log_name,
-        preferred_simulator=preferred_simulator,
     )
 
 
@@ -158,7 +188,7 @@ def run_simulation_plan(
     plan.work_dir.mkdir(parents=True, exist_ok=True)
 
     if simulator == "xrun":
-        command = (
+        xrun_args: list[str] = [
             "xrun",
             "-64bit",
             "-q",
@@ -167,8 +197,12 @@ def run_simulation_plan(
             str(plan.log_path),
             "-xmlibdirname",
             str(plan.work_dir / "xcelium.d"),
-            *[str(path) for path in plan.source_files],
-        )
+        ]
+        tb_top = getattr(plan.task.oracle, "testbench_top_module", None)
+        if tb_top:
+            xrun_args.extend(["-top", tb_top])
+        xrun_args.extend(str(path) for path in plan.source_files)
+        command = tuple(xrun_args)
         completed = subprocess.run(
             command,
             cwd=plan.work_dir,
@@ -246,12 +280,80 @@ def run_simulation_plan(
             stderr=completed.stderr,
         )
 
+    if simulator == "verilator":
+        tb_top = getattr(plan.task.oracle, "testbench_top_module", None) or "tb"
+        obj_dir = plan.work_dir / "obj_dir"
+        # Verilator compile
+        compile_cmd_list: list[str] = [
+            "verilator",
+            "--binary",
+            "--timing",
+            "--trace",
+            "-sv",
+            f"--top-module", tb_top,
+            "-j", "4",
+            "--Mdir", str(obj_dir),
+            # Suppress common warnings from third-party RTL
+            "-Wno-COMBDLY", "-Wno-LATCH", "-Wno-UNOPTFLAT",
+            "-Wno-MULTIDRIVEN", "-Wno-CASEOVERLAP", "-Wno-IMPLICIT",
+            "-Wno-CASEINCOMPLETE", "-Wno-WIDTHTRUNC", "-Wno-WIDTHEXPAND",
+            "-Wno-PINMISSING", "-Wno-ASCRANGE", "-Wno-EOFNEWLINE",
+            "-Wno-DECLFILENAME", "-Wno-TIMESCALEMOD", "-Wno-INITIALDLY",
+            "-Wno-SIDEEFFECT", "-Wno-fatal",
+        ]
+        compile_cmd_list.extend(str(path) for path in plan.source_files)
+        compile_cmd = tuple(compile_cmd_list)
+        compiled = subprocess.run(
+            compile_cmd,
+            cwd=plan.work_dir,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            check=False,
+        )
+        if compiled.returncode != 0:
+            return SimulationRunResult(
+                simulator=simulator,
+                plan=plan,
+                command=compile_cmd,
+                returncode=compiled.returncode,
+                passed=False,
+                stdout=compiled.stdout,
+                stderr=compiled.stderr,
+            )
+        # Verilator run
+        sim_binary = obj_dir / f"V{tb_top}"
+        run_cmd = (str(sim_binary),)
+        completed = subprocess.run(
+            run_cmd,
+            cwd=plan.work_dir,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            check=False,
+        )
+        output_text = completed.stdout + completed.stderr
+        passed = judge_simulation_output(
+            returncode=completed.returncode,
+            output_text=output_text,
+            criteria=plan.task.oracle.pass_criteria,
+        )
+        return SimulationRunResult(
+            simulator=simulator,
+            plan=plan,
+            command=run_cmd,
+            returncode=completed.returncode,
+            passed=passed,
+            stdout=completed.stdout,
+            stderr=completed.stderr,
+        )
+
     raise RuntimeError(f"unsupported simulator {simulator}")
 
 
 def validate_candidate(
     task: StoredTask,
-    candidate_rtl_path: str | Path,
+    candidate_rtl_paths: str | Path | Sequence[str | Path],
     *,
     work_root: str | Path,
     preferred_simulator: str | None = "xrun",
@@ -259,8 +361,16 @@ def validate_candidate(
 ) -> SimulationRunResult:
     plan = build_candidate_validation_plan(
         task,
-        candidate_rtl_path,
+        candidate_rtl_paths,
         work_root=work_root,
         preferred_simulator=preferred_simulator,
     )
     return run_simulation_plan(plan, timeout_s=timeout_s)
+
+
+
+# ---------------------------------------------------------------------------
+# Shared cocotb pass/fail regex — used by multiple task-group oracles.
+# ---------------------------------------------------------------------------
+
+_COCOTB_PASS_RE = re.compile(r"TESTS=(\d+)\s+PASS=(\d+)\s+FAIL=(\d+)")

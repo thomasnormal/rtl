@@ -3,7 +3,7 @@
 Date: 2026-03-27
 
 This audit covers the 9 curated OpenTitan-derived IP tasks in
-`data/task_store/opentitan_ip_docs`.
+`data/task_store/opentitan`.
 
 The question is not just whether the tasks are syntactically present, but
 whether an external solver has a realistic chance to implement a candidate

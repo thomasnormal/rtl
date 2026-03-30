@@ -55,7 +55,7 @@ def test_register_shared_source_bundle_round_trips_git_metadata(tmp_path: Path) 
 
     bundle = register_shared_source_bundle(
         tmp_path / "shared_sources",
-        name="opentitan_ip_docs",
+        name="opentitan",
         source_root=source_root,
     )
     registry = SharedSourceRegistry.load(tmp_path / "shared_sources" / "registry.json")
@@ -66,7 +66,7 @@ def test_register_shared_source_bundle_round_trips_git_metadata(tmp_path: Path) 
     assert stored.source_kind == "git_snapshot"
     assert stored.git_commit is not None
     assert stored.git_dirty is False
-    assert stored.bundle_id == f"opentitan_ip_docs-{stored.git_commit[:12]}"
+    assert stored.bundle_id == f"opentitan-{stored.git_commit[:12]}"
     assert (stored.root / "file.txt").read_text() == "v1\n"
 
 
@@ -109,7 +109,7 @@ def test_register_shared_source_bundle_prunes_live_checkout_entry_when_snapshott
     registry_root = tmp_path / "shared_sources"
     live = register_shared_source_bundle(
         registry_root,
-        name="opentitan_ip_docs",
+        name="opentitan",
         source_root=source_root,
         freeze_git_checkout=False,
     )
@@ -117,7 +117,7 @@ def test_register_shared_source_bundle_prunes_live_checkout_entry_when_snapshott
 
     frozen = register_shared_source_bundle(
         registry_root,
-        name="opentitan_ip_docs",
+        name="opentitan",
         source_root=source_root,
     )
     registry = SharedSourceRegistry.load(registry_root / "registry.json")
