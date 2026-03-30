@@ -64,7 +64,7 @@ That keeps deterministic validation available to the training framework without 
 
 These are defined in `configs/datasets.json` but not yet ingested into the task store:
 
-`asserteval` (20, needs store function + formal oracle), `rtl_repo` (4000, pretraining only — no oracle).
+`asserteval` (20, needs store function + formal oracle).
 
 ### Oracle types
 
@@ -261,7 +261,6 @@ Use the datasets in three layers instead of trying to find one magical corpus:
 1. `anchor_seed`: RTLLM and VerilogEval for spec + hidden simulation oracle.
 2. `verification_side`: AssertEval for assertion/formal evidence generation.
 3. `spec_only_corpus`: official public specs without hidden oracles, starting with the checked-in RISC-V hardware-spec pack.
-4. `scale_corpus`: RTL-Repo for broader repository-level RTL exposure, but not as your main reward source.
 
 The project plan in `docs/project-plan.md` assumes you will upgrade a small subset of the seed tasks into truly trusted formal anchors before running serious RL.
 

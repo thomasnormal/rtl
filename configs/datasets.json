@@ -54,7 +54,8 @@
     "pulp_common_cells",
     "veer_el2",
     "notsotiny",
-    "rtl_repo",
+    "caliptra",
+    "verithoughts",
     "jedec_ddr3_private",
     "jedec_ddr6_private"
   ],
@@ -375,6 +376,25 @@
       "default_tier": "medium"
     },
     {
+      "name": "notsotiny",
+      "role": "anchor_seed",
+      "status": "ready",
+      "example_count": 1114,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": false,
+      "has_formal_oracle": true,
+      "fields": [
+        "project context",
+        "golden module",
+        "module header"
+      ],
+      "license": "Apache-2.0",
+      "access": "public",
+      "notes": "Real taped-out Tiny Tapeout designs. Module completion task: given project context with one module removed, implement the missing module. Oracle uses iverilog syntax check + eqy equivalence vs golden. ~30% pass eqy selftest (rest need full-project context for eqy). Living benchmark updated with each TT shuttle.",
+      "default_tier": "small"
+    },
+    {
       "name": "riscv_hardware_specs",
       "role": "spec_only_corpus",
       "status": "ready",
@@ -570,24 +590,6 @@
       "default_tier": "large"
     },
     {
-      "name": "rtl_repo",
-      "role": "scale_corpus",
-      "status": "ready",
-      "example_count": 4000,
-      "has_spec": false,
-      "has_gold_rtl": false,
-      "has_testbench": false,
-      "has_formal_oracle": false,
-      "fields": [
-        "repository_context",
-        "target_completion",
-        "metadata"
-      ],
-      "license": "Apache-2.0",
-      "access": "public",
-      "notes": "Repository-level scale corpus for context conditioning and code exposure, not a trustworthy reward oracle."
-    },
-    {
       "name": "jedec_ddr3_private",
       "role": "industrial_spec_corpus",
       "status": "license-gated",
@@ -624,6 +626,80 @@
       "access": "licensed",
       "notes": "Treat DDR6 and similar next-generation standards as a separate industrial-private tier. They are valuable long-term targets, but not good public bootstrap data because the standards and collateral are access-controlled.",
       "default_tier": "industrial"
+    },
+    {
+      "name": "verithoughts",
+      "role": "anchor_seed",
+      "status": "ready",
+      "example_count": 291,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": false,
+      "has_formal_oracle": true,
+      "fields": [
+        "question (NL spec)",
+        "ground_truth (Verilog)",
+        "verified flag"
+      ],
+      "license": "see-repo",
+      "access": "public",
+      "notes": "291 formally verified Verilog generation tasks from NYU. Oracle: eqy equivalence.",
+      "default_tier": "small"
+    },
+    {
+      "name": "ibex",
+      "role": "medium_spec_corpus",
+      "status": "ready",
+      "example_count": 28,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": false,
+      "has_formal_oracle": false,
+      "fields": [
+        "module header",
+        "gold RTL"
+      ],
+      "license": "Apache-2.0",
+      "access": "public",
+      "notes": "Ibex RISC-V core modules. Module-level gold reference. UVM/cosim oracle possible.",
+      "default_tier": "medium"
+    },
+    {
+      "name": "scr1",
+      "role": "medium_spec_corpus",
+      "status": "ready",
+      "example_count": 36,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": false,
+      "has_formal_oracle": false,
+      "fields": [
+        "module header",
+        "gold RTL"
+      ],
+      "license": "Solderpad-0.51",
+      "access": "public",
+      "notes": "SCR1 RISC-V core modules from Syntacore. Silicon-proven RV32IMC.",
+      "default_tier": "medium"
+    },
+    {
+      "name": "caliptra",
+      "role": "medium_spec_corpus",
+      "status": "ready",
+      "example_count": 5,
+      "has_spec": true,
+      "has_gold_rtl": true,
+      "has_testbench": true,
+      "has_formal_oracle": false,
+      "fields": [
+        "crypto spec",
+        "xrun testbench",
+        "file list"
+      ],
+      "license": "Apache-2.0",
+      "access": "public",
+      "notes": "Caliptra RoT crypto: SHA-256/512, HMAC, ECC, DOE. Self-checking xrun TBs.",
+      "default_tier": "medium"
     }
   ]
 }
