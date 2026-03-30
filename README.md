@@ -29,29 +29,32 @@ That keeps deterministic validation available to the training framework without 
 
 ### Ready
 
-| Dataset | Tasks | Tier | Oracle | Gold RTL | License | Description |
+| Dataset | Tasks | Tier | Oracle | Gold | Gen pass | Description |
 |---|---|---|---|---|---|---|
-| `rtllm_v1_1` | 29 | small | simulation | yes | MIT | Hand-written designs with testbenches and verified RTL references |
-| `rtllm_v2_0` | 50 | small | simulation | yes | MIT | Expanded RTLLM with categorized tasks |
-| `verilogeval_v2_spec_to_rtl` | 156 | micro | simulation | yes | MIT | Spec-to-RTL benchmark with VerilogEval v2 harness |
-| `chipbench` | 45 | small | simulation | yes | see-repo | VerilogEval-style harness; 30 self-contained + 6 non-self-contained + 9 CPU IP |
-| `resbench` | 56 | small | simulation | no | see-repo | FPGA resource-aware problems; self-checking testbenches, no gold RTL |
-| `realbench` | 60 | medium | simulation | yes | MIT | Real IP cores (AES, SD card, E203 RISC-V) with markdown specs |
-| `icrtl` | 6 | medium | simulation | yes | see-repo | Industry contest challenges (LBP, GEMM, convolution, Huffman, etc.) |
-| `asserteval` | 20 | small | formal | yes | see-repo | Assertion/formal oracle training; `fpv.tcl` based |
-| `opentitan` | 9 | medium | dvsim | yes | Apache-2.0 | Curated OpenTitan IPs: uart, i2c, spi_host, adc_ctrl, aon_timer, pattgen, dma, rv_timer, sysrst_ctrl |
-| `cvdp` | 169 | small | cocotb | no | see-repo | CVDP benchmark; cocotb testbenches with iverilog |
-| `verilog_axi` | 24 | medium | makefile cocotb | yes | MIT | AXI4 bus components (adapters, crossbars, DMA, FIFOs) |
-| `verilog_ethernet` | 33 | medium | makefile cocotb | yes | MIT | Ethernet MAC/PHY/UDP/IP stack (1G/10G/25G) |
-| `verilog_pcie` | 37 | medium | makefile cocotb | yes | MIT | PCIe DMA, TLP, MSI-X, configuration space |
-| `verilog_axis` | 21 | medium | makefile cocotb | yes | MIT | AXI-Stream infrastructure (FIFOs, muxes, switches, COBS codec) |
-| `verilog_uart` | 2 | small | makefile cocotb | yes | MIT | UART RX/TX modules |
-| `verilog_lfsr` | 6 | small | makefile cocotb | yes | MIT | LFSR, CRC, PRBS, scramble/descramble |
-| `pulp_common_cells` | 17 | small | xrun assert | yes | Solderpad-0.51 | PULP building blocks: CDC, FIFOs, arbiters, ECC, crossbars |
-| `veer_el2` | 22 | medium | cocotb+verilator | yes | Apache-2.0 | VeeR EL2 RISC-V blocks: PIC, DMA, ALU, decoder, PMP, IFU, LSU |
-| `notsotiny` | 1114 | micro | iverilog+eqy | yes | see-repo | TuRTLe benchmark; replace missing module, check compilation + equivalence |
-| `riscv_hardware_specs` | 2 | large | none | no | CC-BY-4.0 | Spec-only: IMSIC interrupt file, APLIC IDC (from RISC-V AIA PDF) |
-| `rtl_repo` | 4000 | -- | none | no | Apache-2.0 | Repository-level code exposure for pretraining, not reward |
+| `rtllm_v1_1` | 27 | small | simulation | 27/27 | 57% pass@5 | Hand-written designs with testbenches and verified RTL references |
+| `rtllm_v2_0` | 50 | small | simulation | -- | -- | Expanded RTLLM with categorized tasks |
+| `verilogeval_v2_spec_to_rtl` | 156 | micro | simulation | -- | -- | Spec-to-RTL benchmark with VerilogEval v2 harness |
+| `chipbench` | 45 | small | simulation | 44/45 | -- | VerilogEval-style harness; 30 self-contained + 6 non-self-contained + 9 CPU IP |
+| `resbench` | 56 | small | simulation | 56/56 | -- | FPGA resource-aware problems; self-checking testbenches, no gold RTL |
+| `realbench` | 60 | medium | simulation | 56/60 | -- | Real IP cores (AES, SD card, E203 RISC-V) with markdown specs |
+| `icrtl` | 6 | medium | simulation | 4/6 | -- | Industry contest challenges (LBP, GEMM, convolution, Huffman, etc.) |
+| `asserteval` | 20 | small | formal | -- | -- | Assertion/formal oracle training; `fpv.tcl` based |
+| `opentitan` | 9 | medium | dvsim | 9/9 | 0/3 | Curated OpenTitan IPs: uart, i2c, spi_host, adc_ctrl, aon_timer, pattgen, dma, rv_timer, sysrst_ctrl |
+| `cvdp` | 169 | small | cocotb | -- | -- | CVDP benchmark; cocotb testbenches with iverilog |
+| `verilog_axi` | 24 | medium | makefile cocotb | -- | -- | AXI4 bus components (adapters, crossbars, DMA, FIFOs) |
+| `verilog_ethernet` | 33 | medium | makefile cocotb | -- | -- | Ethernet MAC/PHY/UDP/IP stack (1G/10G/25G) |
+| `verilog_pcie` | 37 | medium | makefile cocotb | -- | -- | PCIe DMA, TLP, MSI-X, configuration space |
+| `verilog_axis` | 21 | medium | makefile cocotb | -- | -- | AXI-Stream infrastructure (FIFOs, muxes, switches, COBS codec) |
+| `verilog_uart` | 2 | small | makefile cocotb | -- | -- | UART RX/TX modules |
+| `verilog_lfsr` | 6 | small | makefile cocotb | -- | -- | LFSR, CRC, PRBS, scramble/descramble |
+| `pulp_common_cells` | 17 | small | xrun assert | -- | -- | PULP building blocks: CDC, FIFOs, arbiters, ECC, crossbars |
+| `veer_el2` | 22 | medium | cocotb+verilator | -- | -- | VeeR EL2 RISC-V blocks: PIC, DMA, ALU, decoder, PMP, IFU, LSU |
+| `notsotiny` | 1114 | micro | iverilog+eqy | -- | -- | TuRTLe benchmark; replace missing module, check compilation + equivalence |
+| `riscv_hardware_specs` | 2 | large | none | -- | -- | Spec-only: IMSIC interrupt file, APLIC IDC (from RISC-V AIA PDF) |
+| `rtl_repo` | 4000 | -- | none | -- | -- | Repository-level code exposure for pretraining, not reward |
+
+**Gold** = gold selftest pass count (oracle validates its own reference RTL).
+**Gen pass** = generator agent oracle pass rate. All results use `openai/gpt-5-mini` except opentitan which used `openai/gpt-5.4`. `rtllm_v1_1` was 27 tasks (2 quarantined for broken oracles). `--` = not yet evaluated.
 
 ### Planned
 
