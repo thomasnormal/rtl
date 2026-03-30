@@ -14,6 +14,7 @@ Process:
    - If `task/spec/interface/` contains a generated bus helper package, use its field helpers instead of hard-coded bit slicing, and preserve semantically relevant response metadata such as source, size, param, and user fields rather than only data and error bits.
    - Treat `task/task.json` as lightweight machine-readable public metadata for task identity, the DUT top module, and required deliverables.
    - If `task/spec/micro_arch/` exists, treat the SV files there as a mandatory microarchitecture ABI. Your RTL must compile against that ABI and satisfy any required named interfaces / bind points it defines exactly.
+   - If `task/spec/micro_arch/README.md` exists, read it and turn each exported microarchitecture signal into an explicit requirement in `result/requirements.md`. Do not infer a signal's meaning from its name alone.
    - The staged `task/` directory is the complete public problem statement. Do not assume access to upstream repo code, hidden packages, or hidden hierarchy outside the workspace.
 2. If you need tool guidance, load the relevant skill before first use:
    - `rtl-layout`
@@ -27,6 +28,8 @@ Process:
    - If you need task-local public typedefs or packages, mirror them into normal compilation-unit files under `submission/` and `import` them there; do not rely on workspace-relative include paths.
 5. Write at least one executable check of your own under `result/evidence/` before finishing.
    - Prefer a self-checking SystemVerilog smoke bench or directed test that instantiates the DUT top and checks concrete behaviors from the requirement checklist.
+   - If `task/spec/micro_arch/` exists, include at least one executable check for every exported microarchitecture signal listed in the public ABI.
+   - If a microarchitecture signal could differ from a public pin, status bit, or other visible output because of masking, gating, latching, or pulse generation, add a directed negative test that forces those values to differ and checks the distinction explicitly.
    - For timing-sensitive, sequential, or protocol behavior, dump a waveform under `result/evidence/` and inspect it with `vcdcat` before claiming the implementation matches the spec.
    - Use waveform review as supporting evidence, not as a substitute for self-checking tests or assertions.
    - Record which requirements were covered by each generated test, bench, assertion, or waveform review in `result/requirements.md`.
@@ -35,12 +38,16 @@ Process:
    - If you use `xrun`, select the DUT top explicitly with `-top <dut>` or instantiate it in a tiny smoke bench.
    - If the task exposes a documented CSR/register map, do not stop at a happy-path smoke test. Add at least one executable check for documented side effects such as write-only registers, RW1C behavior, interrupt-clear behavior, or bad-access error handling before claiming `status: pass`.
    - When you need waveform evidence, generate the dump from your own temporary bench, keep it under `result/evidence/`, and inspect focused signals with `vcdcat -l` / `vcdcat -x`.
+   - If `vcdcat` is unavailable or broken in the workspace, record the exact failure and use a small local parser or script to inspect the same focused signals instead of skipping waveform review.
+   - If `xrun` runtime simulation is unavailable and you fall back to another simulator, that evidence only supports `status: pass` if the fallback tests explicitly cover every high-risk requirement and every exported microarchitecture signal. Otherwise record the gaps and do not claim `pass`.
 7. Write `result/result.json` with:
    - `status`
    - `output_file`
    - `summary`
    - `assumptions`
 8. Clean up large temporary files before finishing.
+   - As soon as `result/result.json` is written and matches the evidence on disk, stop the run.
+   - Do not spend extra steps on optional cleanup, disk-usage inspection, or polish after `result/result.json` exists unless that work is required to keep the result bundle truthful.
 
 Important:
 
@@ -48,6 +55,7 @@ Important:
 - Ensure the generated RTL defines the top module named in `task/task.json` field `top_module`.
 - If a microarchitecture ABI is present under `task/spec/micro_arch/`, do not ignore it or rewrite it away. Adapt the RTL to satisfy it.
 - Named microarchitecture instances and bind targets are part of the contract. Follow the exact names from the SV files and README text.
+- Do not silently redefine the meaning of a public microarchitecture signal by assumption. If a signal might represent a raw source state rather than a gated or transformed public output, write an executable check that distinguishes those cases before claiming `status: pass`.
 - For medium and larger specs, prioritize the functional spec chapters under `task/spec/doc/` over the compact metadata in `task/task.json`.
 - Do not rely on upstream/OpenTitan package imports as part of the public solution contract. If the public task leaks repository-specific package types, treat that as a task-definition bug rather than something to patch around in `submission/`.
 - Use `xrun`/Xcelium for compile and elaboration checks rather than `yosys`.
@@ -59,5 +67,7 @@ Important:
 - For register-mapped tasks, your local evidence must include at least one check of documented CSR side effects or negative behavior, not just reset/read/write happy paths.
 - If the compile check fails, `status` must not be `pass`.
 - If the implementation is intentionally partial, minimal, or missing major spec behavior, `status` must not be `pass`.
+- As soon as `result/result.json` is written and matches the current evidence, stop the run.
+- Do not spend extra steps on optional cleanup, disk-usage inspection, or prose polish after `result/result.json` exists.
 - Do not claim verification you did not perform yourself.
 - Prefer cheap checks first, then stronger checks only if needed.

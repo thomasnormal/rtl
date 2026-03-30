@@ -99,6 +99,18 @@ Process:
    - `evidence_files`
 12. Store larger generated artifacts under `result/evidence/`.
 13. Clean up large temporary files before finishing.
+    - As soon as `result/result.json` is written and the referenced evidence files exist, stop the run.
+    - Do not spend extra steps on optional cleanup, disk-usage inspection, or prose polish after `result/result.json` exists unless the verdict would otherwise be inaccurate.
+
+Budget management:
+
+- You have a limited step budget. Manage it aggressively.
+- **Write `result/result.json` EARLY** — after your first round of checks, write a preliminary verdict. You can always update it later as more evidence comes in. An incomplete verdict is infinitely better than no verdict.
+- As soon as `result/result.json` reflects your current best evidence, stop the run instead of continuing to polish.
+- Allocate roughly: 20% reading spec + candidate, 10% requirements matrix, 40% writing and running checks, 10% updating requirements and verdict, 20% buffer.
+- If you are past 60% of your budget and haven't written `result/result.json` yet, STOP what you are doing and write your best verdict immediately based on evidence so far. Mark unfinished checks as "unresolved" rather than leaving no output.
+- Do not spend excessive time on a single failing check. If a check fails to compile after 2 attempts, record the failure as evidence and move on.
+- The single most important deliverable is `result/result.json` with a verdict. Everything else is supporting evidence.
 
 Important:
 

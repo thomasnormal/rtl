@@ -127,6 +127,9 @@ def test_prepare_generator_episode_instructions_require_behavioral_spec_and_buil
     assert "every high-risk requirement and every exported microarchitecture signal" in instructions
     assert "Do not silently redefine the meaning of a public microarchitecture signal" in instructions
     assert "helper interface or package alone does not count" in instructions
+    assert "As soon as `result/result.json` is written" in instructions
+    assert "stop the run" in instructions
+    assert "Do not spend extra steps on optional cleanup" in instructions
 
 
 def test_validate_generator_episode_dispatches_opentitan_oracle(
@@ -223,6 +226,8 @@ def test_prepare_verifier_episode_instructions_call_for_native_sva_and_uvm(tmp_p
     assert "Do not assume access to upstream repo code" in instructions
     assert "task/task.json" in instructions
     assert "field `top_module`" in instructions
+    assert "As soon as `result/result.json` is written" in instructions
+    assert "stop the run" in instructions
 
 
 def test_verifier_prompt_mentions_xrun_sva_and_uvm() -> None:
@@ -275,6 +280,15 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     assert "If `vcdcat` is unavailable or broken" in prompt
     assert "fall back to another simulator" in prompt
     assert "every high-risk requirement and every exported microarchitecture signal" in prompt
+    assert "As soon as `result/result.json` is written" in prompt
+    assert "stop the run" in prompt
+    assert "Do not spend extra steps on optional cleanup" in prompt
+
+
+def test_verifier_prompt_requires_immediate_stop_after_result_bundle() -> None:
+    prompt = (ROOT / ".opencode" / "prompts" / "verifier.md").read_text()
+    assert "As soon as `result/result.json` is written" in prompt
+    assert "stop the run" in prompt
 
 
 def test_verifier_prompt_forbids_yosys() -> None:

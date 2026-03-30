@@ -85,7 +85,10 @@ DEFAULT_GENERATOR_PROMPT = (
     "and every exported microarchitecture signal; otherwise record the gaps and do not claim `pass`. "
     "If the compile check fails, or the implementation is intentionally partial, result/result.json "
     "must not claim `status: pass`. Then ensure at least one .sv or .v file exists under submission/ "
-    "and result/result.json is present."
+    "and result/result.json is present. As soon as result/result.json is written and matches the "
+    "current evidence, stop the run. Do not spend extra steps on optional cleanup, disk-usage "
+    "inspection, or prose polish after result/result.json exists unless that work is required to "
+    "keep the result bundle truthful."
 )
 
 DEFAULT_VERIFIER_PROMPT = (
@@ -104,7 +107,9 @@ DEFAULT_VERIFIER_PROMPT = (
     "native UVM under `xrun -uvm` when the interface complexity justifies it), then return a final "
     "verdict of `good` or `bad` in result/result.json. Do not use `yosys`; use `xrun`/Xcelium for "
     "all compile, elaboration, SVA, and smoke-test checks. The candidate RTL under candidate/ is "
-    "immutable input: do not edit files under candidate/."
+    "immutable input: do not edit files under candidate/. As soon as result/result.json is written "
+    "and the referenced evidence files exist, stop the run instead of spending steps on optional "
+    "cleanup or extra polish."
 )
 
 
