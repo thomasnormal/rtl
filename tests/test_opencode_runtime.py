@@ -246,3 +246,60 @@ def test_run_opencode_stops_after_result_file_stabilizes(
     assert "starting agent" in result.stdout
     assert "terminated after result" in result.stderr
     assert (request.workspace_root / "result" / "result.json").exists()
+
+
+def test_run_opencode_ignores_in_progress_result_until_terminal(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    fake_opencode = _install_fake_opencode(
+        tmp_path,
+        """
+        workspace = Path(sys.argv[sys.argv.index("--dir") + 1])
+        result_dir = workspace / "result"
+        result_dir.mkdir(parents=True, exist_ok=True)
+        terminated = {"seen": False}
+
+        def _handle_term(signum, frame):
+            terminated["seen"] = True
+            sys.stderr.write("terminated after terminal result\\n")
+            sys.stderr.flush()
+            sys.exit(0)
+
+        signal.signal(signal.SIGTERM, _handle_term)
+        (result_dir / "result.json").write_text('{"status":"in_progress","verdict":"bad"}\\n')
+        print("wrote in_progress")
+        sys.stdout.flush()
+        time.sleep(0.4)
+        (result_dir / "result.json").write_text('{"status":"completed","verdict":"bad"}\\n')
+        print("wrote completed")
+        sys.stdout.flush()
+        while not terminated["seen"]:
+            time.sleep(0.1)
+        """,
+    )
+    request = OpenCodeRunRequest(
+        workspace_root=tmp_path / "episode",
+        agent="verifier",
+        prompt="Read TASK.md.",
+    )
+    monkeypatch.setattr("rtl_training.opencode_runtime.ensure_opencode_available", lambda: None)
+    monkeypatch.setattr(
+        "rtl_training.opencode_runtime.build_run_command",
+        lambda _: (str(fake_opencode), "--dir", str(request.workspace_root)),
+    )
+
+    result = run_opencode(
+        request,
+        timeout_s=10,
+        result_settle_s=0.2,
+        poll_interval_s=0.05,
+        terminate_grace_s=1.0,
+    )
+
+    assert result.returncode == 0
+    assert result.completed_via_result_file is True
+    assert "wrote in_progress" in result.stdout
+    assert "wrote completed" in result.stdout
+    assert "terminated after terminal result" in result.stderr
+    assert json.loads((request.workspace_root / "result" / "result.json").read_text())["status"] == "completed"

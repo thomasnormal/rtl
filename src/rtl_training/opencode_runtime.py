@@ -187,10 +187,22 @@ def _result_file_state(path: Path) -> tuple[int, int] | None:
     except FileNotFoundError:
         return None
     try:
-        json.loads(path.read_text())
+        payload = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError):
         return None
+    if not _is_terminal_result_payload(payload):
+        return None
     return (stat_result.st_size, stat_result.st_mtime_ns)
+
+
+def _is_terminal_result_payload(payload: object) -> bool:
+    if not isinstance(payload, dict):
+        return True
+    raw_status = payload.get("status")
+    if raw_status is None:
+        return True
+    status = str(raw_status).strip().lower()
+    return status not in {"in_progress", "pending", "running"}
 
 
 def _terminate_process(process: subprocess.Popen[str], *, grace_s: float) -> None:
