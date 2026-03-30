@@ -196,6 +196,28 @@ def test_build_run_environment_preserves_python_userbase_for_user_site_tools(
     assert output.strip() == "7"
 
 
+def test_build_run_environment_loads_missing_provider_env_from_repo_dotenv(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    (repo_root / ".env").write_text("OPENAI_API_KEY=test-key\nOPENAI_BASE_URL=https://example.invalid/v1\n")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    monkeypatch.setattr("rtl_training.opencode_runtime._repo_root", lambda: repo_root)
+    request = OpenCodeRunRequest(
+        workspace_root=tmp_path / "episode",
+        agent="generator",
+        prompt="Read TASK.md.",
+    )
+
+    env = build_run_environment(request)
+
+    assert env["OPENAI_API_KEY"] == "test-key"
+    assert env["OPENAI_BASE_URL"] == "https://example.invalid/v1"
+
+
 def test_run_opencode_stops_after_result_file_stabilizes(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

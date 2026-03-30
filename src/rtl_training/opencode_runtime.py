@@ -62,6 +62,7 @@ def build_run_command(request: OpenCodeRunRequest) -> tuple[str, ...]:
 def build_run_environment(request: OpenCodeRunRequest) -> dict[str, str]:
     workspace_root = request.workspace_root.resolve()
     env = os.environ.copy()
+    _merge_repo_dotenv(env)
     original_home = env.get("HOME")
     original_python_userbase = env.get("PYTHONUSERBASE")
     ceiling = str(workspace_root.parent)
@@ -94,6 +95,31 @@ def build_run_environment(request: OpenCodeRunRequest) -> dict[str, str]:
     if config_dir.exists():
         env["OPENCODE_CONFIG_DIR"] = str(config_dir)
     return env
+
+
+def _merge_repo_dotenv(env: dict[str, str]) -> None:
+    """Populate missing provider env vars from the repo-local `.env` file."""
+    dotenv_path = _repo_root() / ".env"
+    if not dotenv_path.exists():
+        return
+    try:
+        lines = dotenv_path.read_text().splitlines()
+    except OSError:
+        return
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key or key in env:
+            continue
+        env[key] = value
+
+
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
 
 
 def run_opencode(
