@@ -325,3 +325,76 @@ def test_run_opencode_ignores_in_progress_result_until_terminal(
     assert "wrote completed" in result.stdout
     assert "terminated after terminal result" in result.stderr
     assert json.loads((request.workspace_root / "result" / "result.json").read_text())["status"] == "completed"
+
+
+def test_run_opencode_forces_timeout_closeout_verdict(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    fake_opencode = _install_fake_opencode(
+        tmp_path,
+        """
+        workspace = Path(sys.argv[sys.argv.index("--dir") + 1])
+        result_dir = workspace / "result"
+        result_dir.mkdir(parents=True, exist_ok=True)
+        phase_path = workspace / "phase.txt"
+        phase = int(phase_path.read_text()) + 1 if phase_path.exists() else 1
+        phase_path.write_text(str(phase))
+        terminated = {"seen": False}
+
+        def _handle_term(signum, frame):
+            terminated["seen"] = True
+            sys.stderr.write(f"terminated phase {phase}\\n")
+            sys.stderr.flush()
+            sys.exit(0)
+
+        signal.signal(signal.SIGTERM, _handle_term)
+
+        if phase == 1:
+            (result_dir / "result.json").write_text('{"status":"in_progress","verdict":"","confidence":"medium"}\\n')
+            (result_dir / "evidence.txt").write_text("phase1 evidence\\n")
+            print("phase1 verifier run")
+            sys.stdout.flush()
+            while not terminated["seen"]:
+                time.sleep(0.1)
+        else:
+            prompt = sys.argv[-1]
+            print(f"phase2 closeout prompt: {prompt}")
+            sys.stdout.flush()
+            (result_dir / "result.json").write_text(
+                '{"status":"completed","verdict":"bad","confidence":"low","summary":"forced closeout"}\\n'
+            )
+            while not terminated["seen"]:
+                time.sleep(0.1)
+        """,
+    )
+    request = OpenCodeRunRequest(
+        workspace_root=tmp_path / "episode",
+        agent="verifier",
+        prompt="Read TASK.md.",
+        timeout_closeout_prompt="FORCE FINAL VERDICT FROM EXISTING EVIDENCE",
+        timeout_closeout_timeout_s=5,
+    )
+    monkeypatch.setattr("rtl_training.opencode_runtime.ensure_opencode_available", lambda: None)
+    monkeypatch.setattr(
+        "rtl_training.opencode_runtime.build_run_command",
+        lambda req: (str(fake_opencode), "--dir", str(req.workspace_root), req.prompt),
+    )
+
+    result = run_opencode(
+        request,
+        timeout_s=1,
+        result_settle_s=0.2,
+        poll_interval_s=0.05,
+        terminate_grace_s=1.0,
+    )
+
+    payload = json.loads((request.workspace_root / "result" / "result.json").read_text())
+    assert payload["status"] == "completed"
+    assert payload["verdict"] == "bad"
+    assert result.completed_via_result_file is True
+    assert result.forced_closeout is True
+    assert "phase1 verifier run" in result.stdout
+    assert "phase2 closeout prompt: FORCE FINAL VERDICT FROM EXISTING EVIDENCE" in result.stdout
+    assert "terminated phase 1" in result.stderr
+    assert "terminated phase 2" in result.stderr

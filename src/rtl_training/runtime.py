@@ -120,6 +120,16 @@ DEFAULT_VERIFIER_PROMPT = (
     "cleanup or extra polish."
 )
 
+DEFAULT_VERIFIER_TIMEOUT_CLOSEOUT_PROMPT = (
+    "Time budget is exhausted. Do not start new long-running checks. "
+    "Read the existing files under result/evidence/ and the current result/result.json stub, "
+    "then immediately update result/result.json with a terminal status and a mandatory best-effort "
+    "verdict of `good` or `bad`. Base the verdict only on the evidence already gathered in this "
+    "workspace. If the current evidence does not positively establish `good`, choose `bad` with "
+    "lower confidence and cite the unresolved high-risk requirements. The candidate RTL under "
+    "candidate/ remains immutable input. As soon as result/result.json is updated, stop."
+)
+
 
 @dataclass(frozen=True)
 class GeneratorEpisode:
@@ -205,6 +215,7 @@ def prepare_verifier_episode(
         agent="verifier",
         prompt=prompt,
         model=model,
+        timeout_closeout_prompt=DEFAULT_VERIFIER_TIMEOUT_CLOSEOUT_PROMPT,
     )
     return VerifierEpisode(task=task, workspace=workspace, request=request)
 

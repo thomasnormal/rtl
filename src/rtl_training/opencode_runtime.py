@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import json
 import os
 from pathlib import Path
@@ -23,6 +23,8 @@ class OpenCodeRunRequest:
     model: str | None = None
     output_format: str = "json"
     extra_args: tuple[str, ...] = field(default_factory=tuple)
+    timeout_closeout_prompt: str | None = None
+    timeout_closeout_timeout_s: int = 90
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,7 @@ class OpenCodeRunResult:
     stdout: str
     stderr: str
     completed_via_result_file: bool = False
+    forced_closeout: bool = False
 
 
 def ensure_opencode_available() -> None:
@@ -184,6 +187,16 @@ def run_opencode(
                 _terminate_process(process, grace_s=terminate_grace_s)
                 stdout_text = _read_captured_output(stdout_file)
                 stderr_text = _read_captured_output(stderr_file)
+                closeout_result = _run_timeout_closeout(
+                    request,
+                    original_stdout=stdout_text,
+                    original_stderr=stderr_text,
+                    result_settle_s=result_settle_s,
+                    poll_interval_s=poll_interval_s,
+                    terminate_grace_s=terminate_grace_s,
+                )
+                if closeout_result is not None:
+                    return closeout_result
                 raise subprocess.TimeoutExpired(
                     command,
                     timeout_s,
@@ -241,3 +254,67 @@ def _terminate_process(process: subprocess.Popen[str], *, grace_s: float) -> Non
     if process.poll() is None:
         process.kill()
         process.wait()
+
+
+def _run_timeout_closeout(
+    request: OpenCodeRunRequest,
+    *,
+    original_stdout: str,
+    original_stderr: str,
+    result_settle_s: float,
+    poll_interval_s: float,
+    terminate_grace_s: float,
+) -> OpenCodeRunResult | None:
+    if request.timeout_closeout_prompt is None:
+        return None
+
+    closeout_request = replace(
+        request,
+        prompt=request.timeout_closeout_prompt,
+        timeout_closeout_prompt=None,
+    )
+    closeout_timeout_s = max(1, int(request.timeout_closeout_timeout_s))
+    result_path = request.workspace_root / "result" / "result.json"
+    try:
+        closeout_result = run_opencode(
+            closeout_request,
+            timeout_s=closeout_timeout_s,
+            result_settle_s=min(result_settle_s, 1.0),
+            poll_interval_s=poll_interval_s,
+            terminate_grace_s=terminate_grace_s,
+        )
+    except subprocess.TimeoutExpired as exc:
+        combined_stdout = _merge_captured_output(original_stdout, exc.output or "")
+        combined_stderr = _merge_captured_output(original_stderr, exc.stderr or "")
+        if _result_file_state(result_path) is not None:
+            return OpenCodeRunResult(
+                command=build_run_command(closeout_request),
+                returncode=0,
+                stdout=combined_stdout,
+                stderr=combined_stderr,
+                completed_via_result_file=True,
+                forced_closeout=True,
+            )
+        raise subprocess.TimeoutExpired(
+            exc.cmd,
+            closeout_timeout_s,
+            output=combined_stdout,
+            stderr=combined_stderr,
+        ) from exc
+
+    return OpenCodeRunResult(
+        command=closeout_result.command,
+        returncode=closeout_result.returncode,
+        stdout=_merge_captured_output(original_stdout, closeout_result.stdout),
+        stderr=_merge_captured_output(original_stderr, closeout_result.stderr),
+        completed_via_result_file=closeout_result.completed_via_result_file,
+        forced_closeout=True,
+    )
+
+
+def _merge_captured_output(original: str, additional: str) -> str:
+    if not original:
+        return additional
+    if not additional:
+        return original
+    return f"{original.rstrip()}\n\n===== timeout closeout =====\n{additional}"
