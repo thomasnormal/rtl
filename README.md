@@ -29,36 +29,37 @@ That keeps deterministic validation available to the training framework without 
 
 ### Materialized datasets
 
-| Dataset | Tasks | Tier | Oracle | Gold | Gen pass | Description |
-|---|---|---|---|---|---|---|
-| `rtllm_v1_1` | 27 | small | simulation | 27/27 | 57% pass@5 | Hand-written designs with testbenches and verified RTL references |
-| `rtllm_v2_0` | 48 | small | simulation | -- | -- | Expanded RTLLM with categorized tasks |
-| `verilogeval_v2_spec_to_rtl` | 156 | micro | simulation | -- | -- | Spec-to-RTL benchmark with VerilogEval v2 harness |
-| `chipbench` | 45 | small | simulation | 44/45 | -- | VerilogEval-style harness; 30 self-contained + 6 non-self-contained + 9 CPU IP |
-| `resbench` | 56 | small | simulation | 56/56 | -- | FPGA resource-aware problems; self-checking testbenches, no gold RTL |
-| `realbench` | 60 | medium | simulation | 56/60 | -- | Real IP cores (AES, SD card, E203 RISC-V) with markdown specs |
-| `icrtl` | 6 | medium | simulation | 4/6 | -- | Industry contest challenges (LBP, GEMM, convolution, Huffman, etc.) |
-| `opentitan` | 9 | medium | dvsim | 9/9 | 0/3 | Curated OpenTitan IPs: uart, i2c, spi_host, adc_ctrl, aon_timer, pattgen, dma, rv_timer, sysrst_ctrl |
-| `cvdp` | 169 | small | cocotb | -- | -- | CVDP benchmark; cocotb testbenches with iverilog |
-| `verilog_axi` | 24 | medium | makefile cocotb | -- | -- | AXI4 bus components (adapters, crossbars, DMA, FIFOs) |
-| `verilog_ethernet` | 33 | medium | makefile cocotb | -- | -- | Ethernet MAC/PHY/UDP/IP stack (1G/10G/25G) |
-| `verilog_pcie` | 37 | medium | makefile cocotb | -- | -- | PCIe DMA, TLP, MSI-X, configuration space |
-| `verilog_axis` | 21 | medium | makefile cocotb | -- | -- | AXI-Stream infrastructure (FIFOs, muxes, switches, COBS codec) |
-| `verilog_uart` | 2 | small | makefile cocotb | -- | -- | UART RX/TX modules |
-| `verilog_lfsr` | 6 | small | makefile cocotb | -- | -- | LFSR, CRC, PRBS, scramble/descramble |
-| `pulp_common_cells` | 17 | small | xrun assert | -- | -- | PULP building blocks: CDC, FIFOs, arbiters, ECC, crossbars |
-| `veer_el2` | 22 | medium | cocotb+verilator | -- | -- | VeeR EL2 RISC-V blocks: PIC, DMA, ALU, decoder, PMP, IFU, LSU |
-| `notsotiny` | 1114 | small | iverilog+eqy | -- | -- | Real Tiny Tapeout designs; module completion + equivalence checking |
-| `verithoughts` | 291 | small | iverilog+eqy | -- | -- | Formally verified Verilog generation tasks from NYU |
-| `hwfixbench` | 500 | medium | diff | -- | -- | Real bug-fix PRs from Ibex, OpenTitan, CVA6, CORE-V Wally (SWE-Bench for hardware) |
-| `ibex` | 25 | medium | gold reference | -- | -- | Ibex RISC-V core modules with gold reference RTL |
-| `scr1` | 36 | medium | gold reference | -- | -- | SCR1 RISC-V core modules from Syntacore; silicon-proven RV32IMC |
-| `caliptra` | 5 | medium | xrun | -- | -- | Caliptra RoT crypto: SHA-256/512, HMAC, ECC, DOE with self-checking TBs |
-| `avip` | 9 | medium | uvm | -- | -- | AVIP verification IP: AHB, APB, AXI4, I2C, I3C, SPI, UART, JTAG, USB slaves |
-| `riscv_hardware_specs` | 2 | large | none | -- | -- | Spec-only: IMSIC interrupt file, APLIC IDC (from RISC-V AIA PDF) |
+| Dataset | Tasks | Tier | Oracle | Gold | Gen pass | Quality | Description |
+|---|---|---|---|---|---|---|---|
+| `rtllm_v1_1` | 27 | small | simulation | 27/27 | 57% pass@5 | 83 good | Hand-written designs with testbenches and verified RTL references |
+| `rtllm_v2_0` | 48 | small | simulation | -- | -- | 83 good | Expanded RTLLM with categorized tasks |
+| `verilogeval_v2_spec_to_rtl` | 156 | micro | simulation | -- | -- | 72 good | Spec-to-RTL benchmark with VerilogEval v2 harness |
+| `chipbench` | 45 | small | simulation | 44/45 | -- | 77 good | VerilogEval-style harness; 30 self-contained + 6 non-self-contained + 9 CPU IP |
+| `resbench` | 56 | small | simulation | 56/56 | -- | 76 good | FPGA resource-aware problems; self-checking testbenches, no gold RTL |
+| `realbench` | 60 | medium | simulation | 56/60 | -- | 78 good | Real IP cores (AES, SD card, E203 RISC-V) with markdown specs |
+| `icrtl` | 6 | medium | simulation | 4/6 | -- | 66 marginal | Industry contest challenges (LBP, GEMM, convolution, Huffman, etc.) |
+| `opentitan` | 9 | medium | dvsim | 9/9 | 0/3 | 79 good | Curated OpenTitan IPs: uart, i2c, spi_host, adc_ctrl, aon_timer, pattgen, dma, rv_timer, sysrst_ctrl |
+| `cvdp` | 169 | small | cocotb | -- | -- | 54 marginal | CVDP benchmark; cocotb testbenches with iverilog |
+| `verilog_axi` | 24 | medium | makefile cocotb | -- | -- | 77 good | AXI4 bus components (adapters, crossbars, DMA, FIFOs) |
+| `verilog_ethernet` | 33 | medium | makefile cocotb | -- | -- | 77 good | Ethernet MAC/PHY/UDP/IP stack (1G/10G/25G) |
+| `verilog_pcie` | 37 | medium | makefile cocotb | -- | -- | 77 good | PCIe DMA, TLP, MSI-X, configuration space |
+| `verilog_axis` | 21 | medium | makefile cocotb | -- | -- | 77 good | AXI-Stream infrastructure (FIFOs, muxes, switches, COBS codec) |
+| `verilog_uart` | 2 | small | makefile cocotb | -- | -- | 75 good | UART RX/TX modules |
+| `verilog_lfsr` | 6 | small | makefile cocotb | -- | -- | 77 good | LFSR, CRC, PRBS, scramble/descramble |
+| `pulp_common_cells` | 17 | small | xrun assert | -- | -- | 63 marginal | PULP building blocks: CDC, FIFOs, arbiters, ECC, crossbars |
+| `veer_el2` | 22 | medium | cocotb+verilator | -- | -- | 51 marginal | VeeR EL2 RISC-V blocks: PIC, DMA, ALU, decoder, PMP, IFU, LSU |
+| `notsotiny` | 1114 | small | iverilog+eqy | -- | -- | 69 marginal | Real Tiny Tapeout designs; module completion + equivalence checking |
+| `verithoughts` | 291 | small | iverilog+eqy | -- | -- | 77 good | Formally verified Verilog generation tasks from NYU |
+| `protocolllm` | 9 | small | lint only | -- | -- | 51 marginal | Protocol-based Verilog generation: AXI, I2C, SPI, UART at easy/hard difficulty |
+| `ibex` | 25 | medium | gold reference | -- | -- | 43 not ready | Ibex RISC-V core modules with gold reference RTL |
+| `scr1` | 36 | medium | gold reference | -- | -- | 43 not ready | SCR1 RISC-V core modules from Syntacore; silicon-proven RV32IMC |
+| `caliptra` | 5 | medium | xrun | -- | -- | 35 not ready | Caliptra RoT crypto: SHA-256/512, HMAC, ECC, DOE with self-checking TBs |
+| `avip` | 9 | medium | uvm | -- | -- | 77 good | AVIP verification IP: AHB, APB, AXI4, I2C, I3C, SPI, UART, JTAG, USB slaves |
+| `riscv_hardware_specs` | 2 | large | none | -- | -- | 58 marginal | Spec-only: IMSIC interrupt file, APLIC IDC (from RISC-V AIA PDF) |
 
 **Gold** = gold selftest pass count (oracle validates its own reference RTL).
 **Gen pass** = generator agent oracle pass rate. `rtllm_v1_1` uses `openai/gpt-5-mini`; opentitan used `openai/gpt-5.4`. `--` = not yet evaluated.
+**Quality** = weighted rubric score (0-100). See [task-quality-review.md](docs/task-quality-review.md) for full breakdown.
 
 ### Not yet materialized
 
@@ -82,7 +83,7 @@ Each task group owns its oracle code in `task_library/<group>/helper.py`:
 | `uvm` | xrun -uvm | avip |
 | `gold_reference` | xrun / iverilog | ibex, scr1 |
 | `iverilog+eqy` | iverilog + Yosys eqy | notsotiny, verithoughts |
-| `hwfixbench_diff` | diff against gold fix | hwfixbench |
+| `lint_only` | verilator --lint-only | protocolllm |
 | `opentitan_dvsim` | xcelium via dvsim | opentitan |
 | `none` | -- | riscv_hardware_specs |
 
