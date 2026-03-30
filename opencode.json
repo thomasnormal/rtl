@@ -8,6 +8,13 @@
     "external_directory": "deny"
   },
   "agent": {
+    "converter": {
+      "mode": "primary",
+      "description": "Convert a PDF specification to markdown with extracted figure assets.",
+      "prompt": "{file:./.opencode/prompts/converter.md}",
+      "steps": 120,
+      "temperature": 0.1
+    },
     "generator": {
       "mode": "primary",
       "description": "Generate candidate RTL from a public task workspace without access to hidden validators.",
@@ -19,7 +26,7 @@
       "mode": "primary",
       "description": "Verify candidate RTL using public tools and produce an evidence-backed verdict.",
       "prompt": "{file:./.opencode/prompts/verifier.md}",
-      "steps": 100,
+      "steps": 200,
       "temperature": 0.1
     }
   }

@@ -161,6 +161,9 @@ _CURATED_INTERFACE_MANIFESTS: dict[str, Path] = {
 }
 
 _CURATED_TASK_PACK_MANIFESTS: dict[str, Path] = {
+    "avip": Path(__file__).resolve().parents[2]
+    / "configs"
+    / "avip_tasks.json",
     "opentitan": Path(__file__).resolve().parents[2]
     / "configs"
     / "opentitan_tasks.json",
@@ -170,6 +173,9 @@ _CURATED_TASK_PACK_MANIFESTS: dict[str, Path] = {
 }
 
 _CURATED_TASK_PACK_SPECS: dict[str, Path] = {
+    "avip": Path(__file__).resolve().parents[2]
+    / "task_library"
+    / "avip",
     "opentitan": Path(__file__).resolve().parents[2]
     / "task_library"
     / "opentitan",
@@ -1020,11 +1026,6 @@ def store_curated_task_pack(
         raw_oracle = task.get("raw_oracle")
         tempdir_cm = None
         if raw_oracle is not None:
-            if source_root_path is None:
-                raise ValueError(
-                    f"curated task pack {dataset_name}/{task_id} requires source_root "
-                    "to materialize raw_oracle assets"
-                )
             if not isinstance(raw_oracle, dict):
                 raise ValueError(
                     f"curated task pack raw_oracle for {dataset_name}/{task_id} must be an object"
@@ -1038,6 +1039,15 @@ def store_curated_task_pack(
             if not isinstance(raw_assets, list):
                 raise ValueError(
                     f"curated task pack raw_oracle assets for {dataset_name}/{task_id} must be a list"
+                )
+            if source_root_path is None and any(
+                str(raw_asset.get("source_base", "source_root")) == "source_root"
+                for raw_asset in raw_assets
+                if isinstance(raw_asset, dict)
+            ):
+                raise ValueError(
+                    f"curated task pack {dataset_name}/{task_id} requires source_root "
+                    "to materialize source_root-based raw_oracle assets"
                 )
             tempdir_cm = tempfile.TemporaryDirectory()
             raw_oracle_dir = Path(tempdir_cm.name) / "oracle"
@@ -1106,6 +1116,17 @@ def store_opentitan_tasks(
         source_root=source_root,
     )
 
+
+def store_avip_tasks(
+    output_root: str | Path,
+    *,
+    tier: Tier | None = None,
+) -> tuple[Path, ...]:
+    return store_curated_task_pack(
+        output_root,
+        dataset_name="avip",
+        tier=tier,
+    )
 
 
 def store_riscv_hardware_specs_tasks(

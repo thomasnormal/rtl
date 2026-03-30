@@ -1,173 +1,133 @@
-# Dataset Notes
+# Datasets
 
-## Recommended Acquisition Order
+The task store contains **2,016 RTL generation tasks** across **22 datasets**, spanning micro-benchmarks to production processor cores.
 
-### 1. RTLLM v1.1 / v2.0
+## Summary
 
-Use RTLLM first because each task already has the three artifacts you need for anchor seeding:
+| Dataset | Tasks | Tier | Oracle | Interface | License |
+|---|---|---|---|---|---|
+| **notsotiny** | 1114 | small | iverilog + eqy | context-defined | Apache-2.0 |
+| **verithoughts** | 291 | small | eqy equivalence | interface/*.sv | see-repo |
+| **cvdp** | 169 | small | cocotb | in test env | Apache-2.0 |
+| **realbench** | 60 | small–medium | verilator | interface/*.sv | MIT |
+| **resbench** | 56 | micro–small | iverilog | interface/*.sv | see-repo |
+| **chipbench** | 45 | small–medium | verilator/xrun | in spec text | see-repo |
+| **verilog_pcie** | 37 | medium | cocotb+icarus | interface/*.sv | MIT |
+| **scr1** | 36 | medium | gold reference | interface/*.sv | Solderpad-0.51 |
+| **verilog_ethernet** | 33 | medium | cocotb+icarus | interface/*.sv | MIT |
+| **rtllm_v1_1** | 27 | small | iverilog | interface/*.sv | MIT |
+| **ibex** | 25 | medium | gold reference | interface/*.sv | Apache-2.0 |
+| **verilog_axi** | 24 | medium | cocotb+icarus | interface/*.sv | MIT |
+| **veer_el2** | 22 | medium | cocotb+verilator | interface/*.sv | Apache-2.0 |
+| **verilog_axis** | 21 | medium | cocotb+icarus | interface/*.sv | MIT |
+| **pulp_common_cells** | 17 | small | xrun (assert) | interface/*.sv | Solderpad-0.51 |
+| **opentitan_ip_docs** | 9 | medium | xrun (dvsim) | interface/*.sv | Apache-2.0 |
+| **avip** | 9 | medium | UVM | interface/*.sv | — |
+| **verilog_lfsr** | 6 | small | cocotb+icarus | interface/*.sv | MIT |
+| **icrtl** | 6 | medium | xrun | interface/*.sv | see-repo |
+| **caliptra** | 5 | medium | xrun | spec text | Apache-2.0 |
+| **riscv_hardware_specs** | 2 | large | none (spec-only) | — | CC-BY-4.0 |
+| **verilog_uart** | 2 | small | cocotb+icarus | interface/*.sv | MIT |
 
-- natural-language spec
-- hidden simulation testbench
-- verified RTL reference
+## Oracle Types
 
-This is the cleanest starting point for a split public/oracle task store.
+Each task defines its oracle kind in `task.json`. The oracle validates candidate RTL against the task's behavioral contract.
 
-In practice, fetch both public branches:
+| Oracle Kind | Simulator | Datasets | How It Works |
+|---|---|---|---|
+| `simulation` | xrun, verilator, iverilog | chipbench, realbench, resbench, rtllm, icrtl | Compile candidate + testbench + ref module, run simulation, check pass criteria |
+| `makefile_cocotb` | icarus (via cocotb Makefile) | verilog_axi, verilog_ethernet, verilog_pcie, verilog_axis, verilog_uart, verilog_lfsr | Copy upstream test dir, swap DUT source, run `make` |
+| `veer_cocotb` | verilator (via cocotb+pyuvm) | veer_el2 | Copy VeeR block test infrastructure, swap DUT, run `make SIM=verilator` |
+| `pulp_xrun` | xrun | pulp_common_cells | Compile deps + candidate + assert-based testbench with xrun |
+| `uvm` | xrun | avip | Full UVM environment with named tests |
+| `cocotb` | icarus | cvdp | cocotb tests via iverilog + vvp |
+| `notsotiny_equiv` | iverilog + eqy | notsotiny, verithoughts | Syntax check with iverilog, then Yosys equivalence checking against golden module |
+| `opentitan_dvsim` | xrun | opentitan_ip_docs | OpenTitan dvsim flow |
+| `caliptra_xrun` | xrun | caliptra | Compile via file list, run self-checking testbench |
+| `gold_reference` | — | ibex, scr1 | Gold RTL stored for comparison; no automated simulation oracle yet |
 
-- `v1.1` for the 29-task branch named in the original RTLLM release
-- `main` for the current 50-task RTLLM-2.0 style tree
+## Task Structure
 
-### 2. VerilogEval V2
+Every task follows this layout:
 
-Use VerilogEval second because it gives you a stronger public benchmark and a maintained harness with failure analysis. Treat it as another anchor-seed source, then manually upgrade a subset into formal anchors.
-
-### 3. AssertEval
-
-Use AssertEval to train the verifier on assertion writing and formal task selection. It is not large enough to be the whole project, but it is directly aligned with evidence generation.
-
-### 4. OpenTitan / Ibex
-
-Use these later, after the small-task pipeline is stable. They are valuable because they look like real DV repositories:
-
-- testplans
-- DV docs
-- scoreboards
-- SVAs
-- UVM benches
-- reference models
-
-They are not good phase-0 data because setup cost is too high.
-
-The first OpenTitan medium-tier pack is now checked in as curated task bundles for:
-
-- `uart`
-- `i2c`
-- `spi_host`
-- `dma`
-- `sysrst_ctrl`
-
-These are manually ingested spec bundles copied from the local `~/opentitan` checkout, not rewritten summaries and not an automated ingest pipeline. The public task metadata is curated, the spec content itself is the upstream OpenTitan documentation with its original directory structure preserved, and the materialized task store references a shared hidden source bundle for upstream `rtl/` and `dv/` paths needed by future oracle work.
-
-### 4a. First spec-only public corpus
-
-The first checked-in `spec-only` pack is now `riscv_hardware_specs`, with public-only task bundles for:
-
-- `imsic_interrupt_file`
-- `aplic_idc`
-
-These are copied directly from the official RISC-V International PDFs and intentionally have no hidden oracle assets. Each task also carries a checked-in `doc/` tree with a manual `gpt-5.4-mini` markdown conversion of the public spec so generator and verifier episodes can consume text instead of raw PDFs only.
-
-The current lesson from validation is that "whole architecture manual" is too broad for a first spec-only task. The active pack therefore uses bounded extractions with explicit normalized public interfaces: `imsic_interrupt_file` and `aplic_idc` from the broader AIA corpus. The full checked-in External Debug and AIA transcriptions remain available as source material for future smaller tasks, but only standalone RTL-from-spec tasks should be active task-pack entries.
-
-### 5. RTL-Repo
-
-Use RTL-Repo for scale and repository context, not as the main RL reward source. It broadens code exposure and can help later with generator pretraining or repository-conditioned tasks.
-
-## Tiering Strategy
-
-Use four user-facing tiers, and keep them separate in both ingest and evaluation.
-
-### Small
-
-Use this for the current anchor path:
-
-- RTLLM v1.1 / v2.0
-- VerilogEval
-- AssertEval
-
-Properties:
-
-- short natural-language specs or small prompt-style tasks
-- direct hidden simulation or formal collateral
-- good for oracle calibration, verifier pretraining, and regression testing
-
-### Medium
-
-Target roughly 10-30 page PDFs or rendered PDFs.
-
-Best sources:
-
-- individual OpenTitan IP datasheets plus DV docs, starting with the checked-in `uart`, `i2c`, `spi_host`, `dma`, and `sysrst_ctrl` task pack
-- focused OpenHW core manuals or manual chapters
-- open protocol specs such as Wishbone B4, paired with public implementations and trainer-built oracles
-
-Properties:
-
-- one IP or protocol at a time
-- enough prose/tables/timing to require retrieval and requirement extraction
-- still bounded enough that one verifier episode can plausibly cover the whole spec
-
-Important:
-
-- do not wait for “perfect native PDFs”; authoritative HTML/markdown docs are fine, and for the first OpenTitan pack we manually copied the upstream documentation bundle directly into the task library
-
-### Large
-
-Target roughly 30-300 page manuals.
-
-Best public sources:
-
-- checked-in official RISC-V hardware/control PDFs such as the current `riscv_hardware_specs` pack
-- OpenTitan top-level datasheets and integration docs
-- CVA6 user manual
-- CORE-V-MCU user manual
-- NVDLA integration and hardware docs
-- ONFI protocol specs as an open memory/protocol family
-
-Properties:
-
-- subsystem, controller, or SoC-level integration concerns
-- multiple interfaces, registers, modes, and timing stories
-- retrieval/chunking becomes mandatory
-
-### Industrial
-
-Reserve this for standards and SoC architecture packages that need legal review or private ingest.
-
-Examples:
-
-- JEDEC DDR3 / DDR6
-- large internal SoC specs
-- other consortium or vendor standards with redistribution limits
-
-Properties:
-
-- often multi-document and hundreds of pages
-- usually not safe to mix into the public pipeline
-- require a separate private artifact store, private chunk index, and explicit license tracking
-
-## Recommended Next Datasets
-
-If the goal is “more data soon” without getting blocked on licensing, the next best sequence is:
-
-1. RISC-V public hardware specs as the first spec-only tier
-2. OpenTitan IP docs as the first oracle-backed medium tier
-3. OpenHW single-core manuals as the second medium tier
-4. OpenTitan top-level docs, CVA6, CORE-V-MCU, and NVDLA as the first large tier
-5. ONFI as the first open memory/protocol large tier
-6. JEDEC DDR3 / DDR6 only after the private/licensed pipeline exists
-
-## Task Store Record
-
-Every stored task should become:
-
-```text
+```
 task_id/
   public/
-    spec.txt
-    task.json
-  oracle/
-    gold_rtl.v
-    sim/
-    formal/
-  task.json
+    spec/                    # Specification materials
+      spec.txt or *.md       # Natural language spec
+      interface/             # Formal SV interface files (when available)
+        <module>.sv          # Module header with ports/parameters
+      doc/                   # Additional documentation
+    task.json                # Public metadata (top_module, tier, deliverables)
+    top_module.txt           # Authoritative top module name
+  oracle/                    # Hidden validation collateral
+    gold_rtl.sv              # Gold reference (simulation oracles)
+    sim/testbench.sv         # Testbench (simulation oracles)
+    support/                 # Dependency files
+    test/                    # cocotb/Makefile test dirs (Forencich/VeeR)
+    rtl/                     # Gold RTL deps (Forencich)
+    golden.v                 # Golden module (equivalence oracles)
+    context.v                # Project context (NotSoTiny)
+  task.json                  # Full task metadata including oracle config
 ```
 
-Candidate RTLs should live outside the task store, for example in `runs/<episode_id>/submission/candidate.sv`.
+## Interface Contract
 
-## Avoid These Mistakes
+Tasks should provide a formal interface specification whenever possible. The preferred form is a standalone `.sv` file under `public/spec/interface/` containing the module declaration with all ports and parameters. This tells the generator exactly what to implement.
 
-- Do not treat simulation pass/fail alone as a gold oracle on every task.
-- Do not mix noisy scale corpora into the reward path.
-- Do not start with OpenTitan-scale benches before the small-task environment works.
-- Do not let the generator or verifier see the hidden oracle artifacts during training episodes.
+For tasks with complex type systems (AVIP, OpenTitan), the interface directory also includes package files with custom types.
+
+Current coverage: interface files are present for all Forencich, VeeR, PULP, RTLLM, OpenTitan, Ibex, SCR1, RealBench, ResBench, and VeriThoughts tasks. Benchmark datasets (ChipBench, CVDP, NotSoTiny) define interfaces inline in spec text or project context.
+
+## Quality Rubric
+
+Tasks are scored on 7 dimensions (see `docs/task-quality-rubric.md` and `configs/task_quality_rubric.json`):
+
+| Category | Weight | What It Measures |
+|---|---|---|
+| Spec Quality | 20 | Can an agent infer behavior from public materials alone? |
+| Interface Contract | 15 | Is the DUT boundary unambiguous and machine-checkable? |
+| Oracle Quality | 25 | Does the oracle reliably separate correct from incorrect RTL? |
+| Self-Containment | 15 | Can the task run without the original upstream repo? |
+| Difficulty Calibration | 10 | Is the task appropriately challenging for its tier? |
+| Anti-Shortcut Robustness | 10 | Does the task resist shallow solutions? |
+| Maintenance Cost | 5 | Is the task cheap to keep working? |
+
+Current band distribution:
+- **Good (70+)**: avip, opentitan_ip_docs, rtllm_v1_1 — 45 tasks
+- **Marginal (50-69)**: Most Forencich, ChipBench, RealBench, VeeR, PULP, NotSoTiny — 1,903 tasks
+- **Not ready (<50)**: caliptra, ibex, scr1, riscv_hardware_specs — 68 tasks
+
+The main gap in marginal datasets is spec quality (behavioral docs beyond the module header). The main gap in not-ready datasets is oracle automation.
+
+## Shared Resources
+
+- **ARM AMBA AXI Protocol Spec**: `data/shared_sources/protocol_specs/amba_axi_md/axi4_core_spec.md` — chapters A1-B1 (100 pages) for AXI task context
+- **Yosys + eqy**: Built at `/opt/yosys-oss/` for equivalence checking (NotSoTiny, VeriThoughts oracles)
+- **iverilog v12**: Built at `/opt/iverilog-v12/` for ChipBench compatibility
+
+## Per-Dataset Oracle Files
+
+Each oracle type has its own module under `src/rtl_training/`:
+
+| File | Datasets |
+|---|---|
+| `oracle.py` | Core types + simulation oracles (xrun, iverilog, verilator) |
+| `forencich_oracle.py` | verilog_axi, verilog_ethernet, verilog_pcie, verilog_axis, verilog_uart, verilog_lfsr |
+| `veer_oracle.py` | veer_el2 |
+| `pulp_oracle.py` | pulp_common_cells |
+| `notsotiny_oracle.py` | notsotiny |
+| `verithoughts_oracle.py` | verithoughts |
+| `opentitan_oracle.py` | opentitan_ip_docs |
+
+## Adding New Datasets
+
+1. Clone the upstream repo
+2. Read its README and test infrastructure to understand the intended simulator and test flow
+3. Write a `store_<name>_tasks()` function in `task_store.py` (or use `store_forencich_tasks()` for cocotb Makefile repos)
+4. Write a dedicated oracle module if the test flow doesn't fit existing oracles
+5. Ingest tasks to `data/task_store/<name>/`
+6. Run gold selftests to verify the oracle works
+7. Generate `interface/*.sv` files from gold RTL
+8. Add the dataset to `configs/datasets.json`
+9. Score against the quality rubric
