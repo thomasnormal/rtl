@@ -1,0 +1,166 @@
+{
+  "version": 1,
+  "name": "task_quality_rubric",
+  "score_scale": {
+    "min": 0,
+    "max": 5
+  },
+  "score_bands": [
+    {
+      "name": "excellent",
+      "min_score": 85,
+      "description": "Ready to prioritize for training and benchmarking."
+    },
+    {
+      "name": "good",
+      "min_score": 70,
+      "description": "Usable with minor caveats."
+    },
+    {
+      "name": "marginal",
+      "min_score": 50,
+      "description": "Useful only with explicit caveats or follow-up cleanup."
+    },
+    {
+      "name": "not_ready",
+      "min_score": 0,
+      "description": "Should not be used as-is for training or evaluation."
+    }
+  ],
+  "gating_failures": [
+    "oracle does not pass its own selftest or gold RTL check",
+    "public task boundary is incomplete or depends on hidden repository code",
+    "top module or public interface contract is ambiguous",
+    "spec is too incomplete to derive intended behavior",
+    "licensing or access restrictions prevent reproducible use"
+  ],
+  "categories": [
+    {
+      "id": "spec_quality",
+      "name": "Spec Quality",
+      "weight": 20,
+      "question": "Can a strong agent infer the intended RTL behavior from the public task materials alone?",
+      "evidence": [
+        "README.md",
+        "doc/",
+        "data/",
+        "interface/"
+      ],
+      "anchors": {
+        "0": "The public spec is missing, contradictory, or mostly external links with little usable content.",
+        "1": "Only a fragmentary description exists; major behavior must be guessed.",
+        "3": "The main behavior is documented, but edge cases, reset behavior, timing, or register semantics still require inference.",
+        "5": "The public spec is self-contained, specific, and behaviorally rich, including corner cases and implementation-relevant details."
+      }
+    },
+    {
+      "id": "interface_contract",
+      "name": "Interface Contract",
+      "weight": 15,
+      "question": "Is the DUT boundary unambiguous and machine-checkable?",
+      "evidence": [
+        "task/task.json",
+        "interface/",
+        "micro_arch/"
+      ],
+      "anchors": {
+        "0": "Top module, ports, or public type definitions are ambiguous or broken.",
+        "1": "A partial boundary exists, but important packages, widths, or sideband fields are unclear.",
+        "3": "The public interface is mostly clear, but some typing, helper packages, or deep-DV signals are underspecified.",
+        "5": "The task publishes a precise DUT boundary with all required public types and, when needed, a clean micro-architecture ABI."
+      }
+    },
+    {
+      "id": "oracle_quality",
+      "name": "Oracle Quality",
+      "weight": 25,
+      "question": "Does the oracle reliably separate correct RTL from incorrect RTL without false positives or false negatives?",
+      "evidence": [
+        "oracle selftest",
+        "gold RTL validation",
+        "dv/",
+        "testbench",
+        "cocotb harness",
+        "formal collateral"
+      ],
+      "anchors": {
+        "0": "The oracle is broken, flaky, or untrusted.",
+        "1": "The oracle runs, but obvious bugs or blind spots are known.",
+        "3": "The oracle is mostly trustworthy, but some modes, parameters, or bug classes are weakly covered.",
+        "5": "The oracle passes gold selftests, is stable, and exercises the behavior that actually matters for task correctness."
+      }
+    },
+    {
+      "id": "self_containment",
+      "name": "Self-Containment",
+      "weight": 15,
+      "question": "Can the task be staged and solved reproducibly without undocumented external dependencies?",
+      "evidence": [
+        "public task directory",
+        "shared source bundle",
+        "workspace staging",
+        "license metadata"
+      ],
+      "anchors": {
+        "0": "The task depends on hidden files, upstream repo structure, or inaccessible tools in a way that breaks reproducibility.",
+        "1": "The task is partially materialized but still requires ad hoc manual reconstruction.",
+        "3": "The task is mostly self-contained, but some friction remains around shared sources, generated docs, or tool assumptions.",
+        "5": "The task can be staged, run, and evaluated reproducibly from the repository task bundle alone."
+      }
+    },
+    {
+      "id": "difficulty_calibration",
+      "name": "Difficulty Calibration",
+      "weight": 10,
+      "question": "Is the task at an appropriate difficulty level for the intended training/evaluation slice?",
+      "evidence": [
+        "tier",
+        "design size",
+        "oracle runtime",
+        "failure modes"
+      ],
+      "anchors": {
+        "0": "The task is either trivial, impossible, or wildly mismatched to its stated tier.",
+        "1": "Difficulty is poorly calibrated or unstable across seeds/configurations.",
+        "3": "The task is broadly on-tier but has some unnecessary complexity or weak discriminative value.",
+        "5": "The task is clearly tiered, meaningfully challenging, and neither toy-like nor impossibly underconstrained."
+      }
+    },
+    {
+      "id": "anti_shortcut",
+      "name": "Anti-Shortcut Robustness",
+      "weight": 10,
+      "question": "Does the task resist superficial solutions, oracle gaming, and accidental leakage of the answer?",
+      "evidence": [
+        "public/private split",
+        "submission constraints",
+        "oracle interface",
+        "gold RTL separation"
+      ],
+      "anchors": {
+        "0": "The task leaks the answer or can be passed by a non-solution stub.",
+        "1": "There are known trivial shortcuts or public hints that collapse the task.",
+        "3": "Some shortcut risk exists, but a real implementation is still needed in practice.",
+        "5": "The task strongly rewards genuine implementation quality and makes obvious shortcut strategies ineffective."
+      }
+    },
+    {
+      "id": "maintenance_cost",
+      "name": "Maintenance Cost",
+      "weight": 5,
+      "question": "Can the task be kept healthy over time without disproportionate manual effort?",
+      "evidence": [
+        "oracle complexity",
+        "doc conversion quality",
+        "upstream coupling",
+        "repair frequency"
+      ],
+      "anchors": {
+        "0": "The task is brittle and repeatedly breaks for structural reasons.",
+        "1": "The task is usable only with frequent manual intervention.",
+        "3": "The task needs occasional repair but is tractable to maintain.",
+        "5": "The task is structurally clean and cheap to keep healthy."
+      }
+    }
+  ]
+}
