@@ -62,9 +62,11 @@ That keeps deterministic validation available to the training framework without 
 
 ### Not yet materialized
 
-These are defined in `configs/datasets.json` but not yet ingested into the task store:
-
 `asserteval` (20, needs store function + formal oracle).
+
+### Not used
+
+- `rtl_repo` (4000) — repository-level code completions with no spec, no testbench, no oracle. Pretraining-only dataset; this project does RL with oracle feedback, not pretraining.
 
 ### Oracle types
 
