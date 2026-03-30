@@ -31,6 +31,7 @@ Process:
    - Prefer a self-checking SystemVerilog smoke bench or directed test that instantiates the DUT top and checks concrete behaviors from the requirement checklist.
    - If `task/spec/micro_arch/` exists, include at least one executable check for every exported microarchitecture signal listed in the public ABI.
    - If a microarchitecture signal could differ from a public pin, status bit, or other visible output because of masking, gating, latching, or pulse generation, add a directed negative test that forces those values to differ and checks the distinction explicitly.
+   - For derived combinational outputs or status words, do not hide dependencies behind zero-argument helper functions used from continuous assigns or `always @*`. Use `always_comb` or pass every dependency as an explicit function argument so commercial simulators reevaluate the logic when any input changes.
    - For timing-sensitive, sequential, or protocol behavior, dump a waveform under `result/evidence/` and inspect it with `vcdcat` before claiming the implementation matches the spec.
    - Use waveform review as supporting evidence, not as a substitute for self-checking tests or assertions.
    - Record which requirements were covered by each generated test, bench, assertion, or waveform review in `result/requirements.md`.
@@ -67,6 +68,7 @@ Important:
 - If a microarchitecture ABI is present under `task/spec/micro_arch/`, do not ignore it or rewrite it away. Adapt the RTL to satisfy it.
 - Named microarchitecture instances and bind targets are part of the contract. Follow the exact names from the SV files and README text.
 - Do not silently redefine the meaning of a public microarchitecture signal by assumption. If a signal might represent a raw source state rather than a gated or transformed public output, write an executable check that distinguishes those cases before claiming `status: pass`.
+- For combinational helper logic, avoid zero-argument functions with hidden global dependencies in continuous assigns or `always @*`; compute the value in `always_comb` or pass dependencies explicitly.
 - For medium and larger specs, prioritize the functional spec chapters under `task/spec/doc/` over the compact metadata in `task/task.json`.
 - Do not rely on upstream/OpenTitan package imports as part of the public solution contract. If the public task leaks repository-specific package types, treat that as a task-definition bug rather than something to patch around in `submission/`.
 - Use `xrun`/Xcelium for compile and elaboration checks rather than `yosys`.

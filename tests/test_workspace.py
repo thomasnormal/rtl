@@ -62,6 +62,8 @@ def test_stage_generator_workspace_exposes_only_public_task_material(tmp_path: P
     assert "Do not infer a signal's meaning from its name alone" in instructions
     assert "masking, gating, latching, or pulse generation" in instructions
     assert "forces those values to differ" in instructions
+    assert "zero-argument helper functions" in instructions
+    assert "Use `always_comb`" in instructions
     assert "complete public problem statement" in instructions
     assert "Do not assume access to upstream repo code" in instructions
     assert "`submission/` must be a self-contained deliverable set" in instructions
@@ -107,6 +109,8 @@ def test_stage_verifier_workspace_copies_candidate_dir_but_not_oracle(tmp_path: 
     assert "task/spec/interface/" in instructions
     assert "cocotb" in instructions
     assert "Do not use `yosys`" in instructions
+    assert "After changing DUT inputs in a bench" in instructions
+    assert "delta cycle" in instructions
     assert "generated bus helper package" in instructions
     assert "complete public problem statement" in instructions
     assert "Do not assume access to upstream repo code" in instructions

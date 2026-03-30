@@ -115,6 +115,8 @@ def test_prepare_generator_episode_instructions_require_behavioral_spec_and_buil
     assert "Do not infer a signal's meaning from its name alone" in instructions
     assert "masking, gating, latching, or pulse generation" in instructions
     assert "forces those values to differ" in instructions
+    assert "zero-argument helper functions" in instructions
+    assert "Use `always_comb`" in instructions
     assert "complete public problem statement" in instructions
     assert "Do not assume access to upstream repo code" in instructions
     assert "task/task.json" in instructions
@@ -225,6 +227,8 @@ def test_prepare_verifier_episode_instructions_call_for_native_sva_and_uvm(tmp_p
     assert "cocotb" in instructions
     assert "`xrun`" in instructions
     assert "`xrun -uvm`" in instructions
+    assert "After changing DUT inputs in a bench" in instructions
+    assert "delta cycle" in instructions
     assert "generated bus helper package" in instructions
     assert "source, size, param, and user" in instructions
     assert "complete public problem statement" in instructions
@@ -246,6 +250,8 @@ def test_verifier_prompt_mentions_xrun_sva_and_uvm() -> None:
     assert "@cocotb.test()" in prompt
     assert "For plain SystemVerilog and SVA simulation, prefer `xrun`" in prompt
     assert "For UVM environments that import `uvm_pkg`, prefer:" in prompt
+    assert "After changing DUT inputs in a bench" in prompt
+    assert "delta cycle" in prompt
     assert "generated bus helper package" in prompt
     assert "source / size / param / user fields" in prompt
     assert "complete public problem statement" in prompt
@@ -279,6 +285,8 @@ def test_generator_prompt_mentions_behavioral_spec_and_compile_sanity() -> None:
     assert "Do not infer a signal's meaning from its name alone" in prompt
     assert "masking, gating, latching, or pulse generation" in prompt
     assert "forces those values to differ" in prompt
+    assert "zero-argument helper functions" in prompt
+    assert "Use `always_comb`" in prompt
     assert "complete public problem statement" in prompt
     assert "Do not assume access to upstream repo code" in prompt
     assert "Use `xrun`/Xcelium for compile and elaboration checks" in prompt

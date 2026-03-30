@@ -80,6 +80,7 @@ def stage_generator_workspace(
             "- Prefer a self-checking SystemVerilog smoke bench or directed test that instantiates the DUT top and checks concrete behaviors from the requirement checklist.",
             "- If `task/spec/micro_arch/` exists, include at least one executable check for every exported microarchitecture signal listed in the public ABI.",
             "- If a microarchitecture signal could differ from a public pin, status bit, or other visible output because of masking, gating, latching, or pulse generation, add a directed negative test that forces those values to differ and checks the distinction explicitly.",
+            "- For derived combinational outputs or status words, do not hide dependencies behind zero-argument helper functions used from continuous assigns or `always @*`. Use `always_comb` or pass every dependency as an explicit function argument so commercial simulators reevaluate the logic when any input changes.",
             "- For timing-sensitive, sequential, or protocol behavior, dump a waveform under `result/evidence/` and inspect it with `vcdcat` before claiming the implementation matches the spec.",
             "- Use waveform review as supporting evidence, not as a substitute for self-checking tests or assertions.",
             "- Record which requirements were covered by each generated test, bench, assertion, or waveform review in `result/requirements.md`.",
@@ -98,6 +99,7 @@ def stage_generator_workspace(
             "- If the compile check fails, `result/result.json` must not claim `status: pass`.",
             "- If the implementation is partial, minimal, or intentionally omits major spec behavior, `result/result.json` must not claim `status: pass`.",
             "- Do not silently redefine the meaning of a public microarchitecture signal by assumption. If a signal might represent a raw source state rather than a gated or transformed public output, write an executable check that distinguishes those cases before claiming `status: pass`.",
+            "- For combinational helper logic, avoid zero-argument functions with hidden global dependencies in continuous assigns or `always @*`; compute the value in `always_comb` or pass dependencies explicitly.",
             "- There is no oracle validator in this workspace.",
         ]
     )
@@ -157,6 +159,7 @@ def stage_verifier_workspace(
             "- Turn the spec into a concrete requirement checklist before judging the RTL.",
             "- Use the available tools to gather evidence.",
             "- Do not stop at code inspection. Write executable checks: prefer native SVAs, bind files, and self-checking SystemVerilog benches under `xrun`, use cocotb when a Python reference model or scoreboard is clearer, and escalate to native UVM under `xrun -uvm` when the protocol is non-trivial.",
+            "- After changing DUT inputs in a bench, especially combinational control or data inputs, advance at least one delta cycle (`#1step`, `#0`, or a tiny local delay such as `#1ps`) before sampling derived outputs. Do not write same-timestep checks that rely on zero-delta propagation through `always_comb` or continuous assigns.",
             "- Do not use `yosys`; use `xrun`/Xcelium for compile, elaboration, SVA, and smoke-test checks.",
             "- Save the requirement checklist and the generated verification artifacts under `result/evidence/`.",
             "- If a reproducible executable check shows a concrete critical spec violation, that is already sufficient evidence for `verdict: bad`; update `result/result.json` immediately instead of continuing to search for more failures.",

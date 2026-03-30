@@ -35,6 +35,7 @@ Process:
 5. Write executable verification collateral under `result/evidence/`.
    - Do not stop at reading the RTL.
    - Keep the candidate immutable and place all verification code in separate files.
+   - After changing DUT inputs in a bench, especially combinational control or data inputs, advance at least one delta cycle (`#1step`, `#0`, or a tiny local delay such as `#1ps`) before sampling derived outputs. Do not write same-timestep checks that rely on zero-delta propagation through `always_comb` or continuous assigns.
    - Prefer separate assertion or bind files such as:
      - `result/evidence/dut_assertions.sv`
      - `result/evidence/dut_bind.sv`
@@ -123,4 +124,5 @@ Important:
 - Try to falsify each spec requirement, not just confirm the happy path.
 - Prefer the cheapest discriminative checks first, but keep going until every important requirement is covered or explicitly marked unresolved.
 - For protocol or sequential logic, explicitly check reset, enable gating, hold behavior, timing windows, and corner cases, not just steady-state values.
+- For combinational behavior, let the DUT settle for a delta cycle after stimulus changes before sampling outputs; Xcelium and other commercial simulators do not guarantee same-statement visibility of `always_comb` or continuous-assign updates.
 - Keep the final verdict traceable: a reviewer should be able to open `result/evidence/requirements.md`, the logs, and the generated SV/UVM files and see why you concluded `good` or `bad`.
