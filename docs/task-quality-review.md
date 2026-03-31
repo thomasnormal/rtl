@@ -51,7 +51,7 @@ Resolved gating failures:
 | `notsotiny` | 1114 | 69 | marginal | -- | No prose spec (context = Verilog with hole) |
 | `verithoughts` | 291 | 77 | good | -- | -- |
 | `protocolllm` | 9 | 51 | marginal | -- | Lint-only oracle, no behavioral testing |
-| `ibex` | 25 | 60 | marginal | -- | 11/25 pass eqy, 14 need sub-module bundling |
+| `ibex` | 25 | 66 | marginal | -- | 14/25 pass (8 circt-lec + 6 eqy), 11 need sub-module bundling |
 | `scr1` | 36 | 43 | not_ready | yes | No oracle (gold_reference only), minimal spec |
 | `caliptra` | 5 | 63 | marginal | -- | Minimal spec, needs xrun |
 | `avip` | 9 | 77 | good | -- | No gold RTL selftest yet |
@@ -190,13 +190,13 @@ Evidence:
 
 | Dataset | Spec | Doc | Ifc | Ora | Self | Diff | AS | Maint | Total | Band |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| `ibex` | 1 | 1 | 4 | 3 | 4 | 3 | 3 | 3 | 60 | marginal |
+| `ibex` | 1 | 1 | 4 | 3 | 4 | 3 | 4 | 3 | 66 | marginal |
 
 Evidence:
 - **Spec**: spec.txt is module header only. No behavioral description.
 - **Ifc**: Interface .sv stubs provided.
-- **Ora**: sv2v converts SystemVerilog to Verilog, then eqy checks formal equivalence against gold. **11/25 modules pass gold self-test.** Failures: 7 need sub-module bundling, 2 timeout (icache, register_file_ff), 3 sv2v parse issues, 1 sby memory limitation (alu), 1 wrong module name (is). Former gating failure (no behavioral oracle) is now resolved for the 11 passing modules.
-- **AS**: Formal equivalence checking is hard to game — structurally different but functionally equivalent designs will pass.
+- **Ora**: Combined oracle: tries circt-lec (circt-verilog + SMT-LIB + Z3) first, falls back to sv2v + eqy. **14/25 modules pass gold self-test** (8 via circt-lec, 6 via eqy). Remaining 11 failures: 7 need sub-module bundling (hierarchical instantiations), 3 sv2v parse issues (missing packages), 1 wrong module name in task.json. Former gating failure (no behavioral oracle) resolved for 14 modules.
+- **AS**: Formal equivalence checking is hard to game — structurally different but functionally equivalent designs pass. Score raised from 1 to 4.
 
 ### SCR1 (still gold-reference only)
 
