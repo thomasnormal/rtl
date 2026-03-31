@@ -268,6 +268,11 @@ def _run_timeout_closeout(
     if request.timeout_closeout_prompt is None:
         return None
 
+    _persist_timeout_closeout_logs(
+        request.workspace_root,
+        stdout_text=original_stdout,
+        stderr_text=original_stderr,
+    )
     closeout_request = replace(
         request,
         prompt=request.timeout_closeout_prompt,
@@ -318,3 +323,17 @@ def _merge_captured_output(original: str, additional: str) -> str:
     if not additional:
         return original
     return f"{original.rstrip()}\n\n===== timeout closeout =====\n{additional}"
+
+
+def _persist_timeout_closeout_logs(
+    workspace_root: Path,
+    *,
+    stdout_text: str,
+    stderr_text: str,
+) -> None:
+    evidence_dir = workspace_root / "result" / "evidence"
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    if stdout_text:
+        (evidence_dir / "timeout_closeout_pass1_stdout.log").write_text(stdout_text)
+    if stderr_text:
+        (evidence_dir / "timeout_closeout_pass1_stderr.log").write_text(stderr_text)

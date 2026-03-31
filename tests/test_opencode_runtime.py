@@ -394,6 +394,12 @@ def test_run_opencode_forces_timeout_closeout_verdict(
     assert payload["verdict"] == "bad"
     assert result.completed_via_result_file is True
     assert result.forced_closeout is True
+    assert (request.workspace_root / "result" / "evidence" / "timeout_closeout_pass1_stdout.log").read_text().startswith(
+        "phase1 verifier run"
+    )
+    assert "terminated phase 1" in (
+        request.workspace_root / "result" / "evidence" / "timeout_closeout_pass1_stderr.log"
+    ).read_text()
     assert "phase1 verifier run" in result.stdout
     assert "phase2 closeout prompt: FORCE FINAL VERDICT FROM EXISTING EVIDENCE" in result.stdout
     assert "terminated phase 1" in result.stderr

@@ -247,6 +247,7 @@ def test_prepare_verifier_episode_instructions_call_for_native_sva_and_uvm(tmp_p
     assert "sufficient evidence for `verdict: bad`" in instructions
     assert episode.request.timeout_closeout_prompt is not None
     assert "Time budget is exhausted" in episode.request.timeout_closeout_prompt
+    assert "timeout_closeout_pass1_stdout.log" in episode.request.timeout_closeout_prompt
 
 
 def test_verifier_prompt_mentions_xrun_sva_and_uvm() -> None:

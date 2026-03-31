@@ -140,6 +140,9 @@ DEFAULT_VERIFIER_PROMPT = (
 DEFAULT_VERIFIER_TIMEOUT_CLOSEOUT_PROMPT = (
     "Time budget is exhausted. Do not start new long-running checks. "
     "Read the existing files under result/evidence/ and the current result/result.json stub, "
+    "including `result/evidence/timeout_closeout_pass1_stdout.log` and "
+    "`result/evidence/timeout_closeout_pass1_stderr.log` when they exist, because they capture "
+    "the interrupted first-pass transcript. "
     "then immediately update result/result.json with a terminal status and a mandatory best-effort "
     "verdict of `good` or `bad`. Base the verdict only on the evidence already gathered in this "
     "workspace. If the current evidence does not positively establish `good`, choose `bad` with "
