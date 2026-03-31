@@ -17,12 +17,15 @@ Important:
 - Materialized datasets reviewed: `25`
 - `excellent`: `0`
 - `good`: `16`
-- `marginal`: `6`
-- `not_ready`: `3`
+- `marginal`: `8` (ibex and caliptra upgraded from not_ready)
+- `not_ready`: `1`
 
-Gating failures found in 3 datasets:
-- `ibex`, `scr1`: no real oracle (gold_reference = diff against gold, no behavioral testing)
-- `caliptra`: oracle depends on upstream repo checkout at `/tmp/caliptra-rtl`
+Gating failures remaining:
+- `scr1`: no real oracle (gold_reference = diff against gold, no behavioral testing)
+
+Resolved gating failures:
+- `ibex`: upgraded from gold_reference to sv2v+eqy equivalence oracle (11/25 pass)
+- `caliptra`: RTL bundled locally, no more upstream dependency
 
 ## Dataset Summary
 
@@ -48,9 +51,9 @@ Gating failures found in 3 datasets:
 | `notsotiny` | 1114 | 69 | marginal | -- | No prose spec (context = Verilog with hole) |
 | `verithoughts` | 291 | 77 | good | -- | -- |
 | `protocolllm` | 9 | 51 | marginal | -- | Lint-only oracle, no behavioral testing |
-| `ibex` | 25 | 43 | not_ready | yes | No oracle (gold_reference only), minimal spec |
+| `ibex` | 25 | 60 | marginal | -- | 11/25 pass eqy, 14 need sub-module bundling |
 | `scr1` | 36 | 43 | not_ready | yes | No oracle (gold_reference only), minimal spec |
-| `caliptra` | 5 | 35 | not_ready | yes | Oracle depends on /tmp/caliptra-rtl |
+| `caliptra` | 5 | 63 | marginal | -- | Minimal spec, needs xrun |
 | `avip` | 9 | 77 | good | -- | No gold RTL selftest yet |
 | `riscv_hardware_specs` | 2 | 58 | marginal | yes | No oracle at all |
 
@@ -183,32 +186,40 @@ Evidence:
 - **Ora**: **Lint-only** — `verilator --lint-only`. No simulation, no behavioral check. Any compilable module passes. This is barely an oracle.
 - **AS**: Lint-only means trivial stubs can pass. Anti-shortcut robustness is essentially zero.
 
-### Gold-Reference Only (ibex, scr1)
+### Ibex (sv2v + eqy equivalence)
 
 | Dataset | Spec | Doc | Ifc | Ora | Self | Diff | AS | Maint | Total | Band |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| `ibex` | 1 | 1 | 4 | 1 | 4 | 3 | 1 | 4 | 43 | not_ready |
+| `ibex` | 1 | 1 | 4 | 3 | 4 | 3 | 3 | 3 | 60 | marginal |
+
+Evidence:
+- **Spec**: spec.txt is module header only. No behavioral description.
+- **Ifc**: Interface .sv stubs provided.
+- **Ora**: sv2v converts SystemVerilog to Verilog, then eqy checks formal equivalence against gold. **11/25 modules pass gold self-test.** Failures: 7 need sub-module bundling, 2 timeout (icache, register_file_ff), 3 sv2v parse issues, 1 sby memory limitation (alu), 1 wrong module name (is). Former gating failure (no behavioral oracle) is now resolved for the 11 passing modules.
+- **AS**: Formal equivalence checking is hard to game — structurally different but functionally equivalent designs will pass.
+
+### SCR1 (still gold-reference only)
+
+| Dataset | Spec | Doc | Ifc | Ora | Self | Diff | AS | Maint | Total | Band |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | `scr1` | 1 | 1 | 4 | 1 | 4 | 3 | 1 | 4 | 43 | not_ready |
 
 Evidence:
-- **Spec**: spec.txt is module header only (signal list). No behavioral description at all.
-- **Doc**: No prose, no figures, no documentation surface.
-- **Ifc**: Interface .sv stubs provided — this is the one strong point.
-- **Ora**: `gold_reference` kind = diff/compare against gold RTL. **No testbench, no simulation, no behavioral validation.** This is effectively testing memorization, not understanding. **GATING FAILURE**: oracle does not reliably separate correct from incorrect RTL.
-- **AS**: If oracle is gold-match, the task rewards copying the answer, not implementing the design.
+- **Ora**: Still `gold_reference` only — no behavioral testing. **GATING FAILURE** remains.
+- Same sv2v+eqy approach could be applied (scr1 modules are simpler than ibex).
 
 ### Caliptra
 
 | Dataset | Spec | Doc | Ifc | Ora | Self | Diff | AS | Maint | Total | Band |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| `caliptra` | 1 | 1 | 2 | 2 | 1 | 4 | 3 | 1 | 35 | not_ready |
+| `caliptra` | 1 | 1 | 2 | 3 | 4 | 4 | 3 | 3 | 63 | marginal |
 
 Evidence:
 - **Spec**: spec.txt is 527 bytes — module header only.
 - **Ifc**: No interface files in public/.
-- **Ora**: xrun testbenches exist in files.f, but every path references `/tmp/caliptra-rtl` (121 external file references). **GATING FAILURE**: task depends on upstream repository layout.
-- **Self**: Completely non-self-contained. Cannot stage without the upstream checkout.
-- **Maint**: Brittle — any upstream repo change breaks everything.
+- **Ora**: xrun testbenches with self-checking assertions. RTL now bundled locally in oracle/rtl/ (562 files, 6.1MB across 5 tasks). Former **gating failure resolved** — all paths are now relative.
+- **Self**: Self-contained after fix. All 5 tasks bundle their full RTL dependency tree in oracle/rtl/.
+- **Maint**: Improved — no upstream checkout dependency. Still needs xrun (licensed simulator).
 
 ### AVIP (per-task detail)
 
@@ -253,10 +264,12 @@ These datasets have hard blockers that must be resolved before they can be used 
 
 | Dataset | Gating Failure | Resolution Path |
 | --- | --- | --- |
-| `ibex` | No real oracle. `gold_reference` = diff against gold RTL, no behavioral validation. | Add simulation testbenches (Ibex upstream DV exists, needs ingestion). |
-| `scr1` | Same as ibex. | Add simulation testbenches from upstream SCR1 DV. |
-| `caliptra` | Oracle files.f references `/tmp/caliptra-rtl` — 121 external paths. | Bundle required RTL into oracle/ or rewrite file list to use relative paths. |
+| `scr1` | No real oracle. `gold_reference` = diff against gold RTL, no behavioral validation. | Apply same sv2v+eqy approach as ibex. |
 | `riscv_hardware_specs` | No oracle at all. Spec-only tasks. | Build formal or simulation oracle from RISC-V AIA spec. |
+
+**Resolved:**
+- `ibex`: Upgraded to sv2v+eqy equivalence oracle. 11/25 modules now have formal verification. Remaining 14 need sub-module bundling or longer timeouts.
+- `caliptra`: RTL dependencies (562 files, 6.1MB) bundled into oracle/rtl/ with relative paths. No more upstream checkout dependency.
 
 ## Recommended Actions
 

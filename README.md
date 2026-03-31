@@ -51,9 +51,9 @@ That keeps deterministic validation available to the training framework without 
 | `notsotiny` | 1114 | small | iverilog+eqy | -- | -- | 69 marginal | Real Tiny Tapeout designs; module completion + equivalence checking |
 | `verithoughts` | 291 | small | iverilog+eqy | -- | -- | 77 good | Formally verified Verilog generation tasks from NYU |
 | `protocolllm` | 9 | small | lint only | -- | -- | 51 marginal | Protocol-based Verilog generation: AXI, I2C, SPI, UART at easy/hard difficulty |
-| `ibex` | 25 | medium | gold reference | -- | -- | 43 not ready | Ibex RISC-V core modules with gold reference RTL |
+| `ibex` | 25 | medium | sv2v+eqy | 11/25 | -- | 60 marginal | Ibex RISC-V core modules; 11 pass eqy equivalence, 14 need sub-module bundling or timeout fixes |
 | `scr1` | 36 | medium | gold reference | -- | -- | 43 not ready | SCR1 RISC-V core modules from Syntacore; silicon-proven RV32IMC |
-| `caliptra` | 5 | medium | xrun | -- | -- | 35 not ready | Caliptra RoT crypto: SHA-256/512, HMAC, ECC, DOE with self-checking TBs |
+| `caliptra` | 5 | medium | xrun | -- | -- | 63 marginal | Caliptra RoT crypto: SHA-256/512, HMAC, ECC, DOE with self-checking TBs |
 | `avip` | 9 | medium | uvm | -- | -- | 77 good | AVIP verification IP: AHB, APB, AXI4, I2C, I3C, SPI, UART, JTAG, USB slaves |
 | `riscv_hardware_specs` | 2 | large | none | -- | -- | 58 marginal | Spec-only: IMSIC interrupt file, APLIC IDC (from RISC-V AIA PDF) |
 
@@ -81,7 +81,8 @@ Each task group owns its oracle code in `task_library/<group>/helper.py`:
 | `cocotb+verilator` | verilator + cocotb + pyuvm | veer_el2 |
 | `xrun` | xrun assertion / self-checking | pulp_common_cells, caliptra |
 | `uvm` | xrun -uvm | avip |
-| `gold_reference` | xrun / iverilog | ibex, scr1 |
+| `sv2v+eqy` | sv2v + Yosys eqy | ibex |
+| `gold_reference` | -- | scr1 (no behavioral oracle) |
 | `iverilog+eqy` | iverilog + Yosys eqy | notsotiny, verithoughts |
 | `lint_only` | verilator --lint-only | protocolllm |
 | `opentitan_dvsim` | xcelium via dvsim | opentitan |
