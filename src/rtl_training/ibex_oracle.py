@@ -55,16 +55,25 @@ def validate_candidate(task, candidate_rtl_paths, *, work_root, timeout_s=120):
         log_path=work_dir / "eval.log", preferred_simulator="lec",
     )
 
+    # Collect dependency .sv files (ibex sub-modules, prim_* modules, packages)
+    # Exclude ibex_pkg.sv from deps since it's passed separately via IBEX_PKG
+    dep_sv_files = sorted(
+        f for f in deps_dir.glob("*.sv")
+        if f.name != "ibex_pkg.sv"
+    ) if deps_dir.is_dir() else []
+
     # Try circt-lec first (better SV support), fall back to sv2v+eqy
     if _circt_available():
         result = _try_circt_lec(
-            golden_file, candidates, module_name, work_dir, plan, timeout_s,
+            golden_file, candidates, module_name, dep_sv_files,
+            work_dir, plan, timeout_s,
         )
         if result is not None:
             return result
 
     return _try_eqy(
-        golden_file, candidates, module_name, deps_dir, work_dir, plan, timeout_s,
+        golden_file, candidates, module_name, dep_sv_files, deps_dir,
+        work_dir, plan, timeout_s,
     )
 
 
@@ -76,13 +85,19 @@ def _circt_available():
     )
 
 
-def _try_circt_lec(golden_file, candidates, module_name, work_dir, plan, timeout_s):
+def _try_circt_lec(golden_file, candidates, module_name, dep_sv_files,
+                    work_dir, plan, timeout_s):
     """Try circt-verilog -> circt-lec --emit-smtlib -> z3. Returns None on tool error."""
-    include_flags = [f"-I{PRIM_DIR}", f"-I{FCOV_DIR}"]
+    deps_dir_str = str(dep_sv_files[0].parent) if dep_sv_files else ""
+    include_flags = ["-DSYNTHESIS", f"-I{PRIM_DIR}"]
+    if deps_dir_str:
+        include_flags.append(f"-I{deps_dir_str}")
+    dep_paths = [str(f) for f in dep_sv_files]
 
     # Convert gold SV -> MLIR
     gold_mlir = work_dir / "gold.mlir"
-    cmd = [CIRCT_VERILOG_BIN, "--ir-hw", *include_flags, IBEX_PKG, str(golden_file)]
+    cmd = [CIRCT_VERILOG_BIN, "--ir-hw", *include_flags, IBEX_PKG,
+           *dep_paths, str(golden_file)]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
     except subprocess.TimeoutExpired:
@@ -97,7 +112,8 @@ def _try_circt_lec(golden_file, candidates, module_name, work_dir, plan, timeout
     candidate_sv.write_text(candidate_code)
 
     gate_mlir = work_dir / "gate.mlir"
-    cmd = [CIRCT_VERILOG_BIN, "--ir-hw", *include_flags, IBEX_PKG, str(candidate_sv)]
+    cmd = [CIRCT_VERILOG_BIN, "--ir-hw", *include_flags, IBEX_PKG,
+           *dep_paths, str(candidate_sv)]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
     except subprocess.TimeoutExpired:
@@ -149,16 +165,17 @@ def _try_circt_lec(golden_file, candidates, module_name, work_dir, plan, timeout
     )
 
 
-def _try_eqy(golden_file, candidates, module_name, deps_dir, work_dir, plan, timeout_s):
+def _try_eqy(golden_file, candidates, module_name, dep_sv_files, deps_dir,
+              work_dir, plan, timeout_s):
     """Fall back to sv2v + eqy equivalence checking."""
-    dep_files = sorted(deps_dir.glob("*.sv")) if deps_dir.is_dir() else []
+    dep_files = dep_sv_files
     include_dirs = [str(deps_dir)] if deps_dir.is_dir() else []
     sv2v_includes = [f"-I{d}" for d in include_dirs]
 
     def _sv2v(src_path, out_path):
         cmd = [
-            SV2V_BIN, "-D", "SYNTHESIS", *sv2v_includes,
-            *[str(f) for f in dep_files], str(src_path),
+            SV2V_BIN, "-DSYNTHESIS", *sv2v_includes,
+            IBEX_PKG, *[str(f) for f in dep_files], str(src_path),
         ]
         try:
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)

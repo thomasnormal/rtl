@@ -51,7 +51,7 @@ That keeps deterministic validation available to the training framework without 
 | `notsotiny` | 1114 | small | iverilog+eqy | -- | -- | 69 marginal | Real Tiny Tapeout designs; module completion + equivalence checking |
 | `verithoughts` | 291 | small | iverilog+eqy | -- | -- | 77 good | Formally verified Verilog generation tasks from NYU |
 | `protocolllm` | 9 | small | lint only | -- | -- | 51 marginal | Protocol-based Verilog generation: AXI, I2C, SPI, UART at easy/hard difficulty |
-| `ibex` | 25 | medium | circt-lec / eqy | 14/25 | -- | 66 marginal | Ibex RISC-V core modules; 14 pass formal equivalence (8 circt-lec + 6 eqy), 11 need sub-module bundling |
+| `ibex` | 25 | medium | circt-lec / eqy | 19/25 | -- | 72 good | Ibex RISC-V core modules with formal equivalence oracle (11 circt-lec + 8 eqy) |
 | `scr1` | 36 | medium | gold reference | -- | -- | 43 not ready | SCR1 RISC-V core modules from Syntacore; silicon-proven RV32IMC |
 | `caliptra` | 5 | medium | xrun | -- | -- | 63 marginal | Caliptra RoT crypto: SHA-256/512, HMAC, ECC, DOE with self-checking TBs |
 | `avip` | 9 | medium | uvm | -- | -- | 77 good | AVIP verification IP: AHB, APB, AXI4, I2C, I3C, SPI, UART, JTAG, USB slaves |
