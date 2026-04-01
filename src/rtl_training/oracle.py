@@ -146,11 +146,16 @@ def _stage_text_input(source_path: Path, work_dir: Path, stem: str) -> Path:
     return destination
 
 
+_RTL_SUFFIXES = {".sv", ".v", ".svh", ".vh", ".vp"}
+
+
 def _stage_support_files(task: StoredTask, work_dir: Path) -> tuple[Path, ...]:
     if task.oracle is None:
         raise ValueError(f"task {task.task_id} has no oracle")
     staged: list[Path] = []
     for support_file in task.oracle.support_files:
+        if support_file.suffix not in _RTL_SUFFIXES:
+            continue
         destination = work_dir / support_file.name
         shutil.copy2(support_file, destination)
         staged.append(destination)
