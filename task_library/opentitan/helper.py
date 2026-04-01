@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import errno
-import os
 from pathlib import Path
 import re
 import shutil
@@ -263,18 +261,9 @@ def _copy_repo_tree(source_root: Path, destination_root: Path) -> None:
         source_root,
         destination_root,
         symlinks=True,
-        copy_function=_link_or_copy_file,
+        copy_function=shutil.copy2,
         ignore=_REPO_COPY_IGNORE,
     )
-
-
-def _link_or_copy_file(src: str, dst: str) -> None:
-    try:
-        os.link(src, dst)
-    except OSError as err:
-        if err.errno not in {errno.EXDEV, errno.EPERM, errno.ENOTSUP, errno.EACCES}:
-            raise
-        shutil.copy2(src, dst)
 
 
 def _sanitize_run_component(value: str) -> str:
@@ -344,7 +333,12 @@ def _stage_hidden_repo_overlay(oracle: OpenTitanDvsimOracle, repo_root: Path, *,
         return
     if oracle.repo_overlay_dir is None or not oracle.repo_overlay_dir.is_dir():
         return
-    shutil.copytree(oracle.repo_overlay_dir, repo_root, dirs_exist_ok=True)
+    common_dir = oracle.repo_overlay_dir / "common"
+    if common_dir.is_dir():
+        shutil.copytree(common_dir, repo_root, dirs_exist_ok=True)
+    mode_dir = oracle.repo_overlay_dir / mode
+    if mode_dir.is_dir():
+        shutil.copytree(mode_dir, repo_root, dirs_exist_ok=True)
 
 
 def _finalize_dvsim_plan(

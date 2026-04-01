@@ -399,7 +399,18 @@ def test_build_opentitan_candidate_plan_applies_hidden_repo_overlay(tmp_path: Pa
     task_root = tmp_path / "task"
     registry_path = tmp_path / "registry" / "registry.json"
     _write_fake_opentitan_task(task_root, repo_root, registry_path)
-    overlay_file = task_root / "oracle" / "repo_overlay" / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv"
+    overlay_file = (
+        task_root
+        / "oracle"
+        / "repo_overlay"
+        / "public"
+        / "hw"
+        / "ip"
+        / "uart"
+        / "dv"
+        / "tb"
+        / "tb.sv"
+    )
     overlay_file.parent.mkdir(parents=True, exist_ok=True)
     overlay_file.write_text("module tb; // overlay\nendmodule\n")
     metadata = json.loads((task_root / "task.json").read_text())
@@ -430,6 +441,101 @@ def test_build_opentitan_candidate_plan_applies_hidden_repo_overlay(tmp_path: Pa
     assert (
         plan.repo_root / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv"
     ).read_text() == "module tb; // overlay\nendmodule\n"
+
+
+def test_build_opentitan_mode_specific_hidden_repo_overlays(tmp_path: Path) -> None:
+    repo_root = tmp_path / "repo_src"
+    (repo_root / "util" / "dvsim").mkdir(parents=True)
+    (repo_root / "util" / "dvsim" / "dvsim.py").write_text("print('fake dvsim')\n")
+    (repo_root / "hw" / "ip" / "uart" / "rtl").mkdir(parents=True)
+    (repo_root / "hw" / "ip" / "uart" / "rtl" / "uart.sv").write_text("module uart; endmodule\n")
+    (repo_root / "hw" / "ip" / "uart" / "dv" / "tb").mkdir(parents=True)
+    (repo_root / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv").write_text("module tb; // upstream\nendmodule\n")
+    _write_fake_uart_dv_files(repo_root)
+
+    task_root = tmp_path / "task"
+    registry_path = tmp_path / "registry" / "registry.json"
+    _write_fake_opentitan_task(task_root, repo_root, registry_path)
+
+    common_file = (
+        task_root
+        / "oracle"
+        / "repo_overlay"
+        / "common"
+        / "hw"
+        / "ip"
+        / "uart"
+        / "dv"
+        / "common_note.sv"
+    )
+    common_file.parent.mkdir(parents=True, exist_ok=True)
+    common_file.write_text("module common_note; endmodule\n")
+
+    public_tb = (
+        task_root
+        / "oracle"
+        / "repo_overlay"
+        / "public"
+        / "hw"
+        / "ip"
+        / "uart"
+        / "dv"
+        / "tb"
+        / "tb.sv"
+    )
+    public_tb.parent.mkdir(parents=True, exist_ok=True)
+    public_tb.write_text("module tb; // public\nendmodule\n")
+
+    gold_tb = (
+        task_root
+        / "oracle"
+        / "repo_overlay"
+        / "gold"
+        / "hw"
+        / "ip"
+        / "uart"
+        / "dv"
+        / "tb"
+        / "tb.sv"
+    )
+    gold_tb.parent.mkdir(parents=True, exist_ok=True)
+    gold_tb.write_text("module tb; // gold\nendmodule\n")
+
+    metadata = json.loads((task_root / "task.json").read_text())
+    metadata["oracle"]["repo_overlay_dir"] = "repo_overlay"
+    (task_root / "task.json").write_text(json.dumps(metadata, indent=2) + "\n")
+
+    task = load_stored_task(task_root)
+    candidate_dir = tmp_path / "candidate"
+    candidate_dir.mkdir()
+    (candidate_dir / "uart.sv").write_text(
+        "module uart(\n"
+        "  input logic clk_i,\n"
+        "  input logic rst_ni,\n"
+        "  input uart_public_types_pkg::uart_tl_i_t tl_i,\n"
+        "  input uart_public_types_pkg::uart_alert_rx_i_t alert_rx_i,\n"
+        "  output uart_public_types_pkg::uart_tl_o_t tl_o,\n"
+        "  output uart_public_types_pkg::uart_alert_tx_o_t alert_tx_o\n"
+        ");\n"
+        "  uart_micro_arch_if u_uart_micro_arch_if();\n"
+        "endmodule\n"
+    )
+
+    candidate_plan = build_opentitan_candidate_validation_plan(
+        task,
+        candidate_dir=candidate_dir,
+        work_root=tmp_path / "work",
+    )
+    gold_plan = build_opentitan_gold_selftest_plan(task, work_root=tmp_path / "work_gold")
+
+    assert (candidate_plan.repo_root / "hw" / "ip" / "uart" / "dv" / "common_note.sv").exists()
+    assert (gold_plan.repo_root / "hw" / "ip" / "uart" / "dv" / "common_note.sv").exists()
+    assert (
+        candidate_plan.repo_root / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv"
+    ).read_text() == "module tb; // public\nendmodule\n"
+    assert (
+        gold_plan.repo_root / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv"
+    ).read_text() == "module tb; // gold\nendmodule\n"
 
 
 def test_build_opentitan_mutant_plan_applies_declared_mutation(tmp_path: Path) -> None:

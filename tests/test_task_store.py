@@ -501,9 +501,29 @@ def test_store_opentitan_tasks_materializes_curated_specs(tmp_path: Path) -> Non
     assert uart_task.shared_private_ref.subpaths == ("hw/ip/uart/rtl", "hw/ip/uart/dv")
     assert (uart_task.root / "oracle" / "golden_rtl" / "uart.sv").exists()
     assert (uart_task.root / "oracle" / "golden_rtl" / "uart_core.sv").exists()
-    assert (uart_task.root / "oracle" / "repo_overlay" / "hw" / "ip" / "uart" / "dv" / "tb" / "tb.sv").exists()
     assert (
-        uart_task.root / "oracle" / "repo_overlay" / "hw" / "ip" / "uart" / "dv" / "compat" / "uart_compat_bind.sv"
+        uart_task.root
+        / "oracle"
+        / "repo_overlay"
+        / "common"
+        / "hw"
+        / "ip"
+        / "uart"
+        / "dv"
+        / "tb"
+        / "tb.sv"
+    ).exists()
+    assert (
+        uart_task.root
+        / "oracle"
+        / "repo_overlay"
+        / "common"
+        / "hw"
+        / "ip"
+        / "uart"
+        / "dv"
+        / "compat"
+        / "uart_compat_bind.sv"
     ).exists()
     registry = SharedSourceRegistry.load(uart_task.shared_private_ref.registry_path)
     bundle = registry.by_id(uart_task.shared_private_ref.bundle_id)
@@ -530,7 +550,58 @@ def test_store_opentitan_tasks_materializes_curated_specs(tmp_path: Path) -> Non
     assert adc_task_metadata["oracle"]["test"] == "adc_ctrl_smoke"
 
     aon_timer_task = load_stored_task(tmp_path / "task_store" / "opentitan" / "aon_timer")
-    assert json.loads((aon_timer_task.root / "task.json").read_text())["oracle"]["test"] == "aon_timer_smoke"
+    aon_timer_task_metadata = json.loads((aon_timer_task.root / "task.json").read_text())
+    assert aon_timer_task_metadata["oracle"]["test"] == "aon_timer_smoke"
+    assert aon_timer_task_metadata["oracle"]["repo_overlay_dir"] == "repo_overlay"
+    assert (
+        aon_timer_task.root
+        / "oracle"
+        / "repo_overlay"
+        / "public"
+        / "hw"
+        / "ip"
+        / "aon_timer"
+        / "dv"
+        / "sva"
+        / "aon_timer_bind.sv"
+    ).exists()
+    assert (
+        aon_timer_task.root
+        / "oracle"
+        / "repo_overlay"
+        / "public"
+        / "hw"
+        / "ip"
+        / "aon_timer"
+        / "dv"
+        / "env"
+        / "seq_lib"
+        / "aon_timer_smoke_vseq.sv"
+    ).exists()
+    assert (
+        aon_timer_task.root
+        / "oracle"
+        / "repo_overlay"
+        / "public"
+        / "hw"
+        / "ip"
+        / "aon_timer"
+        / "dv"
+        / "env"
+        / "aon_timer_env.sv"
+    ).exists()
+    assert (
+        aon_timer_task.root
+        / "oracle"
+        / "repo_overlay"
+        / "public"
+        / "hw"
+        / "ip"
+        / "aon_timer"
+        / "dv"
+        / "tests"
+        / "aon_timer_base_test.sv"
+    ).exists()
 
     pattgen_task = load_stored_task(tmp_path / "task_store" / "opentitan" / "pattgen")
     assert json.loads((pattgen_task.root / "task.json").read_text())["oracle"]["test"] == "pattgen_smoke"

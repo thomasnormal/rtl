@@ -89,6 +89,26 @@
           {
             "source": "hw/ip/aon_timer/rtl",
             "dest": "golden_rtl"
+          },
+          {
+            "source_base": "task_library_root",
+            "source": "_hidden/aon_timer/repo_overlay/public/hw/ip/aon_timer/dv/sva/aon_timer_bind.sv",
+            "dest": "repo_overlay/public/hw/ip/aon_timer/dv/sva/aon_timer_bind.sv"
+          },
+          {
+            "source_base": "task_library_root",
+            "source": "_hidden/aon_timer/repo_overlay/public/hw/ip/aon_timer/dv/env/seq_lib/aon_timer_smoke_vseq.sv",
+            "dest": "repo_overlay/public/hw/ip/aon_timer/dv/env/seq_lib/aon_timer_smoke_vseq.sv"
+          },
+          {
+            "source_base": "task_library_root",
+            "source": "_hidden/aon_timer/repo_overlay/public/hw/ip/aon_timer/dv/env/aon_timer_env.sv",
+            "dest": "repo_overlay/public/hw/ip/aon_timer/dv/env/aon_timer_env.sv"
+          },
+          {
+            "source_base": "task_library_root",
+            "source": "_hidden/aon_timer/repo_overlay/public/hw/ip/aon_timer/dv/tests/aon_timer_base_test.sv",
+            "dest": "repo_overlay/public/hw/ip/aon_timer/dv/tests/aon_timer_base_test.sv"
           }
         ]
       },
@@ -190,23 +210,23 @@
           },
           {
             "source_base": "task_library_root",
-            "source": "_hidden/uart/repo_overlay/hw/ip/uart/dv/tb/tb.sv",
-            "dest": "repo_overlay/hw/ip/uart/dv/tb/tb.sv"
+            "source": "_hidden/uart/repo_overlay/common/hw/ip/uart/dv/tb/tb.sv",
+            "dest": "repo_overlay/common/hw/ip/uart/dv/tb/tb.sv"
           },
           {
             "source_base": "task_library_root",
-            "source": "_hidden/uart/repo_overlay/hw/ip/uart/dv/compat/uart_compat_bind.sv",
-            "dest": "repo_overlay/hw/ip/uart/dv/compat/uart_compat_bind.sv"
+            "source": "_hidden/uart/repo_overlay/common/hw/ip/uart/dv/compat/uart_compat_bind.sv",
+            "dest": "repo_overlay/common/hw/ip/uart/dv/compat/uart_compat_bind.sv"
           },
           {
             "source_base": "task_library_root",
-            "source": "_hidden/uart/repo_overlay/hw/ip/uart/dv/compat/uart_compat_checker.sv",
-            "dest": "repo_overlay/hw/ip/uart/dv/compat/uart_compat_checker.sv"
+            "source": "_hidden/uart/repo_overlay/common/hw/ip/uart/dv/compat/uart_compat_checker.sv",
+            "dest": "repo_overlay/common/hw/ip/uart/dv/compat/uart_compat_checker.sv"
           },
           {
             "source_base": "task_library_root",
-            "source": "_hidden/uart/repo_overlay/hw/ip/uart/dv/compat/uart_compat_if.sv",
-            "dest": "repo_overlay/hw/ip/uart/dv/compat/uart_compat_if.sv"
+            "source": "_hidden/uart/repo_overlay/common/hw/ip/uart/dv/compat/uart_compat_if.sv",
+            "dest": "repo_overlay/common/hw/ip/uart/dv/compat/uart_compat_if.sv"
           }
         ]
       },
