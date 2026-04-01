@@ -79,13 +79,18 @@ def build_run_environment(request: OpenCodeRunRequest) -> dict[str, str]:
     xdg_config_home = workspace_root / ".xdg_config"
     xdg_data_home = workspace_root / ".xdg_data"
     xdg_cache_home = workspace_root / ".xdg_cache"
-    for path in (workspace_home, xdg_config_home, xdg_data_home, xdg_cache_home):
+    xdg_state_home = workspace_root / ".xdg_state"
+    for path in (workspace_home, xdg_config_home, xdg_data_home, xdg_cache_home, xdg_state_home):
         path.mkdir(parents=True, exist_ok=True)
 
     env["HOME"] = str(workspace_home)
     env["XDG_CONFIG_HOME"] = str(xdg_config_home)
     env["XDG_DATA_HOME"] = str(xdg_data_home)
     env["XDG_CACHE_HOME"] = str(xdg_cache_home)
+    env["XDG_STATE_HOME"] = str(xdg_state_home)
+
+    # Pre-stage ripgrep binary so OpenCode doesn't need to extract the tarball
+    _prestage_ripgrep(xdg_cache_home)
     if original_python_userbase:
         env["PYTHONUSERBASE"] = original_python_userbase
     elif original_home:
@@ -98,6 +103,39 @@ def build_run_environment(request: OpenCodeRunRequest) -> dict[str, str]:
     if config_dir.exists():
         env["OPENCODE_CONFIG_DIR"] = str(config_dir)
     return env
+
+
+_RG_BINARY_CACHE: Path | None = None
+
+
+def _prestage_ripgrep(xdg_cache_home: Path) -> None:
+    """Copy a pre-extracted ripgrep binary into the workspace cache.
+
+    OpenCode downloads ripgrep as a tarball and extracts it on first run.
+    Extraction can fail in sandboxed environments, causing
+    ``RipgrepExtractionFailedError`` for glob/read tools.  Pre-staging
+    the binary avoids this.
+    """
+    global _RG_BINARY_CACHE
+    dest = xdg_cache_home / "opencode" / "bin" / "rg"
+    if dest.exists():
+        return
+    # Find a previously extracted rg binary anywhere under runs/
+    if _RG_BINARY_CACHE is None:
+        for candidate in Path(__file__).resolve().parents[2].glob("runs/*/_workspaces/*/ep/.xdg_cache/opencode/bin/rg"):
+            if candidate.is_file() and candidate.stat().st_size > 1_000_000:
+                _RG_BINARY_CACHE = candidate
+                break
+    if _RG_BINARY_CACHE is None:
+        # Try system rg
+        system_rg = shutil.which("rg")
+        if system_rg:
+            _RG_BINARY_CACHE = Path(system_rg)
+    if _RG_BINARY_CACHE is None:
+        return
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(_RG_BINARY_CACHE, dest)
+    dest.chmod(0o755)
 
 
 def _merge_repo_dotenv(env: dict[str, str]) -> None:
@@ -207,11 +245,24 @@ def run_opencode(
 
         stdout_text = _read_captured_output(stdout_file)
         stderr_text = _read_captured_output(stderr_file)
+    terminal_result_state = _result_file_state(result_path)
+    if terminal_result_state is None:
+        closeout_result = _run_timeout_closeout(
+            request,
+            original_stdout=stdout_text,
+            original_stderr=stderr_text,
+            result_settle_s=result_settle_s,
+            poll_interval_s=poll_interval_s,
+            terminate_grace_s=terminate_grace_s,
+        )
+        if closeout_result is not None:
+            return closeout_result
     return OpenCodeRunResult(
         command=command,
         returncode=process.returncode,
         stdout=stdout_text,
         stderr=stderr_text,
+        completed_via_result_file=terminal_result_state is not None,
     )
 
 
