@@ -32,14 +32,14 @@ That keeps deterministic validation available to the training framework without 
 | Dataset | Tasks | Tier | Oracle | Gold | Gen pass | Quality | Description |
 |---|---|---|---|---|---|---|---|
 | `rtllm_v1_1` | 27 | small | simulation | 27/27 | 57% pass@5 | 83 good | Hand-written designs with testbenches and verified RTL references |
-| `rtllm_v2_0` | 48 | small | simulation | -- | -- | 83 good | Expanded RTLLM with categorized tasks |
-| `verilogeval_v2_spec_to_rtl` | 156 | micro | simulation | -- | -- | 72 good | Spec-to-RTL benchmark with VerilogEval v2 harness |
-| `chipbench` | 45 | small | simulation | 44/45 | -- | 77 good | VerilogEval-style harness; 30 self-contained + 6 non-self-contained + 9 CPU IP |
-| `resbench` | 56 | small | simulation | 56/56 | -- | 76 good | FPGA resource-aware problems; self-checking testbenches, no gold RTL |
-| `realbench` | 60 | medium | simulation | 56/60 | -- | 78 good | Real IP cores (AES, SD card, E203 RISC-V) with markdown specs |
-| `icrtl` | 6 | medium | simulation | 4/6 | -- | 66 marginal | Industry contest challenges (LBP, GEMM, convolution, Huffman, etc.) |
-| `opentitan` | 9 | medium | dvsim | 9/9 | 0/3 | 79 good | Curated OpenTitan IPs: uart, i2c, spi_host, adc_ctrl, aon_timer, pattgen, dma, rv_timer, sysrst_ctrl |
-| `cvdp` | 169 | small | cocotb | -- | -- | 54 marginal | CVDP benchmark; cocotb testbenches with iverilog |
+| `rtllm_v2_0` | 48 | small | simulation | -- | 0/1 | 83 good | Expanded RTLLM with categorized tasks |
+| `verilogeval_v2_spec_to_rtl` | 156 | micro | simulation | -- | 72% (13/18) | 72 good | Spec-to-RTL benchmark with VerilogEval v2 harness |
+| `chipbench` | 45 | small | simulation | 44/45 | 1/3 | 77 good | VerilogEval-style harness; 30 self-contained + 6 non-self-contained + 9 CPU IP |
+| `resbench` | 56 | small | simulation | 56/56 | 1/3 | 76 good | FPGA resource-aware problems; self-checking testbenches, no gold RTL |
+| `realbench` | 60 | medium | simulation | 56/60 | 0/1 | 78 good | Real IP cores (AES, SD card, E203 RISC-V) with markdown specs |
+| `icrtl` | 6 | medium | simulation | 4/6 | 0/2 | 66 marginal | Industry contest challenges (LBP, GEMM, convolution, Huffman, etc.) |
+| `opentitan` | 9 | medium | dvsim | 9/9 | 0/5 | 79 good | Curated OpenTitan IPs: uart, i2c, spi_host, adc_ctrl, aon_timer, pattgen, dma, rv_timer, sysrst_ctrl |
+| `cvdp` | 169 | small | cocotb | -- | 0/1 | 54 marginal | CVDP benchmark; cocotb testbenches with iverilog |
 | `verilog_axi` | 24 | medium | makefile cocotb | -- | -- | 77 good | AXI4 bus components (adapters, crossbars, DMA, FIFOs) |
 | `verilog_ethernet` | 33 | medium | makefile cocotb | -- | -- | 77 good | Ethernet MAC/PHY/UDP/IP stack (1G/10G/25G) |
 | `verilog_pcie` | 37 | medium | makefile cocotb | -- | -- | 77 good | PCIe DMA, TLP, MSI-X, configuration space |
@@ -58,7 +58,7 @@ That keeps deterministic validation available to the training framework without 
 | `riscv_hardware_specs` | 2 | large | none | -- | -- | 58 marginal | Spec-only: IMSIC interrupt file, APLIC IDC (from RISC-V AIA PDF) |
 
 **Gold** = gold selftest pass count (oracle validates its own reference RTL).
-**Gen pass** = generator agent oracle pass rate. `rtllm_v1_1` uses `openai/gpt-5-mini`; opentitan used `openai/gpt-5.4`. `--` = not yet evaluated.
+**Gen pass** = generator agent oracle pass rate. All results use `openai/gpt-5-mini` unless noted. `--` = not yet evaluated.
 **Quality** = weighted rubric score (0-100). See [task-quality-review.md](docs/task-quality-review.md) for full breakdown.
 
 ### Not yet materialized
