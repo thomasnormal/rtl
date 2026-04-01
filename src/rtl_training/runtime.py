@@ -153,7 +153,9 @@ DEFAULT_VERIFIER_TIMEOUT_CLOSEOUT_PROMPT = (
 DEFAULT_GENERATOR_TIMEOUT_CLOSEOUT_PROMPT = (
     "Time budget is exhausted. Do not start new long-running checks. "
     "Read the existing files under submission/, result/evidence/, result/requirements.md, "
-    "and the current result/result.json stub, then immediately update result/result.json with a "
+    "the current result/result.json stub, and `result/evidence/timeout_closeout_pass1_stdout.log` "
+    "plus `result/evidence/timeout_closeout_pass1_stderr.log` when they exist, because they capture "
+    "the interrupted first-pass transcript. Then immediately update result/result.json with a "
     "terminal status, output_file, summary, and assumptions. "
     "If the current evidence does not positively justify `status: pass`, choose a non-pass terminal "
     "status and summarize the unresolved high-risk gaps or failing checks. "
