@@ -11,6 +11,9 @@ from typing import Iterable
 
 from .opencode_runtime import run_opencode
 from .runtime import DEFAULT_VERIFIER_PROMPT, prepare_verifier_episode
+from .staging import prepare_staging_workspace_root, promote_staging_workspace
+from .timeout_policy import resolve_opencode_timeout_s
+from .workspace import collect_candidate_files
 
 
 Verdict = str
@@ -23,7 +26,7 @@ class LabeledCandidateExample:
     dataset_name: str
     task_id: str
     task_root: Path
-    candidate_path: Path
+    candidate_dir: Path
     oracle_verdict: Verdict
 
 
@@ -34,7 +37,7 @@ class VerifierTaskResult:
     dataset_name: str
     task_id: str
     task_root: str
-    source_candidate_path: str
+    source_candidate_dir: str
     workspace_root: str
     opencode_returncode: int
     opencode_stdout_path: str
@@ -103,10 +106,10 @@ def collect_labeled_candidates(
         dataset_name = str(record["dataset_name"])
         source_run_id = record_path.parents[2].name
         example_id = f"{source_run_id}/{task_id}"
-        candidate_path = record_path.parents[1] / "submission" / "candidate.sv"
-        if not candidate_path.exists():
+        candidate_dir = record_path.parents[1] / "submission"
+        if not candidate_dir.exists() or not collect_candidate_files(candidate_dir):
             raise FileNotFoundError(
-                f"missing candidate RTL for labeled example {example_id}: {candidate_path}"
+                f"no candidate RTL files for labeled example {example_id}: {candidate_dir}"
             )
         task_root = dataset_root_path / task_id
         if not task_root.exists():
@@ -120,7 +123,7 @@ def collect_labeled_candidates(
                 dataset_name=dataset_name,
                 task_id=task_id,
                 task_root=task_root,
-                candidate_path=candidate_path.resolve(),
+                candidate_dir=candidate_dir.resolve(),
                 oracle_verdict="good" if bool(record["oracle_passed"]) else "bad",
             )
         )
@@ -157,11 +160,15 @@ def read_verifier_verdict(result_path: str | Path) -> tuple[Verdict | None, str 
     return verdict, None
 
 
-def _sha256_file(path: Path) -> str:
+def _sha256_dir(directory: Path) -> str:
+    """Hash all files in a directory (sorted by name) to detect mutations."""
     digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(65536), b""):
-            digest.update(chunk)
+    for path in sorted(directory.iterdir()):
+        if path.is_file():
+            digest.update(path.name.encode())
+            with path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(65536), b""):
+                    digest.update(chunk)
     return digest.hexdigest()
 
 
@@ -185,7 +192,7 @@ def run_verifier_batch(
     task_ids: Iterable[str] | None = None,
     run_ids: Iterable[str] | None = None,
     limit: int | None = None,
-    opencode_timeout_s: int = 900,
+    opencode_timeout_s: int | None = None,
     output_format: str = "default",
     resume: bool = False,
 ) -> VerifierBatchSummary:
@@ -244,30 +251,39 @@ def _run_single_verifier_example(
     template_root: str | Path,
     model: str | None,
     prompt: str,
-    opencode_timeout_s: int,
+    opencode_timeout_s: int | None,
     output_format: str,
 ) -> VerifierTaskResult:
     start_time = time.monotonic()
-    workspace_root = batch_root_path / example.source_run_id / example.task_id
+    archive_workspace_root = batch_root_path / example.source_run_id / example.task_id
+    workspace_root = prepare_staging_workspace_root(
+        archive_workspace_root,
+        label=f"verifier-{example.source_run_id}",
+    )
     episode = prepare_verifier_episode(
         example.task_root,
-        example.candidate_path,
+        example.candidate_dir,
         workspace_root,
         template_root=template_root,
         model=model,
         prompt=prompt,
     )
     request = replace(episode.request, output_format=output_format)
-    candidate_input_path = episode.workspace.candidate_input_path
-    if candidate_input_path is None:
-        raise ValueError("verifier workspace did not stage a candidate input path")
-    original_candidate_digest = _sha256_file(candidate_input_path)
+    effective_opencode_timeout_s = resolve_opencode_timeout_s(
+        episode.task,
+        agent_name="verifier",
+        requested_timeout_s=opencode_timeout_s,
+    )
+    candidate_input_dir = episode.workspace.candidate_input_dir
+    if candidate_input_dir is None:
+        raise ValueError("verifier workspace did not stage a candidate input directory")
+    original_candidate_digest = _sha256_dir(candidate_input_dir)
     opencode_returncode = -1
     opencode_stdout = ""
     opencode_stderr = ""
     opencode_error: str | None = None
     try:
-        run_result = run_opencode(request, timeout_s=opencode_timeout_s)
+        run_result = run_opencode(request, timeout_s=effective_opencode_timeout_s)
         opencode_returncode = run_result.returncode
         opencode_stdout = run_result.stdout
         opencode_stderr = run_result.stderr
@@ -282,7 +298,7 @@ def _run_single_verifier_example(
     verifier_result_path: str | None = None
     predicted_verdict: Verdict | None = None
     error: str | None = None
-    candidate_modified = _sha256_file(candidate_input_path) != original_candidate_digest
+    candidate_modified = _sha256_dir(candidate_input_dir) != original_candidate_digest
     if opencode_error is not None:
         error = opencode_error
     elif opencode_returncode != 0:
@@ -294,6 +310,15 @@ def _run_single_verifier_example(
         mutation_error = "verifier modified candidate RTL under candidate/"
         error = mutation_error if error is None else f"{error}; {mutation_error}"
 
+    archived_workspace_root = promote_staging_workspace(
+        episode.workspace.root,
+        archive_workspace_root,
+    )
+    archived_result_dir = archived_workspace_root / "result"
+    archived_result_path = archived_result_dir / "result.json"
+    archived_stdout_path = archived_result_dir / "opencode_stdout.log"
+    archived_stderr_path = archived_result_dir / "opencode_stderr.log"
+
     duration_s = time.monotonic() - start_time
     record = VerifierTaskResult(
         example_id=example.example_id,
@@ -301,12 +326,12 @@ def _run_single_verifier_example(
         dataset_name=example.dataset_name,
         task_id=example.task_id,
         task_root=str(example.task_root),
-        source_candidate_path=str(example.candidate_path),
-        workspace_root=str(episode.workspace.root),
+        source_candidate_dir=str(example.candidate_dir),
+        workspace_root=str(archived_workspace_root),
         opencode_returncode=opencode_returncode,
-        opencode_stdout_path=str(stdout_path),
-        opencode_stderr_path=str(stderr_path),
-        verifier_result_path=verifier_result_path,
+        opencode_stdout_path=str(archived_stdout_path),
+        opencode_stderr_path=str(archived_stderr_path),
+        verifier_result_path=(str(archived_result_path) if verifier_result_path is not None else None),
         oracle_verdict=example.oracle_verdict,
         predicted_verdict=predicted_verdict,
         candidate_modified=candidate_modified,
@@ -314,7 +339,7 @@ def _run_single_verifier_example(
         error=error,
         duration_s=duration_s,
     )
-    (episode.workspace.result_dir / "verifier_batch_record.json").write_text(
+    (archived_result_dir / "verifier_batch_record.json").write_text(
         json.dumps(asdict(record), indent=2, sort_keys=True) + "\n"
     )
     return record
@@ -391,7 +416,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--task-id", action="append", dest="task_ids")
     parser.add_argument("--run-id", action="append", dest="run_ids")
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--opencode-timeout-s", type=int, default=900)
+    parser.add_argument("--opencode-timeout-s", type=int, default=None)
     parser.add_argument("--output-format", choices=("default", "json"), default="default")
     parser.add_argument("--resume", action="store_true")
     return parser

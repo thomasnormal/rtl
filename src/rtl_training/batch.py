@@ -8,8 +8,11 @@ import shutil
 import time
 from typing import Iterable
 
-from .opencode_runtime import OpenCodeRunResult, run_opencode
-from .runtime import GeneratorEpisode, prepare_generator_episode, validate_generator_episode
+from .opencode_runtime import run_opencode
+from .runtime import prepare_generator_episode, validate_generator_episode
+from .staging import prepare_staging_workspace_root, promote_staging_workspace
+from .timeout_policy import resolve_opencode_timeout_s, resolve_oracle_timeout_s
+from .workspace import collect_candidate_files
 
 
 @dataclass(frozen=True)
@@ -17,7 +20,7 @@ class BatchTaskResult:
     dataset_name: str
     task_id: str
     workspace_root: str
-    candidate_path: str
+    submission_dir: str
     opencode_returncode: int
     opencode_stdout_path: str
     opencode_stderr_path: str
@@ -77,8 +80,8 @@ def run_generator_batch(
     model: str | None,
     task_ids: Iterable[str] | None = None,
     limit: int | None = None,
-    opencode_timeout_s: int = 900,
-    oracle_timeout_s: int = 60,
+    opencode_timeout_s: int | None = None,
+    oracle_timeout_s: int | None = None,
     preferred_simulator: str | None = "xrun",
     output_format: str = "default",
     resume: bool = False,
@@ -137,13 +140,17 @@ def _run_single_generator_task(
     batch_root_path: Path,
     template_root: str | Path,
     model: str | None,
-    opencode_timeout_s: int,
-    oracle_timeout_s: int,
+    opencode_timeout_s: int | None,
+    oracle_timeout_s: int | None,
     preferred_simulator: str | None,
     output_format: str,
 ) -> BatchTaskResult:
     start_time = time.monotonic()
-    workspace_root = batch_root_path / task_root.name
+    archive_workspace_root = batch_root_path / task_root.name
+    workspace_root = prepare_staging_workspace_root(
+        archive_workspace_root,
+        label="generator",
+    )
     episode = prepare_generator_episode(
         task_root,
         workspace_root,
@@ -151,27 +158,48 @@ def _run_single_generator_task(
         model=model,
     )
     request = replace(episode.request, output_format=output_format)
-    run_result = run_opencode(request, timeout_s=opencode_timeout_s)
+    effective_opencode_timeout_s = resolve_opencode_timeout_s(
+        episode.task,
+        agent_name="generator",
+        requested_timeout_s=opencode_timeout_s,
+    )
+    effective_oracle_timeout_s = resolve_oracle_timeout_s(
+        episode.task,
+        requested_timeout_s=oracle_timeout_s,
+    )
+    opencode_returncode = -1
+    opencode_stdout = ""
+    opencode_stderr = ""
+    opencode_error: str | None = None
+    try:
+        run_result = run_opencode(request, timeout_s=effective_opencode_timeout_s)
+        opencode_returncode = run_result.returncode
+        opencode_stdout = run_result.stdout
+        opencode_stderr = run_result.stderr
+    except Exception as exc:
+        opencode_error = f"opencode execution error: {exc}"
 
     stdout_path = episode.workspace.result_dir / "opencode_stdout.log"
     stderr_path = episode.workspace.result_dir / "opencode_stderr.log"
-    stdout_path.write_text(run_result.stdout)
-    stderr_path.write_text(run_result.stderr)
+    stdout_path.write_text(opencode_stdout)
+    stderr_path.write_text(opencode_stderr)
 
     oracle_passed = False
     oracle_log_path: str | None = None
     error: str | None = None
-    if run_result.returncode != 0:
-        error = f"opencode exited with status {run_result.returncode}"
-    elif episode.workspace.candidate_output_path is None or not episode.workspace.candidate_output_path.exists():
-        error = "generator did not produce submission/candidate.sv"
+    if opencode_error is not None:
+        error = opencode_error
+    elif opencode_returncode != 0:
+        error = f"opencode exited with status {opencode_returncode}"
+    elif not collect_candidate_files(episode.workspace.submission_dir):
+        error = "generator did not produce any RTL files under submission/"
     else:
         try:
             oracle_result = validate_generator_episode(
                 episode,
                 work_root=batch_root_path / "_oracle_eval",
                 preferred_simulator=preferred_simulator,
-                timeout_s=oracle_timeout_s,
+                timeout_s=effective_oracle_timeout_s,
             )
             oracle_passed = oracle_result.passed
             oracle_log_path = str(oracle_result.plan.log_path)
@@ -180,23 +208,30 @@ def _run_single_generator_task(
         except Exception as exc:
             error = f"oracle validation error: {exc}"
 
+    archived_workspace_root = promote_staging_workspace(
+        episode.workspace.root,
+        archive_workspace_root,
+    )
+    archived_result_dir = archived_workspace_root / "result"
+    archived_submission_dir = archived_workspace_root / "submission"
+    archived_stdout_path = archived_result_dir / "opencode_stdout.log"
+    archived_stderr_path = archived_result_dir / "opencode_stderr.log"
+
     duration_s = time.monotonic() - start_time
     record = BatchTaskResult(
         dataset_name=episode.task.dataset_name,
         task_id=episode.task.task_id,
-        workspace_root=str(episode.workspace.root),
-        candidate_path=(
-            "" if episode.workspace.candidate_output_path is None else str(episode.workspace.candidate_output_path)
-        ),
-        opencode_returncode=run_result.returncode,
-        opencode_stdout_path=str(stdout_path),
-        opencode_stderr_path=str(stderr_path),
+        workspace_root=str(archived_workspace_root),
+        submission_dir=str(archived_submission_dir),
+        opencode_returncode=opencode_returncode,
+        opencode_stdout_path=str(archived_stdout_path),
+        opencode_stderr_path=str(archived_stderr_path),
         oracle_passed=oracle_passed,
         oracle_log_path=oracle_log_path,
         error=error,
         duration_s=duration_s,
     )
-    (episode.workspace.result_dir / "batch_record.json").write_text(
+    (archived_result_dir / "batch_record.json").write_text(
         json.dumps(asdict(record), indent=2, sort_keys=True) + "\n"
     )
     return record
@@ -210,8 +245,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model", default=None)
     parser.add_argument("--task-id", action="append", dest="task_ids")
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--opencode-timeout-s", type=int, default=900)
-    parser.add_argument("--oracle-timeout-s", type=int, default=60)
+    parser.add_argument("--opencode-timeout-s", type=int, default=None)
+    parser.add_argument("--oracle-timeout-s", type=int, default=None)
     parser.add_argument("--preferred-simulator", default="xrun")
     parser.add_argument("--output-format", choices=("default", "json"), default="default")
     parser.add_argument("--resume", action="store_true")
