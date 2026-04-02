@@ -14,6 +14,7 @@ import time
 from PIL import Image, ImageDraw
 
 from .opencode_runtime import (
+    OpenCodeRunRequest,
     OpenCodeRunResult,
     build_run_command,
     build_run_environment,
@@ -79,21 +80,78 @@ def _output_ready(output_dir: Path) -> bool:
     return all((output_dir / rel_path).is_file() for rel_path in files)
 
 
+def _render_single_grid_overlay(
+    page_path: Path,
+    grid_path: Path,
+    *,
+    step_px: int = 200,
+) -> Path:
+    """Render a grid overlay for a single page image."""
+    with Image.open(page_path) as image:
+        overlay = image.convert("RGB")
+    draw = ImageDraw.Draw(overlay)
+    width, height = overlay.size
+
+    for x in range(0, width, step_px):
+        draw.line(((x, 0), (x, height)), fill=(220, 0, 0), width=2)
+        label_x2 = min(x + 92, width - 1)
+        draw.rectangle((x + 4, 4, label_x2, 28), fill=(255, 255, 255))
+        draw.text((x + 8, 8), str(x), fill=(220, 0, 0))
+    for y in range(0, height, step_px):
+        draw.line(((0, y), (width, y)), fill=(220, 0, 0), width=2)
+        label_y2 = min(y + 28, height - 1)
+        draw.rectangle((4, y + 4, min(92, width - 1), label_y2), fill=(255, 255, 255))
+        draw.text((8, y + 8), str(y), fill=(220, 0, 0))
+
+    overlay.save(grid_path)
+    return grid_path
+
+
 def _render_pdf_page_images(
     pdf_path: Path,
     pages_dir: Path,
     *,
     dpi: int = 300,
+    pages_grid_dir: Path | None = None,
 ) -> tuple[Path, ...]:
     if pages_dir.exists():
         shutil.rmtree(pages_dir)
     pages_dir.mkdir(parents=True)
-    subprocess.run(
+    if pages_grid_dir is not None:
+        if pages_grid_dir.exists():
+            shutil.rmtree(pages_grid_dir)
+        pages_grid_dir.mkdir(parents=True)
+
+    process = subprocess.Popen(
         ("pdftoppm", "-png", "-r", str(dpi), str(pdf_path), str(pages_dir / "page")),
-        check=True,
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
     )
+    gridded: set[str] = set()
+    while process.poll() is None:
+        if pages_grid_dir is not None:
+            for page in pages_dir.glob("page-*.png"):
+                if page.name not in gridded:
+                    grid_path = pages_grid_dir / page.name
+                    try:
+                        _render_single_grid_overlay(page, grid_path)
+                        gridded.add(page.name)
+                    except Exception:
+                        pass  # file may still be written by pdftoppm
+        time.sleep(0.5)
+
+    if process.returncode != 0:
+        raise RuntimeError(
+            f"pdftoppm failed (exit {process.returncode}): {process.stderr.read()}"
+        )
+
+    # Final sweep: grid any pages that appeared after the last poll.
+    if pages_grid_dir is not None:
+        for page in sorted(pages_dir.glob("page-*.png")):
+            if page.name not in gridded:
+                _render_single_grid_overlay(page, pages_grid_dir / page.name)
+
     page_images = tuple(sorted(p for p in pages_dir.glob("page-*.png") if p.is_file()))
     if not page_images:
         raise RuntimeError(f"pdftoppm did not render any page images for {pdf_path}")
@@ -112,24 +170,8 @@ def _render_page_grid_overlays(
 
     overlays: list[Path] = []
     for page in sorted(pages_dir.glob("page-*.png")):
-        with Image.open(page) as image:
-            overlay = image.convert("RGB")
-        draw = ImageDraw.Draw(overlay)
-        width, height = overlay.size
-
-        for x in range(0, width, step_px):
-            draw.line(((x, 0), (x, height)), fill=(220, 0, 0), width=2)
-            label_x2 = min(x + 92, width - 1)
-            draw.rectangle((x + 4, 4, label_x2, 28), fill=(255, 255, 255))
-            draw.text((x + 8, 8), str(x), fill=(220, 0, 0))
-        for y in range(0, height, step_px):
-            draw.line(((0, y), (width, y)), fill=(220, 0, 0), width=2)
-            label_y2 = min(y + 28, height - 1)
-            draw.rectangle((4, y + 4, min(92, width - 1), label_y2), fill=(255, 255, 255))
-            draw.text((8, y + 8), str(y), fill=(220, 0, 0))
-
         out_path = pages_grid_dir / page.name
-        overlay.save(out_path)
+        _render_single_grid_overlay(page, out_path, step_px=step_px)
         overlays.append(out_path)
     return tuple(overlays)
 
@@ -181,6 +223,112 @@ def _missing_read_page_numbers(
         _read_page_numbers_from_logs(workspace_root=workspace_root, pages_dir=pages_dir)
     )
     return tuple(sorted(expected - seen))
+
+
+_PDF_ARTIFACT_STRIP_RE = re.compile(
+    r"^\s*\d+\s*$"
+    r"|Technical Reference Manual"
+    r"|© 20\d\d"
+    r"|\(Ask a Question\)"
+)
+
+
+def _pdf_to_word_list(pdf_path: Path) -> tuple[list[str], list[tuple[int, int]]]:
+    """Extract words from a PDF using pdftotext.
+
+    Returns ``(words, page_spans)`` where ``page_spans[i]`` is the
+    ``(start, end)`` word-index range for page ``i+1``.  Returns empty
+    lists when pdftotext is not available or fails.
+    """
+    result = subprocess.run(
+        ["pdftotext", "-layout", str(pdf_path), "-"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return [], []
+    words: list[str] = []
+    page_spans: list[tuple[int, int]] = []
+    for page_text in result.stdout.split("\f"):
+        start = len(words)
+        for line in page_text.splitlines():
+            if _PDF_ARTIFACT_STRIP_RE.search(line):
+                continue
+            words.extend(re.findall(r"[a-z0-9_]+", line.lower()))
+        page_spans.append((start, len(words)))
+    return words, page_spans
+
+
+def _md_dir_to_word_list(output_dir: Path) -> list[str]:
+    combined = ""
+    for f in sorted(output_dir.glob("*.md")):
+        combined += f.read_text() + "\n"
+    combined = re.sub(r"!\[.*?\]\(.*?\)", " ", combined)
+    combined = re.sub(r"\[.*?\]\(.*?\)", " ", combined)
+    combined = re.sub(r"[|#*`>_~!]", " ", combined)
+    return re.findall(r"[a-z0-9_]+", combined.lower())
+
+
+def _page_for_word_index(word_idx: int, page_spans: list[tuple[int, int]]) -> int:
+    for page_num, (start, end) in enumerate(page_spans, start=1):
+        if start <= word_idx < end:
+            return page_num
+    return len(page_spans)
+
+
+def _compute_diff_gaps(
+    pdf_path: Path,
+    output_dir: Path,
+    *,
+    min_gap: int = 40,
+) -> list[dict]:
+    """Return a list of text chunks present in the PDF but absent from the markdown.
+
+    Each entry is ``{"size": int, "page": int, "excerpt": str}``.
+    Returns an empty list when pdftotext is unavailable.
+    """
+    import difflib
+
+    pdf_words, page_spans = _pdf_to_word_list(pdf_path)
+    if not pdf_words:
+        return []
+    md_words = _md_dir_to_word_list(output_dir)
+    matcher = difflib.SequenceMatcher(None, pdf_words, md_words, autojunk=False)
+    gaps = []
+    for tag, i1, i2, _j1, _j2 in matcher.get_opcodes():
+        if tag in ("delete", "replace") and (i2 - i1) >= min_gap:
+            page = _page_for_word_index(i1, page_spans)
+            excerpt = " ".join(pdf_words[i1 : i1 + 30])
+            gaps.append({"size": i2 - i1, "page": page, "excerpt": excerpt})
+    gaps.sort(key=lambda g: g["size"], reverse=True)
+    return gaps
+
+
+def _format_gap_review_prompt(gaps: list[dict], output_dir: Path, *, top_k: int = 12) -> str:
+    existing = sorted(f.name for f in output_dir.glob("*.md"))
+    lines = [
+        "All page images have been read. However, a word-level diff between the PDF "
+        "and the markdown output found text chunks that may be missing or incomplete.",
+        "",
+        "Work through each gap below:",
+        "  1. Check whether the content is already present in the markdown (it may "
+        "have been reformatted as a table, figure reference, or merged section).",
+        "  2. If genuinely absent, locate the relevant page image "
+        "(input/pages/page-NNN.png) and transcribe the missing content into the "
+        "correct markdown file.",
+        "  3. If the gap is a figure label, running header, or register table that "
+        "pdftotext rendered differently, note that and move on.",
+        "",
+        f"Existing markdown files: {existing}",
+        "",
+        "--- GAPS (largest first) ---",
+        "",
+    ]
+    for i, gap in enumerate(gaps[:top_k], start=1):
+        lines.append(f"[{i}] ~{gap['size']} words, around PDF page {gap['page']}:")
+        lines.append(f'    "{gap["excerpt"]}..."')
+        lines.append("")
+    return "\n".join(lines)
 
 
 def _assert_all_rendered_pages_read(*, workspace_root: Path, pages_dir: Path) -> None:
@@ -474,38 +622,50 @@ def extract_pdf_page_range(
         raise ValueError(f"invalid page range {start_page}-{end_page}")
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    temp_dir = out.parent / f".pages_{out.stem}"
-    if temp_dir.exists():
-        shutil.rmtree(temp_dir)
-    temp_dir.mkdir(parents=True)
     try:
-        subprocess.run(
-            (
-                "pdfseparate",
-                "-f",
-                str(start_page),
-                "-l",
-                str(end_page),
-                str(pdf),
-                str(temp_dir / "page-%04d.pdf"),
-            ),
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        page_files = tuple(sorted(temp_dir.glob("page-*.pdf")))
-        if not page_files:
-            raise RuntimeError(
-                f"pdfseparate did not extract pages {start_page}-{end_page} from {pdf}"
+        from pypdf import PdfReader, PdfWriter
+
+        reader = PdfReader(str(pdf))
+        if reader.is_encrypted:
+            reader.decrypt("")
+        writer = PdfWriter()
+        for page_idx in range(start_page - 1, min(end_page, len(reader.pages))):
+            writer.add_page(reader.pages[page_idx])
+        writer.write(str(out))
+    except ImportError:
+        # Fallback to pdfseparate/pdfunite for environments without pypdf.
+        temp_dir = out.parent / f".pages_{out.stem}"
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+        temp_dir.mkdir(parents=True)
+        try:
+            subprocess.run(
+                (
+                    "pdfseparate",
+                    "-f",
+                    str(start_page),
+                    "-l",
+                    str(end_page),
+                    str(pdf),
+                    str(temp_dir / "page-%04d.pdf"),
+                ),
+                check=True,
+                capture_output=True,
+                text=True,
             )
-        subprocess.run(
-            ("pdfunite", *(str(path) for path in page_files), str(out)),
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
+            page_files = tuple(sorted(temp_dir.glob("page-*.pdf")))
+            if not page_files:
+                raise RuntimeError(
+                    f"pdfseparate did not extract pages {start_page}-{end_page} from {pdf}"
+                )
+            subprocess.run(
+                ("pdfunite", *(str(path) for path in page_files), str(out)),
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
     return out
 
 
@@ -559,47 +719,118 @@ def convert_pdf_to_spec_dir(
         model=model,
     )
     agent_output = episode.workspace.output_dir
-    _render_pdf_page_images(episode.workspace.pdf_path, episode.workspace.pages_dir)
-    _render_page_grid_overlays(
+    _render_pdf_page_images(
+        episode.workspace.pdf_path,
         episode.workspace.pages_dir,
-        episode.workspace.pages_grid_dir,
+        pages_grid_dir=episode.workspace.pages_grid_dir,
     )
     page_count = len(_rendered_page_numbers(episode.workspace.pages_dir))
-    try:
-        result = run_converter_opencode(
-            episode.request,
-            output_dir=agent_output,
+    max_continuations = 10
+    for attempt in range(1, max_continuations + 1):
+        missing = _missing_read_page_numbers(
+            workspace_root=episode.workspace.root,
             pages_dir=episode.workspace.pages_dir,
-            timeout_s=timeout_s,
         )
-    except subprocess.TimeoutExpired as exc:
-        if _markdown_files(agent_output):
-            _assert_all_rendered_pages_read(
-                workspace_root=episode.workspace.root,
-                pages_dir=episode.workspace.pages_dir,
+        if attempt == 1:
+            request = episode.request
+        else:
+            existing_md = [f.name for f in _markdown_files(agent_output)]
+            missing_str = ", ".join(str(p) for p in missing[:20])
+            if len(missing) > 20:
+                missing_str += f", ... ({len(missing)} total)"
+            continuation_prompt = (
+                f"Continue converting the PDF to markdown. "
+                f"You already wrote these files: {existing_md}. "
+                f"You still need to read and transcribe these page images: {missing_str}. "
+                f"Read each remaining input/pages/page-*.png with the read tool, "
+                f"transcribe the content into markdown, and update output/manifest.json when done."
             )
-            _assert_no_full_page_figure_copies(
+            request = OpenCodeRunRequest(
+                workspace_root=episode.request.workspace_root,
+                agent=episode.request.agent,
+                prompt=continuation_prompt,
+                model=episode.request.model,
+                output_format=episode.request.output_format,
+                extra_args=episode.request.extra_args,
+            )
+        try:
+            result = run_converter_opencode(
+                request,
                 output_dir=agent_output,
                 pages_dir=episode.workspace.pages_dir,
+                timeout_s=timeout_s,
             )
-            assert_converted_spec_layout(agent_output, page_count=page_count)
-            return _copy_agent_output(agent_output, out)
-        raise RuntimeError(
-            f"converter agent timed out after {timeout_s}s for {pdf}"
-        ) from exc
-    if result.returncode != 0 and not _markdown_files(agent_output):
-        raise RuntimeError(
-            f"converter agent failed (exit {result.returncode}):\n{result.stderr[:2000]}"
+        except subprocess.TimeoutExpired as exc:
+            if _markdown_files(agent_output):
+                missing = _missing_read_page_numbers(
+                    workspace_root=episode.workspace.root,
+                    pages_dir=episode.workspace.pages_dir,
+                )
+                if not missing:
+                    break
+            raise RuntimeError(
+                f"converter agent timed out after {timeout_s}s for {pdf}"
+            ) from exc
+
+        missing = _missing_read_page_numbers(
+            workspace_root=episode.workspace.root,
+            pages_dir=episode.workspace.pages_dir,
         )
-    if not _markdown_files(agent_output):
-        raise RuntimeError(
-            "converter agent exited without producing any markdown output:\n"
-            f"{result.stderr[:2000]}"
-        )
+        if not missing and _markdown_files(agent_output):
+            break
+        if attempt == max_continuations:
+            if not _markdown_files(agent_output):
+                raise RuntimeError(
+                    "converter agent exited without producing any markdown output "
+                    f"after {max_continuations} attempts:\n{result.stderr[:2000]}"
+                )
+            if missing:
+                formatted = ", ".join(str(p) for p in missing)
+                raise RuntimeError(
+                    "converter agent did not read every pre-rendered page image "
+                    f"after {max_continuations} attempts; missing pages: {formatted}"
+                )
+
     _assert_all_rendered_pages_read(
         workspace_root=episode.workspace.root,
         pages_dir=episode.workspace.pages_dir,
     )
+
+    # Gap-review pass: diff pdftotext output against markdown to find missed content.
+    # Run up to 3 review sessions; stop early when gaps stop shrinking or fall below
+    # the trigger threshold.
+    _GAP_MIN_WORDS = 40      # minimum gap size to include in the review prompt
+    _GAP_TRIGGER = 150       # only run a review session if the largest gap is this big
+    _GAP_REVIEW_ATTEMPTS = 3
+    prev_top_gap = None
+    for _gap_attempt in range(_GAP_REVIEW_ATTEMPTS):
+        gaps = _compute_diff_gaps(pdf, agent_output, min_gap=_GAP_MIN_WORDS)
+        top_gap = gaps[0]["size"] if gaps else 0
+        # Stop if no gap is large enough to be worth reviewing, or if the previous
+        # review session made no meaningful improvement.
+        if top_gap < _GAP_TRIGGER:
+            break
+        if prev_top_gap is not None and top_gap >= prev_top_gap * 0.9:
+            # Largest gap barely changed — likely a persistent false positive
+            # (e.g. a large register table pdftotext renders differently).
+            break
+        prev_top_gap = top_gap
+        gap_prompt = _format_gap_review_prompt(gaps, agent_output)
+        gap_request = OpenCodeRunRequest(
+            workspace_root=episode.request.workspace_root,
+            agent=episode.request.agent,
+            prompt=gap_prompt,
+            model=episode.request.model,
+            output_format=episode.request.output_format,
+            extra_args=episode.request.extra_args,
+        )
+        run_converter_opencode(
+            gap_request,
+            output_dir=agent_output,
+            pages_dir=episode.workspace.pages_dir,
+            timeout_s=timeout_s,
+        )
+
     _assert_no_full_page_figure_copies(
         output_dir=agent_output,
         pages_dir=episode.workspace.pages_dir,
