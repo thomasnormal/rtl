@@ -9,6 +9,7 @@ import re
 import shutil
 import signal
 import subprocess
+import threading
 import time
 
 from PIL import Image, ImageDraw
@@ -29,6 +30,7 @@ _FULL_PAGE_DIMENSION_RATIO = 0.95
 _PAGE_IMAGE_RE = re.compile(r"^page-(\d+)\.png$")
 _PAGE_ARTIFACT_RE = re.compile(r"^page-\d+\.png$")
 _READ_LOG_RE = re.compile(r"permission permission=read pattern=(\S+page-(\d+)\.png)")
+_FIGURE_READ_LOG_RE = re.compile(r"permission permission=read pattern=(\S+\.png)")
 _SECTION_MARKDOWN_RE = re.compile(r"^\d{2}_.+\.md$")
 _CHUNK_MANIFEST_RE = re.compile(r"^chunk_\d{3}/")
 
@@ -223,6 +225,34 @@ def _missing_read_page_numbers(
         _read_page_numbers_from_logs(workspace_root=workspace_root, pages_dir=pages_dir)
     )
     return tuple(sorted(expected - seen))
+
+
+def _figures_not_read_back(
+    *,
+    workspace_root: Path,
+    output_dir: Path,
+) -> tuple[Path, ...]:
+    """Return figure PNGs that were written to output/figures/ but never read back.
+
+    The agent is required to read each cropped figure with the read tool to
+    verify the crop is correct.  This function surfaces any that were skipped.
+    """
+    figures_dir = output_dir / "figures"
+    if not figures_dir.is_dir():
+        return ()
+    written = {p.resolve() for p in figures_dir.glob("*.png")}
+    if not written:
+        return ()
+
+    read_back: set[Path] = set()
+    for log_path in _opencode_log_paths(workspace_root):
+        for line in log_path.read_text().splitlines():
+            m = _FIGURE_READ_LOG_RE.search(line)
+            if m:
+                read_back.add(Path(m.group(1)).resolve())
+
+    not_read = written - read_back
+    return tuple(sorted(not_read))
 
 
 _PDF_ARTIFACT_STRIP_RE = re.compile(
@@ -519,17 +549,30 @@ def run_converter_opencode(
     ensure_opencode_available()
     command = build_run_command(request)
     env = build_run_environment(request)
+    # stdout is discarded (opencode --format json produces large output that
+    # is never used by callers and would deadlock the pipe buffer if not drained).
+    # stderr is captured for error diagnostics.
     process = subprocess.Popen(
         command,
         cwd=request.workspace_root,
         env=env,
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,
         start_new_session=True,
     )
+    stderr_buf: list[str] = []
+    stderr_thread = threading.Thread(
+        target=lambda: stderr_buf.append(process.stderr.read()),  # type: ignore[union-attr]
+        daemon=True,
+    )
+    stderr_thread.start()
     start = time.monotonic()
     ready_since: float | None = None
+
+    def _stderr() -> str:
+        stderr_thread.join(timeout=10)
+        return "".join(stderr_buf)
 
     while True:
         returncode = process.poll()
@@ -539,11 +582,11 @@ def run_converter_opencode(
             pages_dir=pages_dir,
         )
         if returncode is not None:
-            stdout, stderr = process.communicate()
+            stderr = _stderr()
             return OpenCodeRunResult(
                 command=command,
                 returncode=returncode,
-                stdout=stdout,
+                stdout="",
                 stderr=stderr,
             )
 
@@ -551,29 +594,30 @@ def run_converter_opencode(
             if ready_since is None:
                 ready_since = time.monotonic()
             elif time.monotonic() - ready_since >= _OUTPUT_SETTLE_S:
-                stdout, stderr = _terminate_process_tree(process)
+                _terminate_process_tree(process)
                 return OpenCodeRunResult(
                     command=command,
                     returncode=0,
-                    stdout=stdout,
-                    stderr=stderr,
+                    stdout="",
+                    stderr=_stderr(),
                 )
         else:
             ready_since = None
 
         if time.monotonic() - start >= timeout_s:
-            stdout, stderr = _terminate_process_tree(process)
+            _terminate_process_tree(process)
+            stderr = _stderr()
             if (ready or _output_ready(output_dir)) and reads_complete:
                 return OpenCodeRunResult(
                     command=command,
                     returncode=0,
-                    stdout=stdout,
+                    stdout="",
                     stderr=stderr,
                 )
             raise subprocess.TimeoutExpired(
                 command,
                 timeout_s,
-                output=stdout,
+                output="",
                 stderr=stderr,
             )
 
@@ -738,12 +782,25 @@ def convert_pdf_to_spec_dir(
             missing_str = ", ".join(str(p) for p in missing[:20])
             if len(missing) > 20:
                 missing_str += f", ... ({len(missing)} total)"
+            unverified_figs = _figures_not_read_back(
+                workspace_root=episode.workspace.root,
+                output_dir=agent_output,
+            )
+            fig_note = ""
+            if unverified_figs:
+                fig_names = [f.name for f in unverified_figs]
+                fig_note = (
+                    f" Also, these figures were saved but never read back to verify "
+                    f"the crop: {fig_names}. Read each one with the read tool and "
+                    f"re-crop if the result is wrong."
+                )
             continuation_prompt = (
                 f"Continue converting the PDF to markdown. "
                 f"You already wrote these files: {existing_md}. "
                 f"You still need to read and transcribe these page images: {missing_str}. "
                 f"Read each remaining input/pages/page-*.png with the read tool, "
                 f"transcribe the content into markdown, and update output/manifest.json when done."
+                f"{fig_note}"
             )
             request = OpenCodeRunRequest(
                 workspace_root=episode.request.workspace_root,

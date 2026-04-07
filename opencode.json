@@ -1,5 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "snapshot": false,
   "instructions": [
     "AGENTS.md"
   ],
@@ -7,12 +8,39 @@
     "*": "allow",
     "external_directory": "deny"
   },
+  "provider": {
+    "tinker": {
+      "name": "Tinker",
+      "api": "http://127.0.0.1:8642/v1",
+      "env": ["TINKER_API_KEY"],
+      "models": {
+        "qwen3-30b": {
+          "id": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+          "name": "Qwen3 30B A3B",
+          "tool_call": true,
+          "temperature": true
+        },
+        "qwen3-4b": {
+          "id": "Qwen/Qwen3-4B-Instruct-2507",
+          "name": "Qwen3 4B",
+          "tool_call": true,
+          "temperature": true
+        },
+        "qwen3-8b": {
+          "id": "Qwen/Qwen3-8B",
+          "name": "Qwen3 8B",
+          "tool_call": true,
+          "temperature": true
+        }
+      }
+    }
+  },
   "agent": {
     "converter": {
       "mode": "primary",
       "description": "Convert a PDF specification to markdown with extracted figure assets.",
       "prompt": "{file:./.opencode/prompts/converter.md}",
-      "steps": 120,
+      "steps": 500,
       "temperature": 0.1
     },
     "generator": {
